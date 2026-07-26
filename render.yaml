@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: ours-ttd
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ours-ttd-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://ours-ttd.onrender.com
+
+databases:
+  - name: ours-ttd-db
+    databaseName: ours_ttd
+    user: ours_ttd_user
