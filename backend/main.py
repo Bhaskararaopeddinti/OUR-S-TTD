@@ -29,4 +29,4 @@ async def live(ws: WebSocket):
     except WebSocketDisconnect: clients.discard(ws)
 
 ROOT=Path(__file__).resolve().parent.parent
-app.mount("/", StaticFiles(directory=str(ROOT), html=True), name="frontend")
+app.mount("/", StaticFiles(directory=str(ROOT / "frontend"), html=True), name="frontend")
