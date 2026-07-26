@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # OURS TTD — AI Smart Pilgrim Assistant
 
 An accessible, temple-inspired digital companion for the Tirumala journey. It is a **guidance and demo platform**, not an official TTD booking service.
@@ -25,3 +26,6 @@ Copy `.env.example` to `.env` and set `DATABASE_URL`, `SECRET_KEY`, and optional
 ## Deployment
 
 Use the start command `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`. Set `DATABASE_URL`, `SECRET_KEY`, and `CORS_ORIGINS` in Render/Railway. For production, replace demo seed credentials and configure a managed PostgreSQL database.
+=======
+# OUR-S-TTD
+>>>>>>> 88ed35a941310eb767e69e6f8ae3d3bd506f36b0
