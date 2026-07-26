@@ -1,0 +1,1 @@
+voiceStart.onclick=()=>{const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;if(!Speech){chat.hidden=false;chatInput.focus();return}const r=new Speech();r.lang='en-IN';r.onresult=e=>{chat.hidden=false;chatInput.value=e.results[0][0].transcript;chatForm.requestSubmit()};r.start()};

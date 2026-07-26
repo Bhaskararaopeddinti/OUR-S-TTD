@@ -1,0 +1,8 @@
+"""Pilgrim facility directory supplied for the project; verify with TTD before production release."""
+FACILITIES = [
+ {"kind":"restroom","name":"Restrooms & drinking water","locations":"PAC I–V, VQC I & II, Kalyanakatta, and Jala Prasadam RO kiosks on the temple ring road.","details":"350+ permanent and institutional toilet blocks; 24/7 sanitation cycles. Free purified drinking water and milk points operate continuously."},
+ {"kind":"food","name":"Food & Annaprasadam","locations":"Matrusri Tarigonda Vengamamba Annaprasada Complex (MTVAC), VQC compartments, PAC II, Rambagicha Bus Stand, and CRO.","details":"Free meals and beverages for approximately 55,000–65,000+ pilgrims daily; waiting compartments receive milk and refreshments every 3 hours."},
+ {"kind":"medical","name":"Medical facilities","locations":"Aswini Hospital near Seshadri Nagar, Tirumala, and emergency aid stations on Alipiri and Srivari Mettu footpaths.","details":"24/7 emergency care, trauma response, and ambulance coordination. TTD helpline: 155257."},
+ {"kind":"laddu","name":"Laddu counters & kiosks","locations":"Main Laddu Complex on West/East Mada Street, VQC exit, MBC smart kiosks, and standard laddu stalls.","details":"Service is stated as 24/7. One free laddu per darshan token; additional laddus and self-service limits must be confirmed at the counter."},
+ {"kind":"phone","name":"Phone & mobile deposit centres","locations":"Opposite VQC I & II, PAC-3, PAC-5 (Venkatadri Nilayam), and near Sarva/Special Entry darshan lines.","details":"Mobile phones are prohibited inside the temple. Collection is described at PAC IV (Old Annadhanam Complex) or designated hubs using a receipt token. Confirm current locker rules on arrival."},
+]

@@ -1,0 +1,6 @@
+.venv/
+backend/.packages/
+__pycache__/
+backend/ours_ttd.db
+ours_ttd.db
+*.pyc

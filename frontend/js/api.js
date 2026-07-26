@@ -1,0 +1,1 @@
+const API={get:p=>fetch(`/api/${p}`).then(r=>r.ok?r.json():Promise.reject(r)),post:(p,body)=>fetch(`/api/${p}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.ok?r.json():r.json().then(x=>Promise.reject(x)))};
