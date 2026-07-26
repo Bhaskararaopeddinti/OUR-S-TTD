@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Facility, EmergencyAlert, Feedback, User
-from backend.schemas import ChatIn, SOSIn, FeedbackIn
+from backend.schemas import ChatIn, SOSIn, FeedbackIn, TranslateIn
 from backend.services.ai_service import pilgrim_reply
 from backend.services.queue_prediction import predict
 from backend.services.recommendation import recommendations
 from backend.services.translation import supported_languages
+from backend.services.google_translation import translate_text, get_language_code
 from backend.auth import current_claims
 from backend.services.ttd_official import public_status
 from backend.services.facilities_data import FACILITIES
@@ -40,3 +41,8 @@ def analytics(claims=Depends(current_claims), db: Session=Depends(get_db)):
 @router.post("/feedback")
 def feedback(data: FeedbackIn, db: Session = Depends(get_db)):
     row=Feedback(**data.model_dump()); db.add(row); db.commit(); return {"message":"Thank you for your feedback."}
+@router.post("/translate")
+def translate(data: TranslateIn):
+    target_code = get_language_code(data.target_language)
+    translated = translate_text(data.text, target_code)
+    return {"original": data.text, "translated": translated, "target_language": data.target_language}

@@ -23,3 +23,6 @@ class SOSIn(BaseModel):
 class FeedbackIn(BaseModel):
     rating: int = Field(ge=1, le=5)
     comment: str = Field(max_length=1000, default="")
+class TranslateIn(BaseModel):
+    text: str = Field(min_length=1, max_length=5000)
+    target_language: str = "English"
