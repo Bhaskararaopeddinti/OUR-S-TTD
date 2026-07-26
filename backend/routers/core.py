@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Facility, EmergencyAlert, Feedback, User
-from backend.schemas import ChatIn, SOSIn, FeedbackIn, TranslateIn
+from backend.schemas import ChatIn, SOSIn, FeedbackIn, TranslateIn, NearbyFacilitiesIn
 from backend.services.ai_service import pilgrim_reply
 from backend.services.queue_prediction import predict
 from backend.services.recommendation import recommendations

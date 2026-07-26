@@ -26,3 +26,7 @@ class FeedbackIn(BaseModel):
 class TranslateIn(BaseModel):
     text: str = Field(min_length=1, max_length=5000)
     target_language: str = "English"
+class NearbyFacilitiesIn(BaseModel):
+    latitude: float
+    longitude: float
+    max_distance: Optional[float] = None
