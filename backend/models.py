@@ -5,7 +5,7 @@ All database tables for the pilgrim companion platform.
 from datetime import datetime
 from sqlalchemy import String, Integer, Float, DateTime, Boolean, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from database import Base
+from .database import Base
 
 
 class User(Base):

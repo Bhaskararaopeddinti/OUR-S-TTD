@@ -6,12 +6,9 @@ import json
 import sys
 import os
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from sqlalchemy.orm import Session
-from database import engine, SessionLocal, Base
-from models import NavigationLocation
+from ..database import engine, SessionLocal, Base
+from ..models import NavigationLocation
 
 def seed_locations():
     """Seed the database with TTD locations from JSON file"""

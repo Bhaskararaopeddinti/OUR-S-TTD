@@ -32,7 +32,7 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return R * c
 
 
-@router.get("/")
+@router.get("")
 def get_locations(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
