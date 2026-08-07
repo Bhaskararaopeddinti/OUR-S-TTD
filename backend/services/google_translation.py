@@ -1,44 +1,46 @@
+"""
+google_translation.py – Translation service using urllib (no Cloud SDK needed).
+Uses MyMemory free API as fallback; Gemini for full multilingual support.
+"""
 import os
-from typing import Optional
-from google.cloud import translate
+import json
+import urllib.request
+import urllib.parse
+import logging
 
-def translate_text(text: str, target_language: str) -> str:
-    """Translate text to target language using Google Cloud Translation API."""
-    api_key = os.getenv("GOOGLE_TRANSLATE_API_KEY")
-    if not api_key:
-        # Fallback: return original text if no API key
-        return text
-    
-    try:
-        client = translate.TranslationServiceClient()
-        project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID", "our-ttd-project")
-        parent = f"projects/{project_id}"
-        
-        response = client.translate_text(
-            request={
-                "parent": parent,
-                "contents": [text],
-                "mime_type": "text/plain",
-                "source_language_code": "en",
-                "target_language_code": target_language,
-            }
-        )
-        
-        return response.translations[0].translated_text
-    except Exception as e:
-        print(f"Translation error: {e}")
-        return text  # Return original text on error
+logger = logging.getLogger(__name__)
+
+LANG_CODES = {
+    "English": "en", "Telugu": "te", "Hindi": "hi",
+    "Tamil": "ta", "Kannada": "kn", "Malayalam": "ml",
+    "Marathi": "mr", "Bengali": "bn",
+}
+
 
 def get_language_code(language_name: str) -> str:
-    """Convert language name to Google Translate language code."""
-    language_map = {
-        "English": "en",
-        "Telugu": "te",
-        "Hindi": "hi",
-        "Tamil": "ta",
-        "Kannada": "kn",
-        "Malayalam": "ml",
-        "Marathi": "mr",
-        "Bengali": "bn"
-    }
-    return language_map.get(language_name, "en")
+    """Convert language name to BCP-47 code."""
+    return LANG_CODES.get(language_name, "en")
+
+
+def translate_text(text: str, target_language: str) -> str:
+    """
+    Translate text to target language.
+    Uses MyMemory free API (no key needed for small usage).
+    Falls back to original text on any error.
+    """
+    if not text or target_language == "en":
+        return text
+
+    try:
+        encoded = urllib.parse.quote(text[:500])  # MyMemory limit
+        url = f"https://api.mymemory.translated.net/get?q={encoded}&langpair=en|{target_language}"
+        req = urllib.request.Request(url, headers={"User-Agent": "OURS-TTD/2.0"})
+        with urllib.request.urlopen(req, timeout=8) as response:
+            data = json.loads(response.read().decode())
+            translated = data.get("responseData", {}).get("translatedText", "")
+            if translated and translated.lower() != "invalid language pair":
+                return translated
+    except Exception as e:
+        logger.warning("Translation failed: %s", e)
+
+    return text  # Return original on failure

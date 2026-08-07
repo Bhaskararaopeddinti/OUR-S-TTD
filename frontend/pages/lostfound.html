@@ -1,0 +1,67 @@
+<!-- lostfound.html – lost & found reporting page -->
+<section class="lostfound-page">
+  <h2>🔍 Lost &amp; Found</h2>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tabReport" onclick="switchLFTab('report')">Report</button>
+    <button class="tab-btn" id="tabSearch" onclick="switchLFTab('search')">Search</button>
+  </div>
+
+  <!-- Report Form -->
+  <div id="lfReportPanel" class="card">
+    <h3>File a Report</h3>
+    <form id="lostFoundForm">
+      <label>
+        <span>Report Type</span>
+        <select name="report_type" required>
+          <option value="lost_item">Lost Item</option>
+          <option value="found_item">Found Item</option>
+          <option value="lost_person">Lost Person</option>
+          <option value="found_person">Found Person</option>
+        </select>
+      </label>
+      <label>
+        <span>Category</span>
+        <select name="category" required>
+          <option value="child">Child</option>
+          <option value="elderly">Elderly</option>
+          <option value="bag">Bag / Luggage</option>
+          <option value="phone">Mobile Phone</option>
+          <option value="jewellery">Jewellery</option>
+          <option value="documents">Documents / ID</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+      <label>
+        <span>Description</span>
+        <textarea name="description" required rows="3" placeholder="Describe the item or person..."></textarea>
+      </label>
+      <label>
+        <span>Last Seen Location</span>
+        <input type="text" name="location" placeholder="e.g., VQC II entrance" />
+      </label>
+      <label>
+        <span>Contact Info</span>
+        <input type="text" name="contact_info" placeholder="Phone number or name" />
+      </label>
+      <button type="submit" class="primary">Submit Report</button>
+      <p id="lfReportStatus" class="status"></p>
+    </form>
+  </div>
+
+  <!-- Search Panel -->
+  <div id="lfSearchPanel" class="card" hidden>
+    <h3>Search Reports</h3>
+    <div class="filter-row">
+      <select id="lfFilterType">
+        <option value="">All Types</option>
+        <option value="lost_item">Lost Items</option>
+        <option value="found_item">Found Items</option>
+        <option value="lost_person">Lost Persons</option>
+        <option value="found_person">Found Persons</option>
+      </select>
+      <button class="primary" id="lfSearchBtn">Search</button>
+    </div>
+    <ul id="lfResultsList"></ul>
+  </div>
+</section>

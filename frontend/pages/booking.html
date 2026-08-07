@@ -1,0 +1,33 @@
+<!-- booking.html – booking page front‑end -->
+<section class="booking-page">
+  <h2>Darshan &amp; Accommodation Booking</h2>
+  <p class="notice">⚠️ Official TTD API integration pending. The "Create" button will store a placeholder request locally.</p>
+  <form id="bookingForm" class="card">
+    <label>
+      <span>Booking type</span>
+      <select name="booking_type" required>
+        <option value="darshan">Darshan</option>
+        <option value="accommodation">Accommodation</option>
+        <option value="seva">Seva</option>
+      </select>
+    </label>
+    <label>
+      <span>Date (YYYY‑MM‑DD)</span>
+      <input type="date" name="date" required />
+    </label>
+    <label>
+      <span>Slot (optional)</span>
+      <input type="text" name="slot" placeholder="e.g., Morning" />
+    </label>
+    <label>
+      <span>Notes</span>
+      <textarea name="notes" rows="2" placeholder="Any special request"></textarea>
+    </label>
+    <button type="submit" class="primary">Create Booking</button>
+    <p id="bookingResult" class="status"></p>
+  </form>
+  <section class="card">
+    <h3>My Bookings</h3>
+    <ul id="myBookings"></ul>
+  </section>
+</section>

@@ -1,1 +1,12 @@
-@media(max-width:700px){header{padding:0 16px}nav a{display:none}nav{gap:8px}.hero{padding:52px 20px;min-height:600px;align-items:flex-start;flex-direction:column}.darshan-card{width:100%}.status-grid{margin:-28px 16px 0;grid-template-columns:1fr 1fr}.status-grid article,.sos{padding:16px;border-bottom:1px solid var(--line)}.section{margin:60px auto;padding:0 20px}.section h2{font-size:29px}.queue-panel{flex-wrap:wrap;gap:16px}.service-grid{grid-template-columns:1fr 1fr}.split{grid-template-columns:1fr;gap:24px}.actions{flex-wrap:wrap}}@media(max-width:390px){.service-grid{grid-template-columns:1fr}.hero h1{font-size:39px}}
+/* responsive.css – breakpoint overrides */
+@media (max-width: 480px) {
+  h1 { font-size: 1.5rem; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .analytics-grid { grid-template-columns: 1fr 1fr; }
+  .sos-options { grid-template-columns: 1fr; }
+  .assist-buttons { flex-direction: column; }
+  dialog { width: 96vw; }
+}
+@media (min-width: 769px) {
+  .nav-links { display: flex; }
+}

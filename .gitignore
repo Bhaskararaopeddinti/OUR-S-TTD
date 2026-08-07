@@ -1,6 +1,45 @@
-.venv/
-backend/.packages/
+# Environment & secrets
+.env
+*.env.local
+
+# Python
 __pycache__/
-backend/ours_ttd.db
-ours_ttd.db
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+.packages/
+*.egg-info/
+dist/
+build/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Node (if any tooling added)
+node_modules/
+
+# Docker
+*.tar

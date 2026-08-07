@@ -1,10 +1,308 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#8f5b16"><title>OURS TTD | Smart Pilgrim Assistant</title><link rel="manifest" href="/manifest.json"><link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/responsive.css"><link rel="stylesheet" href="/css/components.css"></head><body>
-<header><a class="brand" href="#home"><span>ॐ</span> OURS <b>TTD</b></a><nav><a href="#queue" data-translate>Live Queue</a><a href="#guide" data-translate>Journey</a><a href="#services" data-translate>Services</a><button id="theme" aria-label="Toggle dark mode">◐</button><select id="language" aria-label="Select language"><option>English</option><option>తెలుగు</option><option>हिंदी</option><option>தமிழ்</option><option>ಕನ್ನಡ</option></select></nav></header>
-<main><section id="home" class="hero"><div><p class="eyebrow" data-translate>YOUR DIGITAL PILGRIMAGE COMPANION</p><h1 data-translate>Every step towards darshan, <em>guided with care.</em></h1><p class="lead" data-translate>Live queue intelligence, temple guidance and support—designed for every devotee.</p><div class="actions"><a class="button primary" href="#queue" data-translate>Check live queue</a><button class="button ghost" id="voiceStart" data-translate>🎙 Ask by voice</button></div></div><aside class="darshan-card"><p data-translate>Today’s Darshan</p><strong>Om Namo Venkatesaya</strong><span data-translate>Temple open · Guidance available 24×7</span><div class="weather">☀️ Tirumala &nbsp; 24°C · Pleasant</div></aside></section>
-<section class="status-grid" aria-label="Live status"><article><span>◉ <span data-translate>Crowd level</span></span><strong id="crowd">High</strong><small data-translate>Live estimate</small></article><article><span>◷ <span data-translate>Current wait</span></span><strong id="wait">—</strong><small id="prediction">AI forecast loading</small></article><article><span>♧ <span data-translate>Pilgrims in queue</span></span><strong id="people">—</strong><small data-translate>Updated automatically</small></article><button class="sos" id="sosButton">⚠ SOS<br><small data-translate>Emergency help</small></button></section>
-<section id="queue" class="section"><div class="section-heading"><div><p class="eyebrow" data-translate>LIVE INTELLIGENCE</p><h2 data-translate>Darshan queue status</h2></div><span class="live">● Live</span></div><div class="queue-panel"><div class="progress"><i></i></div><div><b data-translate>AI recommendation</b><p id="queueAdvice" data-translate>Loading the best time and shortest route…</p></div><button class="button ghost" id="refresh" data-translate>↻ Refresh</button></div></section>
-<section id="services" class="section"><p class="eyebrow" data-translate>QUICK SERVICES</p><h2 data-translate>What can we help you find?</h2><div class="service-grid" id="servicesGrid"></div></section>
-<section id="guide" class="section journey"><p class="eyebrow" data-translate>FIRST-TIME PILGRIM GUIDE</p><h2 data-translate>A calm, clear journey</h2><div class="steps"><span data-translate>Arrival</span><span data-translate>Parking</span><span data-translate>Stay</span><span data-translate>Luggage</span><span data-translate>Phone</span><span data-translate>Queue</span><span data-translate>Darshan</span><span data-translate>Laddu</span><span data-translate>Departure</span></div></section>
-<section class="section split"><div><p class="eyebrow" data-translate>HEALTH & ELDERLY CARE</p><h2 data-translate>Support that stays close</h2><p data-translate>Set hydration, medication and rest reminders. Request a wheelchair or volunteer assistance when needed.</p><button class="button primary" id="healthHelp" data-translate>Request assistance</button></div><div class="notice"><b data-translate>Temple Notice</b><p data-translate>Carry valid ID. Please deposit mobile phones before entering the temple area.</p></div></section>
-</main><button class="chat-launch" id="chatLaunch" aria-label="Open assistant">✦</button><section class="chat" id="chat" hidden><header><b>✦ OURS Assistant</b><button id="chatClose">×</button></header><div class="messages" id="messages"><p class="bot">Namaste! Ask me about queues, facilities, food, dress code or your journey.</p></div><form id="chatForm"><input id="chatInput" placeholder="Ask your question…" aria-label="Chat question"><button>Send</button></form></section>
-<dialog id="sosDialog"><form method="dialog"><button class="close">×</button><p class="eyebrow" data-translate>EMERGENCY SOS</p><h2 data-translate>What support do you need?</h2><div class="sos-options" id="sosOptions"><button value="Medical" data-translate>Medical</button><button value="Lost Child" data-translate>Lost child</button><button value="Lost Elderly" data-translate>Lost elderly</button><button value="Fire" data-translate>Fire</button><button value="Accident" data-translate>Accident</button><button value="Crowd Issue" data-translate>Crowd issue</button></div><p id="sosResult"></p></form></dialog><script src="/js/api.js"></script><script src="/js/queue.js"></script><script src="/js/chatbot.js"></script><script src="/js/sos.js"></script><script src="/js/voice.js"></script><script src="/js/language.js"></script><script src="/js/navigation.js"></script><script src="/js/health.js"></script><script src="/js/notifications.js"></script><script src="/js/admin.js"></script><script src="/js/app.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#8b1a14" />
+  <meta name="description" content="OURS TTD – AI Smart Pilgrim Companion for Tirumala. Live queue, navigation, Gemini AI chatbot, emergency SOS and more." />
+  <meta name="keywords" content="Tirumala, TTD, Tirupati, Pilgrimage, Darshan, Queue, AI Assistant" />
+  <meta name="author" content="OURS TTD Project" />
+  <meta property="og:title" content="OURS TTD – AI Smart Pilgrim Companion" />
+  <meta property="og:description" content="Your complete digital companion for a safe, peaceful and smart Tirumala pilgrimage." />
+  <meta property="og:type" content="website" />
+
+  <title>OURS TTD – AI Smart Pilgrim Companion</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body>
+
+<!-- Skip to content (WCAG) -->
+<a href="#appRoot" class="skip-link">Skip to main content</a>
+
+<!-- ═══════════════════════════════════════
+     HEADER + NAV
+════════════════════════════════════════ -->
+<header class="site-header" id="siteHeader" role="banner">
+  <nav class="nav-bar" role="navigation" aria-label="Main navigation">
+    <!-- Brand -->
+    <div class="brand-name" role="img" aria-label="OURS TTD logo">
+      <span class="om" aria-hidden="true">ॐ</span> OURS&nbsp;<strong>TTD</strong>
+    </div>
+
+    <!-- Page Links -->
+    <div class="nav-links" id="navLinks" role="menubar" aria-label="Site pages">
+      <button class="nav-link active" data-page="home" role="menuitem" aria-current="page">🏠 Home</button>
+      <button class="nav-link" data-page="queue" role="menuitem">⏳ Live Queue</button>
+      <button class="nav-link" data-page="services" role="menuitem">🔧 Services</button>
+      <button class="nav-link" data-page="booking" role="menuitem">📋 Booking</button>
+      <button class="nav-link" data-page="navigation" role="menuitem">🗺️ Navigate</button>
+      <button class="nav-link" data-page="health" role="menuitem">💚 Health</button>
+      <button class="nav-link" data-page="lostfound" role="menuitem">🔍 Lost &amp; Found</button>
+      <button class="nav-link" id="adminLink" data-page="admin" role="menuitem" hidden>🛡️ Admin</button>
+    </div>
+
+    <!-- Actions -->
+    <div class="nav-actions" role="toolbar" aria-label="Settings and notifications">
+      <button class="icon-btn" id="themeToggle" aria-label="Toggle dark/light mode" data-tip="Toggle theme">🌓</button>
+      <button class="icon-btn" id="a11yToggle" aria-label="Accessibility options" data-tip="Accessibility">♿</button>
+      <select class="lang-select" id="language" aria-label="Select language">
+        <option value="English" selected>🌐 English</option>
+        <option value="Telugu">తెలుగు</option>
+        <option value="Hindi">हिन्दी</option>
+        <option value="Tamil">தமிழ்</option>
+        <option value="Kannada">ಕನ್ನಡ</option>
+        <option value="Malayalam">മലയാളം</option>
+        <option value="Marathi">मराठी</option>
+        <option value="Bengali">বাংলা</option>
+      </select>
+      <button class="icon-btn" id="notifToggle" aria-label="View notifications" aria-haspopup="true">
+        🔔<span class="badge" id="notifBadge" hidden>0</span>
+      </button>
+      <button class="auth-btn" id="authBtn">Login</button>
+    </div>
+  </nav>
+
+  <!-- Hero Banner -->
+  <section class="hero-banner" id="heroBanner" aria-label="Hero">
+    <span class="section-tag" data-translate>YOUR DIGITAL PILGRIMAGE COMPANION</span>
+    <h1 data-translate>Every step guided with care 🙏</h1>
+    <p class="lead" data-translate>Live queue intelligence, AI assistant &amp; complete support — for every devotee.</p>
+    <div class="stats-grid" role="list" aria-label="Live status">
+      <div class="stat-card" role="listitem" aria-label="Queue status">
+        <span class="stat-number" id="heroQueue" aria-live="polite">—</span>
+        <span class="stat-label">Queue Status</span>
+      </div>
+      <div class="stat-card" role="listitem" aria-label="Crowd level">
+        <span class="stat-number" id="heroCrowd" aria-live="polite">—</span>
+        <span class="stat-label">Crowd Level</span>
+      </div>
+      <div class="stat-card" role="listitem">
+        <span class="stat-number">☀ 24°C</span>
+        <span class="stat-label">Tirumala Weather</span>
+      </div>
+      <div class="stat-card" role="listitem">
+        <span class="stat-number">🛕 Open</span>
+        <span class="stat-label">Temple Status</span>
+      </div>
+    </div>
+  </section>
+</header>
+
+<!-- ═══════════════════════════════════════
+     ACCESSIBILITY PANEL
+════════════════════════════════════════ -->
+<div id="a11yPanel" role="dialog" aria-label="Accessibility options">
+  <h4>♿ Accessibility</h4>
+  <button id="a11yLargeText">🔍 Large Text</button>
+  <button id="a11yHighContrast">🎨 High Contrast</button>
+  <button id="a11yReduceMotion">⏸ Reduce Motion</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     NOTIFICATION PANEL
+════════════════════════════════════════ -->
+<aside class="notif-panel" id="notifPanel" hidden role="dialog" aria-label="Notifications">
+  <header>
+    <span>🔔 Notifications</span>
+    <button id="notifClose" aria-label="Close notifications">×</button>
+  </header>
+  <div class="notif-list" id="notifList" role="list">
+    <div class="notif-item unread" role="listitem">
+      <h4>Welcome to OURS TTD</h4>
+      <p>Your AI pilgrim companion is ready. Tap ✦ to chat.</p>
+    </div>
+    <div class="notif-item" role="listitem">
+      <h4>Temple Notice</h4>
+      <p>Deposit mobile phones before entering the temple. Retain your receipt token.</p>
+    </div>
+    <div class="notif-item" role="listitem">
+      <h4>TTD Helpline</h4>
+      <p>For emergencies call <strong>155257</strong> (24/7).</p>
+    </div>
+  </div>
+</aside>
+
+<!-- Toast container -->
+<div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ═══════════════════════════════════════
+     MAIN SPA CONTENT
+════════════════════════════════════════ -->
+<main class="app-root" id="appRoot" role="main" aria-live="polite" tabindex="-1">
+  <!-- Pages rendered here by app.js SPA router -->
+</main>
+
+<!-- ═══════════════════════════════════════
+     AUTH DIALOG
+════════════════════════════════════════ -->
+<dialog id="authDialog" aria-modal="true" aria-labelledby="authTitle">
+  <div class="dialog-inner">
+    <div class="dialog-header">
+      <h2 id="authTitle">Login to Your Journey</h2>
+      <button id="authClose" aria-label="Close login dialog">×</button>
+    </div>
+    <form id="authForm" novalidate>
+      <label id="nameLabel" hidden>
+        <span>Full Name</span>
+        <input id="authName" type="text" placeholder="Your full name" autocomplete="name" />
+      </label>
+      <label>
+        <span>Email Address</span>
+        <input id="authEmail" type="email" placeholder="you@example.com" required autocomplete="email" />
+      </label>
+      <label>
+        <span>Password</span>
+        <input id="authPassword" type="password" placeholder="Minimum 8 characters" required minlength="8" autocomplete="current-password" />
+      </label>
+      <button type="submit" style="width:100%;margin-top:.5rem;" id="authSubmit" class="btn-primary">Login</button>
+      <p id="authStatus" class="status" role="status" aria-live="polite"></p>
+      <hr class="divider" />
+      <button type="button" class="btn-ghost" style="width:100%;" id="authSwitch">New pilgrim? Create an account</button>
+      <p style="font-size:.8rem;color:var(--muted);margin-top:.75rem;text-align:center;">
+        Demo admin: <strong>admin@oursttd.demo</strong> / <strong>DemoAdmin123</strong>
+      </p>
+    </form>
+  </div>
+</dialog>
+
+<!-- ═══════════════════════════════════════
+     SOS DIALOG
+════════════════════════════════════════ -->
+<dialog id="sosDialog" aria-modal="true" aria-labelledby="sosTitle">
+  <div class="dialog-inner">
+    <div class="dialog-header">
+      <h2 id="sosTitle">🚨 Emergency SOS</h2>
+      <button id="sosClose" aria-label="Close SOS dialog">×</button>
+    </div>
+    <p>Select the type of emergency — your location will be shared with the TTD support desk.</p>
+    <div class="sos-options" id="sosOptions" role="group" aria-label="Emergency type">
+      <button value="Medical">🏥 Medical</button>
+      <button value="Lost Child">👶 Lost Child</button>
+      <button value="Lost Elderly">👴 Lost Elderly</button>
+      <button value="Fire">🔥 Fire</button>
+      <button value="Accident">🚑 Accident</button>
+      <button value="Crowd Issue">👥 Crowd Issue</button>
+    </div>
+    <p id="sosResult" class="status" role="status" aria-live="polite"></p>
+    <p style="font-size:.82rem;color:var(--muted);margin-top:.5rem;">
+      TTD Helpline: <a href="tel:155257"><strong>155257</strong></a> (24/7)
+    </p>
+  </div>
+</dialog>
+
+<!-- ═══════════════════════════════════════
+     AI CHATBOT PANEL
+════════════════════════════════════════ -->
+<div class="chatbot-panel" id="chatPanel" hidden role="dialog" aria-label="AI Pilgrim Assistant">
+  <div class="chatbot-header">
+    <span>✦ OURS AI Assistant</span>
+    <button id="chatClose" aria-label="Close chat">×</button>
+  </div>
+  <div class="chatbot-messages" id="chatMessages" role="log" aria-live="polite" aria-label="Conversation">
+    <div class="msg bot">
+      Namaste! 🙏 I'm your AI pilgrim guide powered by Gemini. Ask me about queues, dress code, food, phone deposit, facilities, health support, or anything about your Tirumala visit!
+    </div>
+  </div>
+  <div class="chat-actions" role="toolbar" aria-label="Chat actions">
+    <button id="voiceInputBtn" aria-label="Start voice input" data-tip="Voice input">🎙 Voice</button>
+    <button id="chatClearBtn" aria-label="Clear conversation" data-tip="Clear chat">🗑 Clear</button>
+    <button onclick="navigate('queue'); document.getElementById('chatPanel').hidden=true;" aria-label="Go to queue status">⏳ Queue</button>
+  </div>
+  <div class="chatbot-input-row" role="form" aria-label="Send message">
+    <input id="chatInput" type="text" placeholder="Ask anything about Tirumala…" aria-label="Type your question" autocomplete="off" maxlength="500" />
+    <button id="chatSend" aria-label="Send message">➤</button>
+  </div>
+</div>
+
+<!-- Floating Action Buttons -->
+<button class="chatbot-fab" id="chatFab" aria-label="Open AI Assistant" data-tip="AI Assistant">✦</button>
+<button class="sos-fab" id="sosFab" aria-label="Emergency SOS" data-tip="Emergency help">⚠ SOS</button>
+
+<!-- ═══════════════════════════════════════
+     FOOTER
+════════════════════════════════════════ -->
+<footer class="site-footer" role="contentinfo">
+  <p>© 2026 OURS TTD – AI Smart Pilgrim Companion &nbsp;|&nbsp;
+    For official information visit <a href="https://tirumala.org" target="_blank" rel="noopener noreferrer">tirumala.org</a>
+  </p>
+  <div class="footer-links">
+    <a href="https://ttdevasthanams.ap.gov.in" target="_blank" rel="noopener noreferrer">Official Booking</a>
+    <a href="tel:155257">Helpline: 155257</a>
+    <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════════════════
+     SCRIPTS (load order matters)
+════════════════════════════════════════ -->
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/chatbot.js"></script>
+<script src="js/queue.js"></script>
+<script src="js/sos.js"></script>
+<script src="js/voice.js"></script>
+<script src="js/language.js"></script>
+<script src="js/navigation.js"></script>
+<script src="js/health.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/booking.js"></script>
+<script src="js/maps.js"></script>
+
+<script>
+  // ── Register Service Worker (PWA) ──────────────────
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/js/sw.js')
+      .then(r => console.log('SW registered:', r.scope))
+      .catch(e => console.warn('SW registration failed:', e));
+  }
+
+  // ── Global Toast helper ────────────────────────────
+  window.showToast = function(msg, type = 'info', duration = 3500) {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = msg;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), duration);
+  };
+
+  // ── Accessibility Panel ────────────────────────────
+  const a11yBtn   = document.getElementById('a11yToggle');
+  const a11yPanel = document.getElementById('a11yPanel');
+  a11yBtn?.addEventListener('click', () => a11yPanel.classList.toggle('open'));
+
+  document.getElementById('a11yLargeText')?.addEventListener('click', () => {
+    document.body.classList.toggle('large-text');
+    showToast(document.body.classList.contains('large-text') ? 'Large text enabled' : 'Large text disabled');
+  });
+  document.getElementById('a11yHighContrast')?.addEventListener('click', () => {
+    document.body.classList.toggle('high-contrast');
+    showToast('High contrast toggled');
+  });
+  document.getElementById('a11yReduceMotion')?.addEventListener('click', () => {
+    document.body.classList.toggle('reduce-motion');
+    showToast('Reduced motion toggled');
+  });
+
+  // Close a11y panel on outside click
+  document.addEventListener('click', e => {
+    if (a11yPanel && !a11yPanel.contains(e.target) && e.target !== a11yBtn) {
+      a11yPanel.classList.remove('open');
+    }
+  });
+</script>
+</body>
+</html>

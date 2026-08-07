@@ -1,1 +1,43 @@
-{"name":"OURS TTD Smart Pilgrim Assistant","short_name":"OURS TTD","start_url":"/frontend/","display":"standalone","background_color":"#fffaf2","theme_color":"#8f5b16"}
+{
+  "name": "OURS TTD – AI Smart Pilgrim Companion",
+  "short_name": "OURS TTD",
+  "description": "Your complete digital companion for a safe, peaceful and smart Tirumala pilgrimage.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1e1108",
+  "theme_color": "#8b1a14",
+  "orientation": "any",
+  "lang": "en",
+  "categories": ["travel", "lifestyle"],
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192x192/8b1a14/ffffff?text=%E0%A5%90",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://via.placeholder.com/512x512/8b1a14/ffffff?text=%E0%A5%90",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Live Queue",
+      "url": "/?page=queue",
+      "description": "Check current queue status"
+    },
+    {
+      "name": "Emergency SOS",
+      "url": "/?page=sos",
+      "description": "Send emergency alert"
+    },
+    {
+      "name": "AI Assistant",
+      "url": "/?page=chat",
+      "description": "Chat with AI pilgrim guide"
+    }
+  ]
+}

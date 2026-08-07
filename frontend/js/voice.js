@@ -1,1 +1,27 @@
-voiceStart.onclick=()=>{const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;if(!Speech){chat.hidden=false;chatInput.focus();return}const r=new Speech();r.lang='en-IN';r.onresult=e=>{chat.hidden=false;chatInput.value=e.results[0][0].transcript;chatForm.requestSubmit()};r.start()};
+/**
+ * voice.js – Standalone voice input for hero section button (if present).
+ */
+'use strict';
+
+const voiceStartBtn = document.getElementById('voiceStart');
+if (voiceStartBtn) {
+  voiceStartBtn.addEventListener('click', () => {
+    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Speech) {
+      document.getElementById('chatFab')?.click();
+      document.getElementById('chatInput')?.focus();
+      return;
+    }
+    const rec = new Speech();
+    rec.lang = 'en-IN';
+    rec.onresult = e => {
+      document.getElementById('chatFab')?.click();
+      const input = document.getElementById('chatInput');
+      if (input) {
+        input.value = e.results[0][0].transcript;
+        document.getElementById('chatSend')?.click();
+      }
+    };
+    rec.start();
+  });
+}

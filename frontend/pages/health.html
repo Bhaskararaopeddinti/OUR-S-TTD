@@ -1,0 +1,165 @@
+<!-- health.html – health monitoring page -->
+<section class="health-page">
+  <h2>💚 Health &amp; Emergency Companion</h2>
+
+  <div class="health-grid">
+    <!-- Health Profile Form -->
+    <section class="card">
+      <h3>📋 Health Profile</h3>
+      <p class="hint">Optional: Share health information for personalized assistance</p>
+      <form id="healthProfileForm">
+        <label>
+          <span>Age</span>
+          <input type="number" id="healthAge" name="age" placeholder="Your age" min="1" max="120" />
+        </label>
+        <label>
+          <span>Blood Group</span>
+          <select id="healthBlood" name="blood_group">
+            <option value="">Select</option>
+            <option value="A+">A+</option>
+            <option value="A-">A-</option>
+            <option value="B+">B+</option>
+            <option value="B-">B-</option>
+            <option value="AB+">AB+</option>
+            <option value="AB-">AB-</option>
+            <option value="O+">O+</option>
+            <option value="O-">O-</option>
+          </select>
+        </label>
+        <label>
+          <span>Medical Conditions</span>
+          <div class="checkbox-group">
+            <label><input type="checkbox" name="conditions" value="diabetes"> Diabetes</label>
+            <label><input type="checkbox" name="conditions" value="heart"> Heart Condition</label>
+            <label><input type="checkbox" name="conditions" value="hypertension"> Hypertension</label>
+            <label><input type="checkbox" name="conditions" value="pregnancy"> Pregnancy</label>
+            <label><input type="checkbox" name="conditions" value="disability"> Disability</label>
+          </div>
+        </label>
+        <label>
+          <span>Other Conditions (optional)</span>
+          <input type="text" id="healthOther" name="other_conditions" placeholder="Any other health conditions" />
+        </label>
+        <label>
+          <span>Emergency Contact</span>
+          <input type="text" id="healthEmergency" name="emergency_contact" placeholder="Name & Phone number" />
+        </label>
+        <label>
+          <span>Wheelchair Required</span>
+          <select id="healthWheelchair" name="wheelchair_required">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </label>
+        <button type="submit" class="primary">Save Health Profile</button>
+        <p id="healthProfileStatus" class="status"></p>
+      </form>
+    </section>
+
+    <!-- Health Card Display -->
+    <section class="card">
+      <h3>🆔 Your Health Card</h3>
+      <div id="healthCardDisplay">
+        <p id="hcName">—</p>
+        <p id="hcAge">Age: —</p>
+        <p id="hcBlood">Blood Group: —</p>
+        <p id="hcConditions">Conditions: —</p>
+        <p id="hcEmergency">Emergency Contact: —</p>
+        <p id="hcWheelchair">Wheelchair: —</p>
+      </div>
+    </section>
+
+    <!-- Health Recommendations -->
+    <section class="card" style="grid-column:1/-1;">
+      <h3>💡 Personalized Recommendations</h3>
+      <div id="healthRecommendations">
+        <p class="hint">Save your health profile to receive personalized recommendations</p>
+      </div>
+    </section>
+
+    <!-- Reminders -->
+    <section class="card">
+      <h3>⏰ Set Health Reminder</h3>
+      <form id="reminderForm">
+        <label>
+          <span>Reminder Type</span>
+          <select name="reminder_type">
+            <option value="hydration">💧 Hydration</option>
+            <option value="medication">💊 Medication</option>
+            <option value="rest">😴 Rest</option>
+            <option value="food">🍛 Food/Meal</option>
+          </select>
+        </label>
+        <label>
+          <span>Interval (minutes)</span>
+          <input type="number" name="interval_minutes" value="60" min="10" max="480" />
+        </label>
+        <label>
+          <span>Custom Message (optional)</span>
+          <input type="text" name="message" placeholder="e.g., Take your BP tablet" />
+        </label>
+        <button type="submit" class="primary">Set Reminder</button>
+        <p id="reminderStatus" class="status"></p>
+      </form>
+    </section>
+
+    <!-- Active Reminders -->
+    <section class="card">
+      <h3>📋 Active Reminders</h3>
+      <ul id="activeReminders">
+        <li class="empty-state">No active reminders</li>
+      </ul>
+    </section>
+
+    <!-- Nearest Medical Centre -->
+    <section class="card" style="grid-column:1/-1;">
+      <h3>🏥 Nearest Medical Centre</h3>
+      <div id="nearestMedical">
+        <p class="hint">Enable location to find nearest medical facilities</p>
+        <button id="findMedicalBtn" class="primary">📍 Find Nearest Medical Centre</button>
+      </div>
+      <div id="medicalResults" class="medical-results"></div>
+    </section>
+
+    <!-- Emergency Contacts -->
+    <section class="card" style="grid-column:1/-1;">
+      <h3>🚨 Emergency Contacts</h3>
+      <div class="emergency-contacts">
+        <div class="contact-item">
+          <span class="contact-icon">📞</span>
+          <div>
+            <strong>TTD Helpline</strong>
+            <a href="tel:155257" class="emergency-phone">155257</a>
+            <span class="contact-note">24/7 Emergency</span>
+          </div>
+        </div>
+        <div class="contact-item">
+          <span class="contact-icon">🏥</span>
+          <div>
+            <strong>Aswini Hospital</strong>
+            <span class="contact-note">Near Seshadri Nagar, Tirumala</span>
+          </div>
+        </div>
+        <div class="contact-item">
+          <span class="contact-icon">👮</span>
+          <div>
+            <strong>TTD Security</strong>
+            <span class="contact-note">Available at all major points</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Actions -->
+    <section class="card" style="grid-column:1/-1;">
+      <h3>⚡ Quick Assistance</h3>
+      <div class="assist-buttons">
+        <button class="primary" id="wheelchairBtn">♿ Request Wheelchair</button>
+        <button class="primary" id="volunteerBtn">🙋 Call Volunteer</button>
+        <button class="primary" id="waterBtn">💧 Request Water</button>
+        <button class="primary danger" id="medSosBtn">🚨 Medical SOS</button>
+      </div>
+      <p id="assistStatus" class="status"></p>
+    </section>
+  </div>
+</section>

@@ -1,0 +1,23 @@
+<!-- admin.html – admin analytics dashboard -->
+<section class="admin-page">
+  <h2>🛡️ Admin Dashboard</h2>
+  <p id="adminAuthNotice" class="notice">Sign in with an admin account to view analytics.</p>
+  <div id="adminContent" hidden>
+    <div class="analytics-grid">
+      <div class="stat-card accent" id="aTotal"><span class="big">—</span><span>Total Pilgrims</span></div>
+      <div class="stat-card accent" id="aAlerts"><span class="big">—</span><span>Open Alerts</span></div>
+      <div class="stat-card accent" id="aLost"><span class="big">—</span><span>Lost &amp; Found Open</span></div>
+      <div class="stat-card accent" id="aChats"><span class="big">—</span><span>AI Chats Today</span></div>
+    </div>
+    <div class="charts-row card">
+      <canvas id="chartAlerts" height="180"></canvas>
+    </div>
+    <section class="card">
+      <h3>Recent Emergency Alerts</h3>
+      <table id="alertsTable">
+        <thead><tr><th>#</th><th>Type</th><th>Status</th><th>Time</th></tr></thead>
+        <tbody id="alertsBody"></tbody>
+      </table>
+    </section>
+  </div>
+</section>
