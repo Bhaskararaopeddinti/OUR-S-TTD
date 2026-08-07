@@ -59,8 +59,15 @@ const savedTheme = localStorage.getItem('theme');
 setTheme(savedTheme ? savedTheme === 'dark' : true);
 
 // ── Nav click handler ─────────────────────────
-document.getElementById('navLinks').addEventListener('click', e => {
-  const btn = e.target.closest('.nav-link');
+const navContainer = document.querySelector('.sidebar-nav');
+navContainer?.addEventListener('click', e => {
+  const btn = e.target.closest('.nav-item');
+  if (btn) navigate(btn.dataset.page);
+});
+
+const mobileNav = document.querySelector('.mobile-nav');
+mobileNav?.addEventListener('click', e => {
+  const btn = e.target.closest('.mobile-nav-item');
   if (btn) navigate(btn.dataset.page);
 });
 
