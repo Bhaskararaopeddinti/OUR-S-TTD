@@ -36,6 +36,18 @@
 <!-- Skip to content (WCAG) -->
 <a href="#appRoot" class="skip-link">Skip to main content</a>
 
+<!-- Loading Screen -->
+<div id="loadingScreen" class="loading-screen">
+  <div class="loading-content">
+    <div class="loading-logo">
+      <span class="om">ॐ</span>
+      <span class="brand-text">OURS TTD</span>
+    </div>
+    <div class="loading-spinner"></div>
+    <p class="loading-text">Preparing Your Pilgrim Journey...</p>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════
      DASHBOARD LAYOUT
 ════════════════════════════════════════ -->
@@ -188,9 +200,13 @@
 ════════════════════════════════════════ -->
 <dialog id="authDialog" aria-modal="true" aria-labelledby="authTitle">
   <div class="dialog-inner">
+    <div class="auth-logo">
+      <span class="om">ॐ</span>
+      <span class="brand-text">OURS TTD</span>
+    </div>
     <div class="dialog-header">
       <h2 id="authTitle">Login to Your Journey</h2>
-      <button id="authClose" aria-label="Close login dialog">x</button>
+      <button id="authClose" aria-label="Close login dialog">✕</button>
     </div>
     <form id="authForm" novalidate>
       <label id="nameLabel" hidden>
@@ -220,13 +236,22 @@
      FOOTER
 ════════════════════════════════════════ -->
 <footer class="site-footer" role="contentinfo">
-  <p>© 2026 OURS TTD - AI Smart Pilgrim Companion &nbsp;|&nbsp;
-    For official information visit <a href="https://tirumala.org" target="_blank" rel="noopener noreferrer">tirumala.org</a>
-  </p>
-  <div class="footer-links">
-    <a href="https://ttdevasthanams.ap.gov.in" target="_blank" rel="noopener noreferrer">Official Booking</a>
-    <a href="tel:155257">Helpline: 155257</a>
-    <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
+  <div class="footer-content">
+    <div class="footer-brand">
+      <div class="footer-logo">
+        <span class="om">ॐ</span>
+        <span class="brand-text">OURS TTD</span>
+      </div>
+      <p class="footer-tagline">AI Smart Pilgrim Companion</p>
+    </div>
+    <div class="footer-links">
+      <a href="https://tirumala.org" target="_blank" rel="noopener noreferrer">Official TTD Website</a>
+      <a href="https://ttdevasthanams.ap.gov.in" target="_blank" rel="noopener noreferrer">Official Booking</a>
+      <a href="tel:155257">Helpline: 155257</a>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 OURS TTD. Inspired by Tirumala Pilgrim Services.</p>
+    </div>
   </div>
 </footer>
 
@@ -253,6 +278,18 @@
 <script src="js/dashboard.js"></script>
 
 <script>
+  // ═══════════════════════════════════════
+  // Hide Loading Screen
+  // ═══════════════════════════════════════
+  window.addEventListener('load', () => {
+    const loadingScreen = document.getElementById('loadingScreen');
+    if (loadingScreen) {
+      setTimeout(() => {
+        loadingScreen.classList.add('hidden');
+      }, 1500);
+    }
+  });
+
   // ═══════════════════════════════════════
   // Register Service Worker (PWA)
   // ═══════════════════════════════════════

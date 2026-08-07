@@ -1,13 +1,20 @@
 <!-- navigation.html – Smart Navigation with Google Maps style experience -->
 <section class="navigation-page">
-  <div class="dashboard-header">
-    <h1>🗺️ Live Navigation</h1>
-    <p class="dashboard-subtitle">A guided walking route experience across Tirumala with ETA, directions, and live tracking.</p>
+  <div class="page-header">
+    <div class="page-icon">🗺️</div>
+    <div class="page-title">
+      <h1>Live Navigation</h1>
+      <p>A guided walking route experience across Tirumala with ETA, directions, and live tracking.</p>
+    </div>
   </div>
 
   <div class="navigation-grid">
     <aside class="navigation-sidebar">
       <div class="dashboard-card nav-panel">
+        <div class="card-header">
+          <span class="card-icon">🧭</span>
+          <h3>Route Planning</h3>
+        </div>
         <div class="route-input-row">
           <div class="route-field">
             <div class="route-field-label">From</div>
@@ -29,11 +36,21 @@
       </div>
 
       <div class="dashboard-card nearby-panel">
-        <div class="facility-list-header">
+        <div class="card-header">
+          <span class="card-icon">📍</span>
           <h3>Nearby Facilities</h3>
-          <span id="facilityCount" class="muted-text">0 results</span>
+          <span id="facilityCount" class="badge">0 results</span>
         </div>
-        <div class="nearby-category-grid" id="nearbyCategoryGrid"></div>
+        <div class="nearby-category-grid" id="nearbyCategoryGrid">
+          <button class="category-filter-btn active" data-category="all">📍 All</button>
+          <button class="category-filter-btn" data-category="temple">🛕 Temple</button>
+          <button class="category-filter-btn" data-category="food">🍛 Food</button>
+          <button class="category-filter-btn" data-category="medical">🏥 Medical</button>
+          <button class="category-filter-btn" data-category="restroom">🚻 Restroom</button>
+          <button class="category-filter-btn" data-category="transport">🚌 Transport</button>
+          <button class="category-filter-btn" data-category="parking">🅿️ Parking</button>
+          <button class="category-filter-btn" data-category="water">💧 Water</button>
+        </div>
         <div id="facilityList" class="facility-list">
           <p class="hint">Search a destination or choose a category to begin.</p>
         </div>
@@ -43,11 +60,12 @@
       </div>
 
       <div class="dashboard-card route-info-card">
-        <div class="route-summary-card">
-          <div class="route-summary-header">
-            <h3>Route Summary</h3>
-            <button id="startNavigationBtn" class="quick-action-btn primary hidden">🧭 Start Navigation</button>
-          </div>
+        <div class="card-header">
+          <span class="card-icon">📊</span>
+          <h3>Route Summary</h3>
+        </div>
+        <div class="route-summary-content">
+          <button id="startNavigationBtn" class="quick-action-btn hidden">🧭 Start Navigation</button>
           <div id="routeSummary" class="route-summary">
             <p class="hint">Select a destination and tap Get Directions to see distance, ETA, and crowd level.</p>
           </div>
@@ -58,17 +76,18 @@
     <main class="navigation-main">
       <div class="dashboard-card map-card">
         <div class="map-toolbar">
-          <button id="recenterBtn" class="map-control">⟲ Re-center</button>
-          <button id="zoomInBtn" class="map-control">＋</button>
-          <button id="zoomOutBtn" class="map-control">－</button>
-          <button id="fullscreenBtn" class="map-control">⛶ Fullscreen</button>
+          <button id="recenterBtn" class="map-control" title="Re-center">⟲</button>
+          <button id="zoomInBtn" class="map-control" title="Zoom In">＋</button>
+          <button id="zoomOutBtn" class="map-control" title="Zoom Out">－</button>
+          <button id="fullscreenBtn" class="map-control" title="Fullscreen">⛶</button>
         </div>
         <div id="map" class="map-canvas"></div>
       </div>
       <div class="dashboard-card directions-card">
-        <div class="direction-header">
+        <div class="card-header">
+          <span class="card-icon">🔀</span>
           <h3>Turn-by-Turn Directions</h3>
-          <span id="navigationStatus" class="muted-text">Waiting for route...</span>
+          <span id="navigationStatus" class="badge">Waiting for route...</span>
         </div>
         <div id="directionSteps" class="direction-list">
           <p class="hint">Directions will appear here once you start navigation.</p>
