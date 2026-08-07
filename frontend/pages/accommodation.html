@@ -1,0 +1,196 @@
+<!-- accommodation.html – Accommodation page -->
+<section class="accommodation-page">
+  <div class="dashboard-header">
+    <h1>🏨 Accommodation</h1>
+    <p class="dashboard-subtitle">Find PAC, rest houses, and guest houses in Tirumala</p>
+  </div>
+
+  <div class="accommodation-grid">
+    <!-- Search Bar -->
+    <div class="dashboard-card search-card" style="grid-column: 1/-1;">
+      <div class="search-bar">
+        <input type="text" id="accommodationSearchInput" placeholder="Search accommodation..." />
+        <button id="accommodationSearchBtn" class="quick-action-btn">🔍 Search</button>
+      </div>
+      <div class="filter-bar">
+        <select id="accommodationTypeFilter">
+          <option value="">All Types</option>
+          <option value="pac">🏨 PAC (Free)</option>
+          <option value="guest_house">🏨 Guest House (Paid)</option>
+          <option value="rest_house">🏨 Rest House (Paid)</option>
+          <option value="choultry">🏨 Choultry (Free)</option>
+        </select>
+        <button id="findNearestAccommodation" class="quick-action-btn secondary">📍 Find Nearest</button>
+      </div>
+    </div>
+
+    <!-- Featured: PAC -->
+    <div class="dashboard-card featured-accommodation-card" style="grid-column: 1/-1;">
+      <div class="featured-badge">⭐ Free Accommodation</div>
+      <h3>🏨 PAC (Pilgrim Accommodation Complex)</h3>
+      <p class="accommodation-description">Free accommodation for pilgrims with basic amenities</p>
+      <div class="accommodation-details">
+        <div class="detail-item">
+          <span class="detail-icon">📍</span>
+          <span class="detail-text">Multiple locations in Tirumala</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-icon">⏰</span>
+          <span class="detail-text">24/7 Check-in</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-icon">👥</span>
+          <span class="detail-text">Capacity: 10,000+ pilgrims</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-icon">🆓</span>
+          <span class="detail-text">Free for all pilgrims</span>
+        </div>
+      </div>
+      <div class="accommodation-amenities">
+        <span class="amenity-tag">Bed</span>
+        <span class="amenity-tag">Bathroom</span>
+        <span class="amenity-tag">Water</span>
+        <span class="amenity-tag">Security</span>
+      </div>
+      <div class="accommodation-actions">
+        <button class="quick-action-btn" onclick="navigate('navigation')">🗺️ Navigate</button>
+        <button class="quick-action-btn secondary" onclick="navigate('chatbot')">🤖 Ask AI</button>
+      </div>
+    </div>
+
+    <!-- Accommodation List -->
+    <div class="dashboard-card accommodation-list-card" style="grid-column: 1/-1;">
+      <h3>📋 Accommodation Options</h3>
+      <div id="accommodationList" class="accommodation-list">
+        <div class="accommodation-item">
+          <div class="accommodation-icon">🏨</div>
+          <div class="accommodation-info">
+            <div class="accommodation-name">PAC I</div>
+            <div class="accommodation-address">Pilgrim Accommodation Complex I</div>
+            <div class="accommodation-type">Free - PAC</div>
+            <div class="accommodation-status status-available">Available</div>
+          </div>
+          <div class="accommodation-distance">0.4 km</div>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+        <div class="accommodation-item">
+          <div class="accommodation-icon">🏨</div>
+          <div class="accommodation-info">
+            <div class="accommodation-name">PAC II</div>
+            <div class="accommodation-address">Pilgrim Accommodation Complex II</div>
+            <div class="accommodation-type">Free - PAC</div>
+            <div class="accommodation-status status-available">Available</div>
+          </div>
+          <div class="accommodation-distance">0.4 km</div>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+        <div class="accommodation-item">
+          <div class="accommodation-icon">🏨</div>
+          <div class="accommodation-info">
+            <div class="accommodation-name">PAC III</div>
+            <div class="accommodation-address">Pilgrim Accommodation Complex III</div>
+            <div class="accommodation-type">Free - PAC</div>
+            <div class="accommodation-status status-limited">Limited</div>
+          </div>
+          <div class="accommodation-distance">0.6 km</div>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+        <div class="accommodation-item">
+          <div class="accommodation-icon">🏨</div>
+          <div class="accommodation-info">
+            <div class="accommodation-name">TTD Guest House</div>
+            <div class="accommodation-address">Near Temple</div>
+            <div class="accommodation-type">Paid - Guest House</div>
+            <div class="accommodation-status status-available">Available</div>
+          </div>
+          <div class="accommodation-distance">0.2 km</div>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+        <div class="accommodation-item">
+          <div class="accommodation-icon">🏨</div>
+          <div class="accommodation-info">
+            <div class="accommodation-name">Srinivasam Guest House</div>
+            <div class="accommodation-address">Tirumala</div>
+            <div class="accommodation-type">Paid - Guest House</div>
+            <div class="accommodation-status status-limited">Limited</div>
+          </div>
+          <div class="accommodation-distance">0.5 km</div>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+        <div class="accommodation-item">
+          <div class="accommodation-icon">🏨</div>
+          <div class="accommodation-info">
+            <div class="accommodation-name">Padmavathi Guest House</div>
+            <div class="accommodation-address">Tirumala</div>
+            <div class="accommodation-type">Paid - Guest House</div>
+            <div class="accommodation-status status-available">Available</div>
+          </div>
+          <div class="accommodation-distance">0.7 km</div>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+        <div class="accommodation-item">
+          <div class="accommodation-icon">🏨</div>
+          <div class="accommodation-info">
+            <div class="accommodation-name">Venkateswara Choultry</div>
+            <div class="accommodation-address">Near Bus Stand</div>
+            <div class="accommodation-type">Free - Choultry</div>
+            <div class="accommodation-status status-available">Available</div>
+          </div>
+          <div class="accommodation-distance">0.3 km</div>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accommodation Guidelines -->
+    <div class="dashboard-card guidelines-card" style="grid-column: 1/-1;">
+      <h3>📋 Accommodation Guidelines</h3>
+      <ul class="accommodation-guidelines">
+        <li>PAC accommodation is free for all pilgrims</li>
+        <li>Valid darshan token required for PAC</li>
+        <li>Check-in time: 24/7 (subject to availability)</li>
+        <li>Maximum stay: 24 hours (PAC)</li>
+        <li>Paid guest houses require advance booking</li>
+        <li>Carry ID proof at all times</li>
+        <li>Maintain cleanliness and discipline</li>
+        <li>Report any issues to TTD staff</li>
+      </ul>
+    </div>
+
+    <!-- Booking Information -->
+    <div class="dashboard-card booking-info-card" style="grid-column: 1/-1;">
+      <h3>📋 Booking Information</h3>
+      <div class="booking-info">
+        <div class="info-item">
+          <span class="info-label">PAC Booking:</span>
+          <span class="info-value">On-site (first-come, first-served)</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Guest House Booking:</span>
+          <span class="info-value">Online at ttdevasthanams.ap.gov.in</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Booking Helpline:</span>
+          <span class="info-value">1800-425-4141</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Documents Required:</span>
+          <span class="info-value">ID proof, Darshan token</span>
+        </div>
+      </div>
+      <button class="quick-action-btn" onclick="window.open('https://ttdevasthanams.ap.gov.in', '_blank')">📋 Official Booking</button>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="dashboard-card quick-actions-card" style="grid-column: 1/-1;">
+      <h3>🚀 Quick Actions</h3>
+      <div class="quick-actions">
+        <button class="quick-action-btn" onclick="navigate('navigation')">🗺️ Find on Map</button>
+        <button class="quick-action-btn" onclick="navigate('chatbot')">🤖 Ask AI Assistant</button>
+        <button class="quick-action-btn secondary" onclick="navigate('food')">🍚 Find Food</button>
+        <button class="quick-action-btn secondary" onclick="navigate('medical')">🏥 Medical Help</button>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,182 @@
+<!-- medical.html – Medical Assistance page -->
+<section class="medical-page">
+  <div class="dashboard-header">
+    <h1>🏥 Medical Assistance</h1>
+    <p class="dashboard-subtitle">Find hospitals, medical centres, and emergency healthcare in Tirumala</p>
+  </div>
+
+  <div class="medical-grid">
+    <!-- Emergency Contact -->
+    <div class="dashboard-card emergency-contact-card" style="grid-column: 1/-1;">
+      <h3>🚨 Emergency Contact</h3>
+      <div class="emergency-number">
+        <span class="number-icon">📞</span>
+        <span class="number-value">155257</span>
+      </div>
+      <p class="emergency-hint">TTD Helpline - 24/7</p>
+      <button class="quick-action-btn" style="background: var(--danger);" onclick="window.location.href='tel:155257'">📞 Call Now</button>
+    </div>
+
+    <!-- Featured: Aswini Hospital -->
+    <div class="dashboard-card featured-medical-card" style="grid-column: 1/-1;">
+      <div class="featured-badge">⭐ Main Hospital</div>
+      <h3>🏥 Aswini Hospital Tirumala</h3>
+      <p class="medical-description">Primary government hospital providing comprehensive healthcare services to pilgrims</p>
+      <div class="medical-details">
+        <div class="detail-item">
+          <span class="detail-icon">📍</span>
+          <span class="detail-text">Tirumala</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-icon">⏰</span>
+          <span class="detail-text">24/7 Emergency</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-icon">👨‍⚕️</span>
+          <span class="detail-text">Doctors on duty</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-icon">🆓</span>
+          <span class="detail-text">Free emergency care</span>
+        </div>
+      </div>
+      <div class="medical-services">
+        <span class="service-tag">Emergency</span>
+        <span class="service-tag">OPD</span>
+        <span class="service-tag">Pharmacy</span>
+        <span class="service-tag">Lab</span>
+        <span class="service-tag">Ambulance</span>
+      </div>
+      <div class="medical-actions">
+        <button class="quick-action-btn" onclick="window.location.href='tel:155257'">📞 Call</button>
+        <button class="quick-action-btn" onclick="navigate('navigation')">🗺️ Navigate</button>
+        <button class="quick-action-btn secondary" onclick="navigate('emergency')">🚨 Emergency</button>
+      </div>
+    </div>
+
+    <!-- Medical Facilities List -->
+    <div class="dashboard-card medical-list-card" style="grid-column: 1/-1;">
+      <h3>📋 Medical Facilities</h3>
+      <div id="medicalFacilitiesList" class="medical-facilities-list">
+        <div class="medical-facility-item">
+          <div class="medical-icon">🏥</div>
+          <div class="medical-info">
+            <div class="medical-name">Aswini Hospital Tirumala</div>
+            <div class="medical-address">Main Hospital, Tirumala</div>
+            <div class="medical-timing">24/7</div>
+            <div class="medical-services-preview">Emergency, OPD, Pharmacy</div>
+          </div>
+          <div class="medical-distance">0.5 km</div>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+        <div class="medical-facility-item">
+          <div class="medical-icon">💊</div>
+          <div class="medical-info">
+            <div class="medical-name">VQC Dispensary</div>
+            <div class="medical-address">Vaikuntam Queue Complex</div>
+            <div class="medical-timing">24/7 during darshan</div>
+            <div class="medical-services-preview">First Aid, Medicines</div>
+          </div>
+          <div class="medical-distance">0.3 km</div>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+        <div class="medical-facility-item">
+          <div class="medical-icon">🚑</div>
+          <div class="medical-info">
+            <div class="medical-name">TTD Ambulance Service</div>
+            <div class="medical-address">Multiple locations</div>
+            <div class="medical-timing">24/7</div>
+            <div class="medical-services-preview">Emergency Transport</div>
+          </div>
+          <div class="medical-distance">On Call</div>
+          <button class="quick-action-btn secondary" onclick="window.location.href='tel:155257'">Call</button>
+        </div>
+        <div class="medical-facility-item">
+          <div class="medical-icon">🏥</div>
+          <div class="medical-info">
+            <div class="medical-name">PAC I Medical Centre</div>
+            <div class="medical-address">Pilgrim Accommodation Complex I</div>
+            <div class="medical-timing">8:00 AM - 8:00 PM</div>
+            <div class="medical-services-preview">Basic Care, First Aid</div>
+          </div>
+          <div class="medical-distance">0.4 km</div>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+        <div class="medical-facility-item">
+          <div class="medical-icon">🏥</div>
+          <div class="medical-info">
+            <div class="medical-name">PAC II Medical Centre</div>
+            <div class="medical-address">Pilgrim Accommodation Complex II</div>
+            <div class="medical-timing">8:00 AM - 8:00 PM</div>
+            <div class="medical-services-preview">Basic Care, First Aid</div>
+          </div>
+          <div class="medical-distance">0.4 km</div>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+        <div class="medical-facility-item">
+          <div class="medical-icon">💊</div>
+          <div class="medical-info">
+            <div class="medical-name">TTD Pharmacy</div>
+            <div class="medical-address">Near Temple</div>
+            <div class="medical-timing">8:00 AM - 9:00 PM</div>
+            <div class="medical-services-preview">Medicines, Supplies</div>
+          </div>
+          <div class="medical-distance">0.2 km</div>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Medical Guidelines -->
+    <div class="dashboard-card guidelines-card" style="grid-column: 1/-1;">
+      <h3>📋 Medical Guidelines</h3>
+      <ul class="medical-guidelines">
+        <li>Emergency care is free for all pilgrims</li>
+        <li>Carry your ID and darshan token</li>
+        <li>For serious conditions, go directly to Aswini Hospital</li>
+        <li>First aid available at VQC and PAC complexes</li>
+        <li>Ambulance service available 24/7</li>
+        <li>Pharmacy available near temple area</li>
+        <li>Keep emergency numbers handy</li>
+      </ul>
+    </div>
+
+    <!-- Health Tips -->
+    <div class="dashboard-card health-tips-card" style="grid-column: 1/-1;">
+      <h3>💡 Health Tips for Pilgrims</h3>
+      <div class="health-tips">
+        <div class="tip-item">
+          <span class="tip-icon">💧</span>
+          <span class="tip-text">Stay hydrated - drink plenty of water</span>
+        </div>
+        <div class="tip-item">
+          <span class="tip-icon">🧴</span>
+          <span class="tip-text">Use sunscreen and wear a hat</span>
+        </div>
+        <div class="tip-item">
+          <span class="tip-icon">👟</span>
+          <span class="tip-text">Wear comfortable walking shoes</span>
+        </div>
+        <div class="tip-item">
+          <span class="tip-icon">🍎</span>
+          <span class="tip-text">Eat light meals at Annaprasadam</span>
+        </div>
+        <div class="tip-item">
+          <span class="tip-icon">😴</span>
+          <span class="tip-text">Take rest breaks during long queues</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="dashboard-card quick-actions-card" style="grid-column: 1/-1;">
+      <h3>🚀 Quick Actions</h3>
+      <div class="quick-actions">
+        <button class="quick-action-btn" onclick="window.location.href='tel:155257'">📞 Call Emergency</button>
+        <button class="quick-action-btn" onclick="navigate('navigation')">🗺️ Find on Map</button>
+        <button class="quick-action-btn secondary" onclick="navigate('emergency')">🚨 Emergency SOS</button>
+        <button class="quick-action-btn secondary" onclick="navigate('chatbot')">🤖 Ask AI Assistant</button>
+      </div>
+    </div>
+  </div>
+</section>

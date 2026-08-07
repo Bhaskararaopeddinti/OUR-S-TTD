@@ -1,0 +1,108 @@
+<!-- chatbot.html – AI Assistant page -->
+<section class="chatbot-page">
+  <div class="dashboard-header">
+    <h1>🤖 AI Assistant</h1>
+    <p class="dashboard-subtitle">Your smart pilgrim guide - ask anything about Tirumala</p>
+  </div>
+
+  <div class="chatbot-grid">
+    <!-- Chat Interface -->
+    <div class="dashboard-card chat-interface-card" style="grid-column: 1/-1;">
+      <div class="chat-header">
+        <div class="chat-avatar">🤖</div>
+        <div class="chat-info">
+          <div class="chat-name">TTD AI Assistant</div>
+          <div class="chat-status">Online • Powered by Gemini AI</div>
+        </div>
+        <div class="chat-actions">
+          <button class="icon-btn" onclick="clearChat()" title="Clear chat">🗑️</button>
+        </div>
+      </div>
+      
+      <div class="chat-messages" id="chatMessages">
+        <div class="message bot-message">
+          <div class="message-avatar">🤖</div>
+          <div class="message-content">
+            <p>Namaste! 🙏 I'm your AI pilgrim companion for Tirumala. I can help you with:</p>
+            <ul class="help-list">
+              <li>🗺️ Navigation and directions</li>
+              <li>⏳ Queue status and wait times</li>
+              <li>🍚 Food locations and Annaprasadam</li>
+              <li>🏥 Medical assistance</li>
+              <li>🏨 Accommodation options</li>
+              <li>🛕 Temple information</li>
+              <li>🚨 Emergency contacts</li>
+            </ul>
+            <p>How can I help you today?</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="chat-input-area">
+        <div class="quick-prompts">
+          <button class="quick-prompt" onclick="sendQuickPrompt('Where is the nearest food?')">🍚 Nearest food</button>
+          <button class="quick-prompt" onclick="sendQuickPrompt('What is the queue status?')">⏳ Queue status</button>
+          <button class="quick-prompt" onclick="sendQuickPrompt('Where can I get medical help?')">🏥 Medical help</button>
+          <button class="quick-prompt" onclick="sendQuickPrompt('How do I get to the temple?')">🛕 Temple directions</button>
+        </div>
+        <div class="input-wrapper">
+          <input type="text" id="chatInput" placeholder="Ask me anything about Tirumala..." />
+          <button id="sendBtn" class="send-btn">📤</button>
+          <button id="voiceBtn" class="voice-btn" title="Voice input">🎤</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features Panel -->
+    <div class="dashboard-card features-card">
+      <h3>✨ AI Features</h3>
+      <div class="feature-list">
+        <div class="feature-item">
+          <span class="feature-icon">🗣️</span>
+          <span class="feature-text">Voice input support</span>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">🌐</span>
+          <span class="feature-text">Multilingual support</span>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">📍</span>
+          <span class="feature-text">Location-aware responses</span>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">⏰</span>
+          <span class="feature-text">Real-time queue data</span>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">🗺️</span>
+          <span class="feature-text">Navigation integration</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Example Questions -->
+    <div class="dashboard-card examples-card">
+      <h3>💬 Example Questions</h3>
+      <div class="example-questions">
+        <button class="example-question" onclick="sendQuickPrompt('Where is the nearest Anna Prasadam centre?')">Where is the nearest Anna Prasadam centre?</button>
+        <button class="example-question" onclick="sendQuickPrompt('How long is the darshan queue?')">How long is the darshan queue?</button>
+        <button class="example-question" onclick="sendQuickPrompt('Find me a hospital nearby')">Find me a hospital nearby</button>
+        <button class="example-question" onclick="sendQuickPrompt('Where can I stay for free?')">Where can I stay for free?</button>
+        <button class="example-question" onclick="sendQuickPrompt('What are the temple timings?')">What are the temple timings?</button>
+        <button class="example-question" onclick="sendQuickPrompt('How do I get emergency help?')">How do I get emergency help?</button>
+      </div>
+    </div>
+
+    <!-- Language Selection -->
+    <div class="dashboard-card language-card">
+      <h3>🌐 Language</h3>
+      <select id="chatLanguage" class="lang-select">
+        <option value="en">English</option>
+        <option value="te">తెలుగు (Telugu)</option>
+        <option value="hi">हिंदी (Hindi)</option>
+        <option value="ta">தமிழ் (Tamil)</option>
+        <option value="kn">ಕನ್ನಡ (Kannada)</option>
+      </select>
+    </div>
+  </div>
+</section>

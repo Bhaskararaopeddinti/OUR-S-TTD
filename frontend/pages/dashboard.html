@@ -1,24 +1,161 @@
-<!-- dashboard.html – user dashboard page -->
+<!-- dashboard.html – Main Dashboard Page -->
 <section class="dashboard-page">
-  <h2>My Pilgrim Dashboard</h2>
-  <div class="grid">
-    <section id="profileSection" class="card">
-      <h3>Profile</h3>
-      <p id="profileName"></p>
-      <p id="profileEmail"></p>
-      <button class="primary" id="editProfileBtn">Edit Profile</button>
-    </section>
-    <section id="bookingsSection" class="card">
-      <h3>Bookings</h3>
-      <ul id="bookingsList"></ul>
-    </section>
-    <section id="notificationsSection" class="card">
-      <h3>Notifications</h3>
-      <ul id="notificationsList"></ul>
-    </section>
-    <section id="healthSection" class="card">
-      <h3>Health Reminders</h3>
-      <ul id="healthList"></ul>
-    </section>
+  <div class="dashboard-header">
+    <h1>🙏 Welcome, Pilgrim</h1>
+    <p class="dashboard-subtitle">Your AI Smart Pilgrim Companion for Tirumala</p>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="dashboard-grid-3">
+    <div class="dashboard-card stat-card">
+      <div class="stat-icon">⏳</div>
+      <div class="stat-content">
+        <div class="stat-value" id="queueWaitTime">--</div>
+        <div class="stat-label">Queue Wait Time</div>
+      </div>
+    </div>
+    <div class="dashboard-card stat-card">
+      <div class="stat-icon">🌡️</div>
+      <div class="stat-content">
+        <div class="stat-value" id="temperature">--°C</div>
+        <div class="stat-label">Temperature</div>
+      </div>
+    </div>
+    <div class="dashboard-card stat-card">
+      <div class="stat-icon">👥</div>
+      <div class="stat-content">
+        <div class="stat-value" id="crowdLevel">--</div>
+        <div class="stat-label">Crowd Level</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Important Alerts -->
+  <div class="dashboard-card alert-card warning" id="alertCard">
+    <h3>⚠️ Important Alert</h3>
+    <p id="alertMessage">Loading alerts...</p>
+  </div>
+
+  <!-- Temple Timings -->
+  <div class="dashboard-grid-2">
+    <div class="dashboard-card">
+      <h3>🛕 Temple Timings</h3>
+      <div class="timing-info">
+        <div class="timing-item">
+          <span class="timing-label">Morning Darshan:</span>
+          <span class="timing-value">2:30 AM - 11:00 AM</span>
+        </div>
+        <div class="timing-item">
+          <span class="timing-label">Evening Darshan:</span>
+          <span class="timing-value">12:00 PM - 1:00 AM</span>
+        </div>
+        <div class="timing-item">
+          <span class="timing-label">Archana:</span>
+          <span class="timing-value">4:30 AM - 6:00 AM</span>
+        </div>
+        <div class="timing-item">
+          <span class="timing-label">Ekanta Seva:</span>
+          <span class="timing-value">6:00 AM - 7:00 AM</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-card">
+      <h3>📅 Today's Date</h3>
+      <div class="date-info">
+        <div class="date-value" id="currentDate">--</div>
+        <div class="day-value" id="currentDay">--</div>
+        <div class="tithi-value" id="tithi">--</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="dashboard-card">
+    <h3>🚀 Quick Actions</h3>
+    <div class="quick-actions">
+      <button class="quick-action-btn" onclick="navigate('navigation')">
+        🗺️ Live Navigation
+      </button>
+      <button class="quick-action-btn" onclick="navigate('queue')">
+        ⏳ Check Queue Status
+      </button>
+      <button class="quick-action-btn" onclick="navigate('food')">
+        🍚 Find Food
+      </button>
+      <button class="quick-action-btn" onclick="navigate('medical')">
+        🏥 Medical Help
+      </button>
+      <button class="quick-action-btn secondary" onclick="navigate('emergency')">
+        🚨 Emergency SOS
+      </button>
+      <button class="quick-action-btn secondary" onclick="navigate('chatbot')">
+        🤖 Ask AI Assistant
+      </button>
+    </div>
+  </div>
+
+  <!-- Weather Information -->
+  <div class="dashboard-grid-2">
+    <div class="dashboard-card">
+      <h3>🌤️ Weather Information</h3>
+      <div class="weather-info">
+        <div class="weather-main">
+          <div class="weather-icon" id="weatherIcon">☀️</div>
+          <div class="weather-temp" id="weatherTemp">--°C</div>
+        </div>
+        <div class="weather-details">
+          <div class="weather-detail">
+            <span>Humidity:</span>
+            <span id="humidity">--%</span>
+          </div>
+          <div class="weather-detail">
+            <span>Wind:</span>
+            <span id="windSpeed">-- km/h</span>
+          </div>
+          <div class="weather-detail">
+            <span>Condition:</span>
+            <span id="weatherCondition">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-card">
+      <h3>📢 TTD Announcements</h3>
+      <div class="announcements-list" id="announcementsList">
+        <div class="announcement-item">
+          <span class="announcement-time">10:30 AM</span>
+          <p>Special darshan arrangements for Srivari Brahmotsavams</p>
+        </div>
+        <div class="announcement-item">
+          <span class="announcement-time">9:00 AM</span>
+          <p>Free laddu distribution at VQC exit</p>
+        </div>
+        <div class="announcement-item">
+          <span class="announcement-time">8:00 AM</span>
+          <p>Additional compartments opened for Sarva Darshan</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Profile Section -->
+  <div class="dashboard-card">
+    <h3>👤 Your Profile</h3>
+    <div class="profile-section">
+      <div class="profile-info">
+        <div class="profile-avatar">👤</div>
+        <div class="profile-details">
+          <div class="profile-name" id="profileName">Guest Pilgrim</div>
+          <div class="profile-email" id="profileEmail">Not logged in</div>
+          <div class="profile-role" id="profileRole">Guest</div>
+        </div>
+      </div>
+      <div class="profile-actions">
+        <button class="quick-action-btn" id="editProfileBtn">Edit Profile</button>
+        <button class="quick-action-btn secondary" id="loginBtn">Login</button>
+      </div>
+    </div>
   </div>
 </section>

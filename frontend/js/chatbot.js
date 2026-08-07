@@ -1,5 +1,5 @@
 /**
- * chatbot.js – AI Chatbot with Gemini backend, voice output, history.
+ * chatbot.js – AI Chatbot with Gemini backend, voice output, history, and location awareness.
  * Requires: api.js loaded first.
  */
 'use strict';
@@ -13,6 +13,9 @@ const chatSend     = document.getElementById('chatSend');
 const chatClear    = document.getElementById('chatClearBtn');
 const voiceBtn     = document.getElementById('voiceInputBtn');
 
+let chatHistory = [];
+let locationsCache = null;
+
 // Toggle panel
 chatFab.addEventListener('click', () => {
   chatPanel.hidden = !chatPanel.hidden;
@@ -23,10 +26,26 @@ chatClose.addEventListener('click', () => { chatPanel.hidden = true; });
 // Clear chat
 chatClear?.addEventListener('click', () => {
   chatMessages.innerHTML = `<div class="msg bot">Namaste! 🙏 How can I help you with your Tirumala pilgrimage?</div>`;
+  chatHistory = [];
 });
 
+// Load locations for context
+async function loadLocations() {
+  if (locationsCache) return locationsCache;
+  
+  try {
+    const response = await fetch('/api/locations');
+    const data = await response.json();
+    locationsCache = data.locations || [];
+    return locationsCache;
+  } catch (error) {
+    console.error('Failed to load locations:', error);
+    return [];
+  }
+}
+
 // Send message
-function sendMessage() {
+async function sendMessage() {
   const text = chatInput.value.trim();
   if (!text) return;
   appendMsg(text, 'user');
@@ -34,12 +53,28 @@ function sendMessage() {
   const thinking = appendMsg('Thinking…', 'bot thinking');
 
   const lang = document.getElementById('language')?.value || 'English';
+  
+  // Load locations for context
+  const locations = await loadLocations();
+  
+  // Add location context to message
+  const locationContext = locations.length > 0 
+    ? `\n\nAvailable locations: ${locations.map(l => l.name + ' (' + l.category + ')').join(', ')}`
+    : '';
 
-  API.post('chat', { message: text, language: lang })
+  chatHistory.push({ role: 'user', content: text });
+
+  API.post('chat', { 
+    message: text + locationContext, 
+    language: lang,
+    history: chatHistory.slice(-10) // Last 10 messages for context
+  })
     .then(data => {
       thinking.remove();
-      const reply = appendMsg(data.reply || 'I could not generate a reply.', 'bot');
-      speakReply(data.reply, lang);
+      const reply = data.reply || 'I could not generate a reply.';
+      appendMsg(reply, 'bot');
+      speakReply(reply, lang);
+      chatHistory.push({ role: 'assistant', content: reply });
     })
     .catch(err => {
       thinking.remove();

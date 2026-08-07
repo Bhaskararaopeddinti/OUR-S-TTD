@@ -1,55 +1,57 @@
 <!-- queue.html – AI Queue Intelligence page -->
 <section class="queue-page">
-  <h2>⏳ AI Queue Intelligence</h2>
-  <p class="hint">Predictive queue analysis with crowd trends and smart recommendations</p>
+  <div class="dashboard-header">
+    <h1>⏳ Darshan Queue</h1>
+    <p class="dashboard-subtitle">Predictive queue analysis with crowd trends and smart recommendations</p>
+  </div>
 
   <div class="queue-grid">
     <!-- Current Status -->
-    <section class="card queue-status-card">
+    <div class="dashboard-card queue-status-card">
       <h3>📊 Current Queue Status</h3>
       <div id="queueStatus">
         <div class="loading">Loading queue data...</div>
       </div>
-    </section>
+    </div>
 
     <!-- AI Prediction -->
-    <section class="card ai-prediction-card">
+    <div class="dashboard-card ai-prediction-card">
       <h3>🤖 AI Prediction</h3>
       <div id="aiPrediction">
         <div class="loading">Loading predictions...</div>
       </div>
-    </section>
+    </div>
 
     <!-- Crowd Trend -->
-    <section class="card crowd-trend-card" style="grid-column: 1/-1;">
+    <div class="dashboard-card crowd-trend-card" style="grid-column: 1/-1;">
       <h3>📈 Crowd Trend (Next 6 Hours)</h3>
       <div id="crowdTrend">
         <div class="loading">Loading trend data...</div>
       </div>
-    </section>
+    </div>
 
     <!-- Best Times -->
-    <section class="card best-times-card">
+    <div class="dashboard-card best-times-card">
       <h3>⭐ Best Times to Join Queue</h3>
       <div id="bestTimes">
         <div class="loading">Loading recommendations...</div>
       </div>
-    </section>
+    </div>
 
     <!-- AI Advice -->
-    <section class="card ai-advice-card" style="grid-column: 1/-1;">
+    <div class="dashboard-card ai-advice-card" style="grid-column: 1/-1;">
       <h3>💡 AI-Generated Advice</h3>
       <div id="aiAdvice">
         <div class="loading">Loading advice...</div>
       </div>
-    </section>
+    </div>
 
     <!-- Festival Alerts -->
-    <section class="card festival-card" style="grid-column: 1/-1;">
+    <div class="dashboard-card festival-card" style="grid-column: 1/-1;">
       <h3>🎉 Festival Impact</h3>
       <div id="festivalImpact">
         <p class="hint">No major festivals currently affecting crowd levels</p>
       </div>
-    </section>
+    </div>
   </div>
 </section>

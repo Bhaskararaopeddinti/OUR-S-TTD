@@ -12,11 +12,19 @@ let authUser  = null;  // populated after login
 
 // ── Page Definitions ──────────────────────────
 const PAGES = {
-  home:       renderHome,
+  dashboard:  renderDashboard,
+  navigation: renderNavigation,
+  temple:     renderTemple,
   queue:      renderQueue,
+  food:       renderFood,
+  medical:    renderMedical,
+  emergency:  renderEmergency,
+  accommodation: renderAccommodation,
+  chatbot:    renderChatbot,
+  settings:   renderSettings,
+  home:       renderHome,
   services:   renderServices,
   booking:    renderBooking,
-  navigation: renderNavigation,
   health:     renderHealth,
   lostfound:  renderLostFound,
   admin:      renderAdmin,
@@ -24,10 +32,10 @@ const PAGES = {
 
 // ── Router ────────────────────────────────────
 function navigate(page) {
-  if (!PAGES[page]) page = 'home';
+  if (!PAGES[page]) page = 'dashboard';
   currentPage = page;
-  // Update nav active state
-  document.querySelectorAll('.nav-link').forEach(btn => {
+  // Update nav active state for sidebar
+  document.querySelectorAll('.nav-item').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.page === page);
   });
   const root = document.getElementById('appRoot');
@@ -135,6 +143,143 @@ if (authToken) onAuthSuccess();
 
 // ── HOME PAGE ─────────────────────────────────
 function renderHome() {
+  navigate('dashboard');
+}
+
+// ── DASHBOARD PAGE ───────────────────────────
+function renderDashboard() {
+  fetch('pages/dashboard.html')
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('appRoot').innerHTML = html;
+      if (typeof loadDashboard === 'function') {
+        loadDashboard();
+      }
+    })
+    .catch(error => {
+      console.error('Failed to load dashboard page:', error);
+      document.getElementById('appRoot').innerHTML = '<p class="error">Failed to load dashboard page.</p>';
+    });
+}
+
+// ── TEMPLE GUIDE PAGE ─────────────────────────
+function renderTemple() {
+  document.getElementById('appRoot').innerHTML = `
+    <section class="fade-in">
+      <h2>🛕 Temple Guide</h2>
+      <div class="dashboard-card">
+        <h3>Sri Venkateswara Temple</h3>
+        <p>Main entrance to Sri Venkateswara Swamy Temple</p>
+        <button class="quick-action-btn" onclick="navigate('navigation')">Navigate</button>
+      </div>
+    </section>
+  `;
+}
+
+// ── FOOD FINDER PAGE ───────────────────────────
+function renderFood() {
+  fetch('pages/food.html')
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('appRoot').innerHTML = html;
+      if (typeof initFood === 'function') {
+        initFood();
+      }
+    })
+    .catch(error => {
+      console.error('Failed to load food page:', error);
+      document.getElementById('appRoot').innerHTML = '<p class="error">Failed to load food page.</p>';
+    });
+}
+
+// ── MEDICAL ASSISTANCE PAGE ───────────────────
+function renderMedical() {
+  fetch('pages/medical.html')
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('appRoot').innerHTML = html;
+      if (typeof initMedical === 'function') {
+        initMedical();
+      }
+    })
+    .catch(error => {
+      console.error('Failed to load medical page:', error);
+      document.getElementById('appRoot').innerHTML = '<p class="error">Failed to load medical page.</p>';
+    });
+}
+
+// ── EMERGENCY SOS PAGE ────────────────────────
+function renderEmergency() {
+  fetch('pages/emergency.html')
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('appRoot').innerHTML = html;
+      if (typeof initEmergency === 'function') {
+        initEmergency();
+      }
+    })
+    .catch(error => {
+      console.error('Failed to load emergency page:', error);
+      document.getElementById('appRoot').innerHTML = '<p class="error">Failed to load emergency page.</p>';
+    });
+}
+
+// ── ACCOMMODATION PAGE ────────────────────────
+function renderAccommodation() {
+  fetch('pages/accommodation.html')
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('appRoot').innerHTML = html;
+      if (typeof initAccommodation === 'function') {
+        initAccommodation();
+      }
+    })
+    .catch(error => {
+      console.error('Failed to load accommodation page:', error);
+      document.getElementById('appRoot').innerHTML = '<p class="error">Failed to load accommodation page.</p>';
+    });
+}
+
+// ── CHATBOT PAGE ─────────────────────────────
+function renderChatbot() {
+  fetch('pages/chatbot.html')
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('appRoot').innerHTML = html;
+      if (typeof initChatbot === 'function') {
+        initChatbot();
+      }
+    })
+    .catch(error => {
+      console.error('Failed to load chatbot page:', error);
+      document.getElementById('appRoot').innerHTML = '<p class="error">Failed to load chatbot page.</p>';
+    });
+}
+
+// ── SETTINGS PAGE ─────────────────────────────
+function renderSettings() {
+  document.getElementById('appRoot').innerHTML = `
+    <section class="fade-in">
+      <h2>⚙️ Settings</h2>
+      <div class="dashboard-card">
+        <h3>Language</h3>
+        <select class="lang-select">
+          <option>English</option>
+          <option>Telugu</option>
+          <option>Hindi</option>
+          <option>Tamil</option>
+        </select>
+      </div>
+      <div class="dashboard-card">
+        <h3>Theme</h3>
+        <button class="quick-action-btn" onclick="document.getElementById('themeToggle').click()">Toggle Theme</button>
+      </div>
+    </section>
+  `;
+}
+
+// ── Original Home Page (for reference) ───────────
+function renderOriginalHome() {
   document.getElementById('appRoot').innerHTML = `
     <section class="fade-in">
       <div class="notice" style="margin-bottom:1.5rem;">
@@ -413,6 +558,9 @@ function renderNavigation() {
     .then(html => {
       document.getElementById('appRoot').innerHTML = html;
       // Navigation functionality is handled by navigation.js
+      if (typeof initNavigation === 'function') {
+        initNavigation();
+      }
     })
     .catch(error => {
       console.error('Failed to load navigation page:', error);

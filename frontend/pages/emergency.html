@@ -1,0 +1,94 @@
+<!-- emergency.html – Emergency SOS page -->
+<section class="emergency-page">
+  <div class="dashboard-header">
+    <h1>🚨 Emergency SOS</h1>
+    <p class="dashboard-subtitle">Tap the SOS button for immediate assistance</p>
+  </div>
+
+  <div class="emergency-grid">
+    <!-- Main SOS Button -->
+    <div class="dashboard-card sos-card" style="grid-column: 1/-1;">
+      <h3>🚨 Emergency Assistance</h3>
+      <button id="sosButton" class="sos-button">
+        <span class="sos-icon">🚨</span>
+        <span class="sos-text">SOS</span>
+      </button>
+      <p class="sos-hint">Tap to get immediate help</p>
+      <div id="sosStatus" class="sos-status"></div>
+    </div>
+
+    <!-- Emergency Contacts -->
+    <div class="dashboard-card emergency-contacts-card">
+      <h3>📞 Emergency Contacts</h3>
+      <div class="emergency-contact">
+        <div class="contact-icon">🏥</div>
+        <div class="contact-details">
+          <div class="contact-name">Aswini Hospital</div>
+          <div class="contact-number">155257</div>
+        </div>
+        <button class="quick-action-btn secondary" onclick="window.location.href='tel:155257'">Call</button>
+      </div>
+      <div class="emergency-contact">
+        <div class="contact-icon">👮</div>
+        <div class="contact-details">
+          <div class="contact-name">TTD Police</div>
+          <div class="contact-number">155257</div>
+        </div>
+        <button class="quick-action-btn secondary" onclick="window.location.href='tel:155257'">Call</button>
+      </div>
+      <div class="emergency-contact">
+        <div class="contact-icon">🔥</div>
+        <div class="contact-details">
+          <div class="contact-name">Fire Service</div>
+          <div class="contact-number">101</div>
+        </div>
+        <button class="quick-action-btn secondary" onclick="window.location.href='tel:101'">Call</button>
+      </div>
+    </div>
+
+    <!-- Current Location -->
+    <div class="dashboard-card location-card">
+      <h3>📍 Your Location</h3>
+      <button id="getEmergencyLocation" class="quick-action-btn">📍 Get Location</button>
+      <div id="emergencyLocation" class="location-display"></div>
+    </div>
+
+    <!-- Nearest Facilities -->
+    <div class="dashboard-card nearest-facilities-card" style="grid-column: 1/-1;">
+      <h3>🏥 Nearest Emergency Facilities</h3>
+      <div id="nearestFacilities">
+        <div class="facility-item">
+          <span class="facility-icon">🏥</span>
+          <span class="facility-name">Aswini Hospital Tirumala</span>
+          <span class="facility-distance">1.2 km</span>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+        <div class="facility-item">
+          <span class="facility-icon">👮</span>
+          <span class="facility-name">TTD Police Help Centre</span>
+          <span class="facility-distance">0.5 km</span>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+        <div class="facility-item">
+          <span class="facility-icon">ℹ️</span>
+          <span class="facility-name">TTD Information Centre</span>
+          <span class="facility-distance">0.3 km</span>
+          <button class="quick-action-btn secondary" onclick="navigate('navigation')">Navigate</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Emergency Instructions -->
+    <div class="dashboard-card instructions-card" style="grid-column: 1/-1;">
+      <h3>📋 Emergency Instructions</h3>
+      <ul class="emergency-instructions">
+        <li>Stay calm and assess the situation</li>
+        <li>Tap the SOS button to alert authorities</li>
+        <li>Your location will be shared automatically</li>
+        <li>Call the nearest emergency contact</li>
+        <li>Move to a safe location if possible</li>
+        <li>Wait for assistance to arrive</li>
+      </ul>
+    </div>
+  </div>
+</section>

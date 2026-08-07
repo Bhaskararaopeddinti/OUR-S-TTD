@@ -13,6 +13,8 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: https://ours-ttd.onrender.com
+      - key: GEMINI_API_KEY
+        value: your-gemini-api-key-here
       - key: GOOGLE_TRANSLATE_API_KEY
         value: your-google-translate-api-key-here
       - key: GOOGLE_CLOUD_PROJECT_ID

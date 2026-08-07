@@ -21,10 +21,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
 
+  <!-- Leaflet CSS for Maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
   <!-- Styles -->
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/responsive.css" />
   <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
 </head>
 <body>
 
@@ -32,22 +36,270 @@
 <a href="#appRoot" class="skip-link">Skip to main content</a>
 
 <!-- ═══════════════════════════════════════
-     HEADER + NAV
+     DASHBOARD LAYOUT
 ════════════════════════════════════════ -->
-<header class="site-header" id="siteHeader" role="banner">
-  <nav class="nav-bar" role="navigation" aria-label="Main navigation">
-    <!-- Brand -->
-    <div class="brand-name" role="img" aria-label="OURS TTD logo">
-      <span class="om" aria-hidden="true">ॐ</span> OURS&nbsp;<strong>TTD</strong>
+<div class="dashboard-container">
+  
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+    <!-- Logo -->
+    <div class="sidebar-header">
+      <div class="brand-name" role="img" aria-label="OURS TTD logo">
+        <span class="om" aria-hidden="true">ॐ</span> OURS&nbsp;<strong>TTD</strong>
+      </div>
+      <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+        <span>☰</span>
+      </button>
     </div>
 
-    <!-- Page Links -->
-    <div class="nav-links" id="navLinks" role="menubar" aria-label="Site pages">
-      <button class="nav-link active" data-page="home" role="menuitem" aria-current="page">🏠 Home</button>
-      <button class="nav-link" data-page="queue" role="menuitem">⏳ Live Queue</button>
-      <button class="nav-link" data-page="services" role="menuitem">🔧 Services</button>
-      <button class="nav-link" data-page="booking" role="menuitem">📋 Booking</button>
-      <button class="nav-link" data-page="navigation" role="menuitem">🗺️ Navigate</button>
+    <!-- Navigation Menu -->
+    <nav class="sidebar-nav" role="menubar" aria-label="Dashboard menu">
+      <button class="nav-item active" data-page="dashboard" role="menuitem" aria-current="page">
+        <span class="nav-icon">📊</span>
+        <span class="nav-text">Dashboard</span>
+      </button>
+      <button class="nav-item" data-page="navigation" role="menuitem">
+        <span class="nav-icon">🗺️</span>
+        <span class="nav-text">Live Navigation</span>
+      </button>
+      <button class="nav-item" data-page="temple" role="menuitem">
+        <span class="nav-icon">🛕</span>
+        <span class="nav-text">Temple Guide</span>
+      </button>
+      <button class="nav-item" data-page="queue" role="menuitem">
+        <span class="nav-icon">⏳</span>
+        <span class="nav-text">Darshan Queue</span>
+      </button>
+      <button class="nav-item" data-page="food" role="menuitem">
+        <span class="nav-icon">🍚</span>
+        <span class="nav-text">Food Finder</span>
+      </button>
+      <button class="nav-item" data-page="medical" role="menuitem">
+        <span class="nav-icon">🏥</span>
+        <span class="nav-text">Medical Assistance</span>
+      </button>
+      <button class="nav-item" data-page="emergency" role="menuitem">
+        <span class="nav-icon">🚨</span>
+        <span class="nav-text">Emergency SOS</span>
+      </button>
+      <button class="nav-item" data-page="accommodation" role="menuitem">
+        <span class="nav-icon">🏨</span>
+        <span class="nav-text">Accommodation</span>
+      </button>
+      <button class="nav-item" data-page="chatbot" role="menuitem">
+        <span class="nav-icon">🤖</span>
+        <span class="nav-text">AI Assistant</span>
+      </button>
+      <button class="nav-item" data-page="settings" role="menuitem">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-text">Settings</span>
+      </button>
+    </nav>
+
+    <!-- User Profile -->
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">👤</div>
+        <div class="user-details">
+          <div class="user-name">Pilgrim</div>
+          <div class="user-role">Guest</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="main-content" id="appRoot" role="main" aria-live="polite" tabindex="-1">
+    <!-- Pages rendered here by app.js SPA router -->
+  </main>
+
+  <!-- MOBILE BOTTOM NAVIGATION -->
+  <nav class="mobile-nav" role="navigation" aria-label="Mobile navigation">
+    <button class="mobile-nav-item active" data-page="dashboard" role="menuitem">
+      <span class="mobile-nav-icon">📊</span>
+      <span class="nav-text">Home</span>
+    </button>
+    <button class="mobile-nav-item" data-page="navigation" role="menuitem">
+      <span class="mobile-nav-icon">🗺️</span>
+      <span class="nav-text">Map</span>
+    </button>
+    <button class="mobile-nav-item" data-page="queue" role="menuitem">
+      <span class="mobile-nav-icon">⏳</span>
+      <span class="nav-text">Queue</span>
+    </button>
+    <button class="mobile-nav-item" data-page="chatbot" role="menuitem">
+      <span class="mobile-nav-icon">🤖</span>
+      <span class="nav-text">AI</span>
+    </button>
+    <button class="mobile-nav-item" data-page="emergency" role="menuitem">
+      <span class="mobile-nav-icon">🚨</span>
+      <span class="nav-text">SOS</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- SIDEBAR OVERLAY (for mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ═══════════════════════════════════════
+     FLOATING COMPONENTS
+════════════════════════════════════════ -->
+
+<!-- Accessibility Panel -->
+<div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Accessibility options">
+  <button id="a11yToggle" class="a11y-toggle" aria-label="Open accessibility options">♿</button>
+  <div class="a11y-content">
+    <h4>Accessibility</h4>
+    <button id="a11yLargeText">🔠 Large Text</button>
+    <button id="a11yHighContrast">🎨 High Contrast</button>
+    <button id="a11yReduceMotion">🔄 Reduce Motion</button>
+  </div>
+</div>
+
+<!-- Notification Panel -->
+<aside class="notif-panel" id="notifPanel" hidden role="dialog" aria-label="Notifications">
+  <header>
+    <span>🔔 Notifications</span>
+    <button id="notifClose" aria-label="Close notifications">x</button>
+  </header>
+  <div class="notif-list" id="notifList" role="list">
+    <div class="notif-item unread" role="listitem">
+      <h4>Welcome to OURS TTD</h4>
+      <p>Your AI pilgrim companion is ready. Tap 🤖 to chat.</p>
+    </div>
+    <div class="notif-item" role="listitem">
+      <h4>Temple Notice</h4>
+      <p>Deposit mobile phones before entering the temple. Retain your receipt token.</p>
+    </div>
+    <div class="notif-item" role="listitem">
+      <h4>TTD Helpline</h4>
+      <p>For emergencies call <strong>155257</strong> (24/7).</p>
+    </div>
+  </div>
+</aside>
+
+<!-- Toast container -->
+<div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ═══════════════════════════════════════
+     AUTH DIALOG
+════════════════════════════════════════ -->
+<dialog id="authDialog" aria-modal="true" aria-labelledby="authTitle">
+  <div class="dialog-inner">
+    <div class="dialog-header">
+      <h2 id="authTitle">Login to Your Journey</h2>
+      <button id="authClose" aria-label="Close login dialog">x</button>
+    </div>
+    <form id="authForm" novalidate>
+      <label id="nameLabel" hidden>
+        <span>Full Name</span>
+        <input id="authName" type="text" placeholder="Your full name" autocomplete="name" />
+      </label>
+      <label>
+        <span>Email Address</span>
+        <input id="authEmail" type="email" placeholder="you@example.com" required autocomplete="email" />
+      </label>
+      <label>
+        <span>Password</span>
+        <input id="authPassword" type="password" placeholder="Minimum 8 characters" required minlength="8" autocomplete="current-password" />
+      </label>
+      <button type="submit" style="width:100%;margin-top:.5rem;" id="authSubmit" class="btn-primary">Login</button>
+      <p id="authStatus" class="status" role="status" aria-live="polite"></p>
+      <hr class="divider" />
+      <button type="button" class="btn-ghost" style="width:100%;" id="authSwitch">New pilgrim? Create an account</button>
+      <p style="font-size:.8rem;color:var(--muted);margin-top:.75rem;text-align:center;">
+        Demo admin: <strong>admin@oursttd.demo</strong> / <strong>DemoAdmin123</strong>
+      </p>
+    </form>
+  </div>
+</dialog>
+
+<!-- ═══════════════════════════════════════
+     FOOTER
+════════════════════════════════════════ -->
+<footer class="site-footer" role="contentinfo">
+  <p>© 2026 OURS TTD - AI Smart Pilgrim Companion &nbsp;|&nbsp;
+    For official information visit <a href="https://tirumala.org" target="_blank" rel="noopener noreferrer">tirumala.org</a>
+  </p>
+  <div class="footer-links">
+    <a href="https://ttdevasthanams.ap.gov.in" target="_blank" rel="noopener noreferrer">Official Booking</a>
+    <a href="tel:155257">Helpline: 155257</a>
+    <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════════════════
+     SCRIPTS (load order matters)
+════════════════════════════════════════ -->
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/chatbot.js"></script>
+<script src="js/chatbot-page.js"></script>
+<script src="js/queue.js"></script>
+<script src="js/sos.js"></script>
+<script src="js/emergency.js"></script>
+<script src="js/voice.js"></script>
+<script src="js/language.js"></script>
+<script src="js/navigation.js"></script>
+<script src="js/health.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/booking.js"></script>
+<script src="js/maps.js"></script>
+<script src="js/dashboard.js"></script>
+
+<script>
+  // ═══════════════════════════════════════
+  // Register Service Worker (PWA)
+  // ═══════════════════════════════════════
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/js/sw.js')
+      .then(r => console.log('SW registered:', r.scope))
+      .catch(e => console.warn('SW registration failed:', e));
+  }
+
+  // ═══════════════════════════════════════
+  // Global Toast helper
+  // ═══════════════════════════════════════
+  window.showToast = function(msg, type = 'info', duration = 3500) {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = msg;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), duration);
+  };
+
+  // ═══════════════════════════════════════
+  // Accessibility Panel
+  // ═══════════════════════════════════════
+  const a11yBtn   = document.getElementById('a11yToggle');
+  const a11yPanel = document.getElementById('a11yPanel');
+  a11yBtn?.addEventListener('click', () => a11yPanel.classList.toggle('open'));
+
+  document.getElementById('a11yLargeText')?.addEventListener('click', () => {
+    document.body.classList.toggle('large-text');
+    showToast(document.body.classList.contains('large-text') ? 'Large text enabled' : 'Large text disabled');
+  });
+  document.getElementById('a11yHighContrast')?.addEventListener('click', () => {
+    document.body.classList.toggle('high-contrast');
+    showToast('High contrast toggled');
+  });
+  document.getElementById('a11yReduceMotion')?.addEventListener('click', () => {
+    document.body.classList.toggle('reduce-motion');
+    showToast('Reduced motion toggled');
+  });
+
+  // Close a11y panel on outside click
+  document.addEventListener('click', e => {
+    if (a11yPanel && !a11yPanel.contains(e.target) && e.target !== a11yBtn) {
+      a11yPanel.classList.remove('open');
+    }
+  });
+</script>
+</body>
+</html>
       <button class="nav-link" data-page="health" role="menuitem">💚 Health</button>
       <button class="nav-link" data-page="lostfound" role="menuitem">🔍 Lost &amp; Found</button>
       <button class="nav-link" id="adminLink" data-page="admin" role="menuitem" hidden>🛡️ Admin</button>
@@ -278,31 +530,6 @@
     container.appendChild(toast);
     setTimeout(() => toast.remove(), duration);
   };
-
-  // ── Accessibility Panel ────────────────────────────
-  const a11yBtn   = document.getElementById('a11yToggle');
-  const a11yPanel = document.getElementById('a11yPanel');
-  a11yBtn?.addEventListener('click', () => a11yPanel.classList.toggle('open'));
-
-  document.getElementById('a11yLargeText')?.addEventListener('click', () => {
-    document.body.classList.toggle('large-text');
-    showToast(document.body.classList.contains('large-text') ? 'Large text enabled' : 'Large text disabled');
-  });
-  document.getElementById('a11yHighContrast')?.addEventListener('click', () => {
-    document.body.classList.toggle('high-contrast');
-    showToast('High contrast toggled');
-  });
-  document.getElementById('a11yReduceMotion')?.addEventListener('click', () => {
-    document.body.classList.toggle('reduce-motion');
-    showToast('Reduced motion toggled');
-  });
-
-  // Close a11y panel on outside click
-  document.addEventListener('click', e => {
-    if (a11yPanel && !a11yPanel.contains(e.target) && e.target !== a11yBtn) {
-      a11yPanel.classList.remove('open');
-    }
-  });
 </script>
 </body>
 </html>

@@ -18,13 +18,14 @@ from slowapi.errors import RateLimitExceeded
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
-from backend.database import Base, engine, SessionLocal
+from backend.database import Base, engine, SessionLocal, test_connection
 from backend.models import (
     QueueStatus, Facility, User, NavigationLocation,
     Notification
 )
 from backend.auth import hash_password
-from backend.routers import auth_routes, core, navigation
+from backend.routers import auth_routes, core
+from backend.routers.navigation import router as navigation_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -54,9 +55,10 @@ app.add_middleware(
 )
 
 # ── Routers ────────────────────────────────────────────────────────────────
+# API ROUTES FIRST - routers have their own prefixes defined
 app.include_router(auth_routes.router)
 app.include_router(core.router)
-app.include_router(navigation.router)
+app.include_router(navigation_router)
 
 # ── WebSocket Hub ──────────────────────────────────────────────────────────
 clients: set[WebSocket] = set()
@@ -153,11 +155,28 @@ def seed_db():
 
 @app.on_event("startup")
 async def startup():
+    # Test database connection first
+    if not test_connection():
+        logger.error("Database connection failed. Application may not function correctly.")
+    
+    # Create tables
+    try:
+        Base.metadata.create_all(engine)
+        logger.info("Database tables created/verified")
+    except Exception as e:
+        logger.error(f"Failed to create tables: {e}")
+    
+    # Seed database
     seed_db()
     logger.info("OURS TTD API started. Gemini key: %s",
                 "✓ configured" if os.getenv("GEMINI_API_KEY") else "✗ not set (keyword fallback)")
 
 
 # ── Static Files (Frontend) ────────────────────────────────────────────────
-# Must be mounted last so API routes take priority
-app.mount("/", StaticFiles(directory=str(ROOT / "frontend"), html=True), name="frontend")
+# Mount static files at /static for CSS, JS, images
+app.mount("/static", StaticFiles(directory=str(ROOT / "frontend")), name="static")
+
+# Serve index.html at root
+@app.get("/")
+async def serve_index():
+    return FileResponse(ROOT / "frontend" / "index.html")

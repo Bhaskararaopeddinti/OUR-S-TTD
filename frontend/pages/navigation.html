@@ -1,21 +1,23 @@
 <!-- navigation.html – Smart Navigation with Leaflet.js and OpenStreetMap -->
 <section class="navigation-page">
-  <h2>🗺️ Smart Navigation</h2>
-  <p class="hint">Interactive map with all Tirumala facilities, search, and crowd-aware routing</p>
+  <div class="dashboard-header">
+    <h1>🗺️ Live Navigation</h1>
+    <p class="dashboard-subtitle">Interactive map with all Tirumala facilities, search, and crowd-aware routing</p>
+  </div>
 
   <div class="navigation-grid">
     <!-- Search Bar -->
-    <section class="card search-card" style="grid-column: 1/-1;">
+    <div class="dashboard-card search-card" style="grid-column: 1/-1;">
       <div class="search-bar">
         <input type="text" id="searchInput" placeholder="Search facilities (e.g., restroom, food, medical)..." />
-        <button id="searchBtn" class="primary">🔍 Search</button>
+        <button id="searchBtn" class="quick-action-btn">🔍 Search</button>
       </div>
       <div class="filter-bar">
         <select id="categoryFilter">
           <option value="">All Categories</option>
-          <option value="temple">� Temple</option>
+          <option value="temple">🛕 Temple</option>
           <option value="queue">⏳ Queue Complex</option>
-          <option value="food">� Food & Annaprasadam</option>
+          <option value="food">🍚 Food & Annaprasadam</option>
           <option value="laddu">🍬 Laddu Counters</option>
           <option value="phone_deposit">📵 Phone Deposit</option>
           <option value="restroom">🚻 Restrooms</option>
@@ -31,39 +33,39 @@
           <option value="lost_found">🔍 Lost & Found</option>
           <option value="cloak_room">🧳 Cloak Room</option>
         </select>
-        <button id="nearestBtn" class="secondary">📍 Show Nearest</button>
-        <button id="recenterBtn" class="secondary">🎯 Re-center Map</button>
+        <button id="nearestBtn" class="quick-action-btn secondary">📍 Show Nearest</button>
+        <button id="recenterBtn" class="quick-action-btn secondary">🎯 Re-center Map</button>
       </div>
-    </section>
+    </div>
 
     <!-- Map Container -->
-    <section class="card map-card" style="grid-column: 1 / -1; grid-row: span 2;">
-      <div id="map" style="height: 500px; width: 100%; border-radius: 8px;"></div>
-    </section>
+    <div class="dashboard-card map-card" style="grid-column: 1 / -1; grid-row: span 2;">
+      <div id="map" style="height: 500px; width: 100%; border-radius: var(--radius-lg);"></div>
+    </div>
 
     <!-- Location Info -->
-    <section class="card location-info-card">
+    <div class="dashboard-card location-info-card">
       <h3>📍 Your Location</h3>
-      <button id="getCurrentLocation" class="primary">📍 Get My Location</button>
+      <button id="getCurrentLocation" class="quick-action-btn">📍 Get My Location</button>
       <p id="locationStatus" class="status"></p>
       <div id="currentLocation" class="location-display"></div>
-    </section>
+    </div>
 
     <!-- Facility List -->
-    <section class="card facility-list-card">
+    <div class="dashboard-card facility-list-card">
       <h3>📋 Facilities</h3>
       <div id="facilityList" class="facility-list">
         <p class="hint">Use search or filter to find facilities</p>
       </div>
-    </section>
+    </div>
 
     <!-- Selected Facility Details -->
-    <section class="card facility-details-card" style="grid-column: 1/-1;">
-      <h3>� Selected Facility</h3>
+    <div class="dashboard-card facility-details-card" style="grid-column: 1/-1;">
+      <h3>📍 Selected Facility</h3>
       <div id="facilityDetails">
         <p class="hint">Click on a marker or facility to see details</p>
       </div>
-    </section>
+    </div>
   </div>
 </section>
 
