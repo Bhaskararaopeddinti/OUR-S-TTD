@@ -1,78 +1,77 @@
-<!-- navigation.html – Smart Navigation with Leaflet.js and OpenStreetMap -->
+<!-- navigation.html – Smart Navigation with Google Maps style experience -->
 <section class="navigation-page">
   <div class="dashboard-header">
     <h1>🗺️ Live Navigation</h1>
-    <p class="dashboard-subtitle">Turn your location into guided walking navigation for Tirumala.</p>
+    <p class="dashboard-subtitle">A guided walking route experience across Tirumala with ETA, directions, and live tracking.</p>
   </div>
 
   <div class="navigation-grid">
     <aside class="navigation-sidebar">
-      <div class="dashboard-card search-card">
-        <div class="search-bar">
-          <input type="text" id="searchInput" placeholder="Search facilities, queue, food, medical..." />
-          <button id="searchBtn" class="quick-action-btn">🔍 Search</button>
-        </div>
-        <div class="filter-bar">
-          <select id="categoryFilter">
-            <option value="">All Categories</option>
-            <option value="temple">🛕 Temple</option>
-            <option value="queue">⏳ Queue Complex</option>
-            <option value="food">🍚 Food & Annaprasadam</option>
-            <option value="laddu">🍬 Laddu Counters</option>
-            <option value="phone_deposit">📵 Phone Deposit</option>
-            <option value="restroom">🚻 Restrooms</option>
-            <option value="water">💧 Drinking Water</option>
-            <option value="medical">🏥 Medical Centre</option>
-            <option value="transport">🚌 Transport</option>
-            <option value="parking">🅿️ Parking</option>
-            <option value="accommodation">🏨 Accommodation</option>
-            <option value="footpath">🚶 Footpaths</option>
-            <option value="tonsure">✂️ Tonsure</option>
-            <option value="police">👮 Police</option>
-            <option value="information">ℹ️ Information</option>
-            <option value="lost_found">🔍 Lost & Found</option>
-            <option value="cloak_room">🧳 Cloak Room</option>
-          </select>
-        </div>
-        <div class="sidebar-actions">
-          <button id="getCurrentLocation" class="quick-action-btn primary">📍 Locate Me</button>
-          <button id="nearestBtn" class="quick-action-btn secondary">🧭 Nearest Facilities</button>
+      <div class="dashboard-card nav-panel">
+        <div class="route-input-row">
+          <div class="route-field">
+            <div class="route-field-label">From</div>
+            <button id="getCurrentLocation" class="location-button">📍 Use My Location</button>
+            <div id="currentLocation" class="location-display">
+              <p class="hint">Tap to discover the nearest landmark.</p>
+            </div>
+          </div>
+
+          <div class="route-field">
+            <div class="route-field-label">To</div>
+            <div class="destination-input-wrapper">
+              <input type="text" id="destinationInput" placeholder="Search temple, food, medical, parking..." autocomplete="off" />
+              <button id="getDirectionsBtn" class="quick-action-btn primary">Get Directions</button>
+              <div id="destinationSuggestions" class="suggestions-list hidden"></div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="dashboard-card location-card">
-        <h3>Current Location</h3>
-        <div id="currentLocation" class="location-display">
-          <p class="hint">Tap Locate Me to show a nearby address or landmark.</p>
-        </div>
-      </div>
-
-      <div class="dashboard-card facility-list-card">
+      <div class="dashboard-card nearby-panel">
         <div class="facility-list-header">
           <h3>Nearby Facilities</h3>
           <span id="facilityCount" class="muted-text">0 results</span>
         </div>
+        <div class="nearby-category-grid" id="nearbyCategoryGrid"></div>
         <div id="facilityList" class="facility-list">
-          <p class="hint">Search or filter to instantly update the map and facility cards.</p>
+          <p class="hint">Search a destination or choose a category to begin.</p>
+        </div>
+        <div class="sidebar-actions">
+          <button id="nearestBtn" class="quick-action-btn secondary">Show Nearest</button>
         </div>
       </div>
 
       <div class="dashboard-card route-info-card">
-        <h3>Route Summary</h3>
-        <div id="routeSummary" class="route-summary">
-          <p class="hint">Select a facility and tap Navigate to see distance, ETA, and turn-by-turn directions.</p>
+        <div class="route-summary-card">
+          <div class="route-summary-header">
+            <h3>Route Summary</h3>
+            <button id="startNavigationBtn" class="quick-action-btn primary hidden">🧭 Start Navigation</button>
+          </div>
+          <div id="routeSummary" class="route-summary">
+            <p class="hint">Select a destination and tap Get Directions to see distance, ETA, and crowd level.</p>
+          </div>
         </div>
       </div>
     </aside>
 
     <main class="navigation-main">
       <div class="dashboard-card map-card">
+        <div class="map-toolbar">
+          <button id="recenterBtn" class="map-control">⟲ Re-center</button>
+          <button id="zoomInBtn" class="map-control">＋</button>
+          <button id="zoomOutBtn" class="map-control">－</button>
+          <button id="fullscreenBtn" class="map-control">⛶ Fullscreen</button>
+        </div>
         <div id="map" class="map-canvas"></div>
       </div>
       <div class="dashboard-card directions-card">
-        <h3>Directions</h3>
+        <div class="direction-header">
+          <h3>Turn-by-Turn Directions</h3>
+          <span id="navigationStatus" class="muted-text">Waiting for route...</span>
+        </div>
         <div id="directionSteps" class="direction-list">
-          <p class="hint">Route steps appear here after you start navigation.</p>
+          <p class="hint">Directions will appear here once you start navigation.</p>
         </div>
       </div>
     </main>

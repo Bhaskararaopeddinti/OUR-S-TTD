@@ -8,16 +8,18 @@
 
 /* ── CSS Custom Properties ── */
 :root {
-  --primary: hsl(163, 72%, 29%);
-  --primary-light: hsl(163, 76%, 47%);
-  --primary-dark: hsl(163, 72%, 22%);
-  --secondary: hsl(162, 76%, 94%);
-  --accent: hsl(154, 76%, 43%);
+  --primary: #1d5f3d;
+  --primary-light: #4da474;
+  --primary-dark: #133c2d;
+  --secondary: #f8f1de;
+  --accent: #d29d22;
+  --saffron: #f3a823;
+  --gold: #f7c95c;
   --white: #ffffff;
-  --off-white: #f6fbf8;
-  --light-gray: #e8f3ed;
-  --medium-gray: #cfe4d7;
-  --dark-gray: #1f3f2f;
+  --off-white: #fbf5ea;
+  --light-gray: #eef2ea;
+  --medium-gray: #c8d3bf;
+  --dark-gray: #24372d;
   --dark-bg: #0f1f16;
   --dark-surface: #172c22;
   --dark-card: #1e3a2c;
@@ -642,15 +644,16 @@ html.dark .sos-options button {
 
 /* ── Footer ── */
 .site-footer {
-  background: var(--primary-dark);
-  color: rgba(255,255,255,0.8);
-  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--primary-dark), #1e5c3d 65%);
+  color: rgba(255,255,255,0.88);
+  padding: 1.75rem 1rem;
   text-align: center;
   font-size: 0.85rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
 }
-.footer-links { margin-top: 0.5rem; }
-.footer-links a { color: rgba(255,255,255,0.7); margin: 0 0.5rem; }
-.footer-links a:hover { color: var(--primary-light); }
+.footer-links { margin-top: 0.5rem; display: flex; justify-content: center; flex-wrap: wrap; gap: 0.75rem; }
+.footer-links a { color: rgba(255,255,255,0.8); margin: 0 0.5rem; }
+.footer-links a:hover { color: var(--gold); }
 
 /* ── Scroll bar styling ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

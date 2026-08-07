@@ -191,6 +191,28 @@ def get_locations_by_category(
     }
 
 
+@router.get("/{category}")
+def get_locations_by_category_alias(
+    category: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db)
+):
+    """Alias to get locations by category using /api/locations/{category}."""
+    if category.isdigit():
+        raise HTTPException(status_code=404, detail="Location not found")
+
+    locations = db.query(NavigationLocation).filter(
+        NavigationLocation.category == category
+    ).order_by(NavigationLocation.name).offset(skip).limit(limit).all()
+    
+    return {
+        "category": category,
+        "locations": [make_location_payload(loc) for loc in locations],
+        "count": len(locations)
+    }
+
+
 @router.get("/nearest")
 def get_nearest_location(
     latitude: float = Query(..., ge=-90, le=90),

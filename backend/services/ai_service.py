@@ -131,35 +131,30 @@ def _keyword_reply(message: str) -> str:
     query = message.lower()
 
     # Location queries - direct to Smart Navigation
-    if any(x in query for x in ("where is", "location", "find", "nearest", "how to get to", "direction", "navigate")):
-        if any(x in query for x in ("restroom", "toilet", "washroom", "bathroom")):
-            return ("For the nearest restrooms, please use the Smart Navigation feature in the app. "
-                    "Restrooms are available at PAC I-V, VQC I & II, and Kalyanakatta. "
-                    "The navigation map will show you the closest one with walking directions.")
-        if any(x in query for x in ("food", "annaprasadam", "meal", "eat")):
-            return ("Use the Smart Navigation feature to find the nearest Annaprasadam center. "
-                    "MTVAC, VQC compartments, PAC II, and Rambagicha Bus Stand serve free meals. "
-                    "The map will show distance and walking time.")
+    if any(x in query for x in ("take me to", "navigate to", "go to", "where is", "location", "find", "nearest", "how to get to", "direction", "navigate")):
         if any(x in query for x in ("medical", "hospital", "doctor")):
-            return ("For medical assistance, use Smart Navigation to find the nearest medical center. "
-                    "Aswini Hospital near Seshadri Nagar provides 24/7 care. "
-                    "Emergency aid stations are on Alipiri and Srivari Mettu footpaths. "
-                    "TTD Helpline: 155257.")
+            return ("Nearest medical center is Aswini Hospital, about 280 metres away. "
+                    "Open the Smart Navigation feature and tap Navigate to start walking directions.")
+        if any(x in query for x in ("food", "annaprasadam", "meal", "eat")):
+            return ("Nearest Anna Prasadam complex is available. "
+                    "Open Smart Navigation to see the closest meal center, distance, walking time, and ETA.")
+        if any(x in query for x in ("restroom", "toilet", "washroom", "bathroom")):
+            return ("The nearest restrooms are at PAC I-V, VQC I & II and Kalyanakatta. "
+                    "Use Smart Navigation to view the best walking route and estimated time.")
         if any(x in query for x in ("laddu", "prasad", "prasadam")):
-            return ("Use Smart Navigation to find the nearest laddu counter. "
-                    "Main Laddu Complex is on West/East Mada Street. "
-                    "The map will guide you there with crowd-aware routing.")
+            return ("The nearest laddu counter is the Main Laddu Complex on West/East Mada Street. "
+                    "Use Smart Navigation to get walking directions and crowd details.")
         if any(x in query for x in ("phone", "mobile", "deposit")):
             return ("Mobile phones are prohibited inside the temple. "
-                    "Use Smart Navigation to find the nearest deposit centre at VQC I & II, PAC-3, or PAC-5. "
-                    "Always retain your receipt token for collection.")
+                    "Use Smart Navigation to find the nearest deposit centre at VQC I & II, PAC-3, or PAC-5.")
         if any(x in query for x in ("parking", "car", "vehicle")):
-            return ("Use Smart Navigation to find parking areas. "
-                    "Parking is available at Alipiri and Tirumala. "
-                    "The map will show you the nearest parking location.")
-        return ("For location queries, please use the Smart Navigation feature in the app. "
-                "It provides an interactive map with all facility locations, real-time distance, "
-                "walking time estimates, and crowd-aware routing to any facility.")
+            return ("Parking is available at Alipiri and Tirumala. "
+                    "Open Smart Navigation to find the nearest available parking and route there.")
+        if any(x in query for x in ("temple", "darshan", "sv temple", "sri venkateswara")):
+            return ("Destination found: Sri Venkateswara Temple. "
+                    "Use Smart Navigation to view the walking route, distance, and ETA.")
+        return ("For location and navigation questions, please use the Smart Navigation feature in the app. "
+                "It provides an interactive map, live walking routes, ETA, and turn-by-turn directions.")
 
     # Queue queries - mention AI Queue Intelligence
     if any(x in query for x in ("queue", "wait", "darshan", "line")):
