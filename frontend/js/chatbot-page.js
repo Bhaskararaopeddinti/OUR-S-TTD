@@ -25,6 +25,14 @@ function initChatbot() {
   });
 }
 
+const LANGUAGE_LABELS = {
+  en: 'English',
+  te: 'Telugu',
+  hi: 'Hindi',
+  ta: 'Tamil',
+  kn: 'Kannada',
+};
+
 // Send message
 function sendMessage() {
   const input = document.getElementById('chatInput');
@@ -89,13 +97,16 @@ async function getAIResponse(message) {
   chatMessages.scrollTop = chatMessages.scrollHeight;
   
   try {
+    const languageCode = document.getElementById('chatLanguage')?.value || 'en';
+    const language = LANGUAGE_LABELS[languageCode] || 'English';
+
     // Call AI API
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ message, history: chatHistory })
+      body: JSON.stringify({ message, language })
     });
     
     const data = await response.json();
@@ -104,7 +115,7 @@ async function getAIResponse(message) {
     typingDiv.remove();
     
     // Add AI response
-    addMessage(data.response || data.message || 'I apologize, but I could not process your request.', 'bot');
+    addMessage(data.reply || data.message || 'I apologize, but I could not process your request.', 'bot');
     
   } catch (error) {
     // Remove typing indicator

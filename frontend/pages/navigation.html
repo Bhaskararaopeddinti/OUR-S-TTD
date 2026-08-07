@@ -2,70 +2,80 @@
 <section class="navigation-page">
   <div class="dashboard-header">
     <h1>🗺️ Live Navigation</h1>
-    <p class="dashboard-subtitle">Interactive map with all Tirumala facilities, search, and crowd-aware routing</p>
+    <p class="dashboard-subtitle">Turn your location into guided walking navigation for Tirumala.</p>
   </div>
 
   <div class="navigation-grid">
-    <!-- Search Bar -->
-    <div class="dashboard-card search-card" style="grid-column: 1/-1;">
-      <div class="search-bar">
-        <input type="text" id="searchInput" placeholder="Search facilities (e.g., restroom, food, medical)..." />
-        <button id="searchBtn" class="quick-action-btn">🔍 Search</button>
+    <aside class="navigation-sidebar">
+      <div class="dashboard-card search-card">
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="Search facilities, queue, food, medical..." />
+          <button id="searchBtn" class="quick-action-btn">🔍 Search</button>
+        </div>
+        <div class="filter-bar">
+          <select id="categoryFilter">
+            <option value="">All Categories</option>
+            <option value="temple">🛕 Temple</option>
+            <option value="queue">⏳ Queue Complex</option>
+            <option value="food">🍚 Food & Annaprasadam</option>
+            <option value="laddu">🍬 Laddu Counters</option>
+            <option value="phone_deposit">📵 Phone Deposit</option>
+            <option value="restroom">🚻 Restrooms</option>
+            <option value="water">💧 Drinking Water</option>
+            <option value="medical">🏥 Medical Centre</option>
+            <option value="transport">🚌 Transport</option>
+            <option value="parking">🅿️ Parking</option>
+            <option value="accommodation">🏨 Accommodation</option>
+            <option value="footpath">🚶 Footpaths</option>
+            <option value="tonsure">✂️ Tonsure</option>
+            <option value="police">👮 Police</option>
+            <option value="information">ℹ️ Information</option>
+            <option value="lost_found">🔍 Lost & Found</option>
+            <option value="cloak_room">🧳 Cloak Room</option>
+          </select>
+        </div>
+        <div class="sidebar-actions">
+          <button id="getCurrentLocation" class="quick-action-btn primary">📍 Locate Me</button>
+          <button id="nearestBtn" class="quick-action-btn secondary">🧭 Nearest Facilities</button>
+        </div>
       </div>
-      <div class="filter-bar">
-        <select id="categoryFilter">
-          <option value="">All Categories</option>
-          <option value="temple">🛕 Temple</option>
-          <option value="queue">⏳ Queue Complex</option>
-          <option value="food">🍚 Food & Annaprasadam</option>
-          <option value="laddu">🍬 Laddu Counters</option>
-          <option value="phone_deposit">📵 Phone Deposit</option>
-          <option value="restroom">🚻 Restrooms</option>
-          <option value="water">💧 Drinking Water</option>
-          <option value="medical">🏥 Medical Centre</option>
-          <option value="transport">🚌 Transport</option>
-          <option value="parking">🅿️ Parking</option>
-          <option value="accommodation">🏨 Accommodation</option>
-          <option value="footpath">🚶 Footpaths</option>
-          <option value="tonsure">✂️ Tonsure</option>
-          <option value="police">👮 Police</option>
-          <option value="information">ℹ️ Information</option>
-          <option value="lost_found">🔍 Lost & Found</option>
-          <option value="cloak_room">🧳 Cloak Room</option>
-        </select>
-        <button id="nearestBtn" class="quick-action-btn secondary">📍 Show Nearest</button>
-        <button id="recenterBtn" class="quick-action-btn secondary">🎯 Re-center Map</button>
+
+      <div class="dashboard-card location-card">
+        <h3>Current Location</h3>
+        <div id="currentLocation" class="location-display">
+          <p class="hint">Tap Locate Me to show a nearby address or landmark.</p>
+        </div>
       </div>
-    </div>
 
-    <!-- Map Container -->
-    <div class="dashboard-card map-card" style="grid-column: 1 / -1; grid-row: span 2;">
-      <div id="map" style="height: 500px; width: 100%; border-radius: var(--radius-lg);"></div>
-    </div>
-
-    <!-- Location Info -->
-    <div class="dashboard-card location-info-card">
-      <h3>📍 Your Location</h3>
-      <button id="getCurrentLocation" class="quick-action-btn">📍 Get My Location</button>
-      <p id="locationStatus" class="status"></p>
-      <div id="currentLocation" class="location-display"></div>
-    </div>
-
-    <!-- Facility List -->
-    <div class="dashboard-card facility-list-card">
-      <h3>📋 Facilities</h3>
-      <div id="facilityList" class="facility-list">
-        <p class="hint">Use search or filter to find facilities</p>
+      <div class="dashboard-card facility-list-card">
+        <div class="facility-list-header">
+          <h3>Nearby Facilities</h3>
+          <span id="facilityCount" class="muted-text">0 results</span>
+        </div>
+        <div id="facilityList" class="facility-list">
+          <p class="hint">Search or filter to instantly update the map and facility cards.</p>
+        </div>
       </div>
-    </div>
 
-    <!-- Selected Facility Details -->
-    <div class="dashboard-card facility-details-card" style="grid-column: 1/-1;">
-      <h3>📍 Selected Facility</h3>
-      <div id="facilityDetails">
-        <p class="hint">Click on a marker or facility to see details</p>
+      <div class="dashboard-card route-info-card">
+        <h3>Route Summary</h3>
+        <div id="routeSummary" class="route-summary">
+          <p class="hint">Select a facility and tap Navigate to see distance, ETA, and turn-by-turn directions.</p>
+        </div>
       </div>
-    </div>
+    </aside>
+
+    <main class="navigation-main">
+      <div class="dashboard-card map-card">
+        <div id="map" class="map-canvas"></div>
+      </div>
+      <div class="dashboard-card directions-card">
+        <h3>Directions</h3>
+        <div id="directionSteps" class="direction-list">
+          <p class="hint">Route steps appear here after you start navigation.</p>
+        </div>
+      </div>
+    </main>
   </div>
 </section>
 

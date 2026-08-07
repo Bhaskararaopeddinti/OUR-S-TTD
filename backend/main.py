@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -25,7 +26,7 @@ from backend.models import (
 )
 from backend.auth import hash_password
 from backend.routers import auth_routes, core
-from backend.routers.navigation import router as navigation_router
+from backend.routers.navigation import router as locations_router, navigation_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -58,6 +59,7 @@ app.add_middleware(
 # API ROUTES FIRST - routers have their own prefixes defined
 app.include_router(auth_routes.router)
 app.include_router(core.router)
+app.include_router(locations_router)
 app.include_router(navigation_router)
 
 # ── WebSocket Hub ──────────────────────────────────────────────────────────

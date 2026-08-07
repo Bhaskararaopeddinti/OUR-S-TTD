@@ -64,14 +64,13 @@ async function sendMessage() {
 
   chatHistory.push({ role: 'user', content: text });
 
-  API.post('chat', { 
-    message: text + locationContext, 
+  API.post('chat', {
+    message: text,
     language: lang,
-    history: chatHistory.slice(-10) // Last 10 messages for context
   })
     .then(data => {
       thinking.remove();
-      const reply = data.reply || 'I could not generate a reply.';
+      const reply = data.reply || data.message || 'I could not generate a reply.';
       appendMsg(reply, 'bot');
       speakReply(reply, lang);
       chatHistory.push({ role: 'assistant', content: reply });

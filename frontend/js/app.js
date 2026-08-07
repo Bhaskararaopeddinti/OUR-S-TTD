@@ -56,7 +56,7 @@ document.getElementById('themeToggle').addEventListener('click', () => {
 });
 // Init theme
 const savedTheme = localStorage.getItem('theme');
-setTheme(savedTheme ? savedTheme === 'dark' : true);
+setTheme(savedTheme ? savedTheme === 'dark' : false);
 
 // ── Nav click handler ─────────────────────────
 const navContainer = document.querySelector('.sidebar-nav');

@@ -102,13 +102,22 @@ def pilgrim_reply(message: str, language: str = "English") -> str:
 def _gemini_reply(client, message: str, language: str) -> str:
     """Call Gemini API for an intelligent response."""
     try:
-        lang_instruction = f"\n\nRespond in {language}." if language != "English" else ""
+        lang_instruction = f"\n\nRespond in {language}." if language and language != "English" else ""
         prompt = SYSTEM_PROMPT + lang_instruction + f"\n\nPilgrim's question: {message}"
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt
-        )
-        text = response.text.strip() if response.text else ""
+
+        if hasattr(client, 'models') and hasattr(client.models, 'generate_content'):
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt
+            )
+            text = getattr(response, 'text', None) or getattr(response, 'output_text', None) or ""
+        elif hasattr(client, 'text_generation') and hasattr(client.text_generation, 'generate'):
+            response = client.text_generation.generate(model="gemini-2.0-flash", input=prompt)
+            text = getattr(response, 'text', None) or getattr(response, 'output_text', None) or ""
+        else:
+            raise AttributeError("Unsupported Gemini client interface")
+
+        text = text.strip() if isinstance(text, str) else ""
         if text:
             return text
         return _keyword_reply(message)

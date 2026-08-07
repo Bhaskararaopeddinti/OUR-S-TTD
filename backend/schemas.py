@@ -37,6 +37,7 @@ class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     language: str = "English"
     conversation_id: Optional[str] = None
+    history: Optional[list[dict]] = None
 
 
 # ──── Emergency ────
