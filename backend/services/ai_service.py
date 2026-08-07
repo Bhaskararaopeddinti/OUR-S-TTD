@@ -23,9 +23,9 @@ def _get_model():
         logger.info("GEMINI_API_KEY not set — using keyword fallback for chat.")
         return None
     try:
-        from google import genai
-        client = genai.Client(api_key=api_key)
-        _model = client
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        _model = genai.GenerativeModel('gemini-2.0-flash')
         logger.info("Gemini AI client initialised successfully.")
         return _model
     except Exception as e:
@@ -105,17 +105,8 @@ def _gemini_reply(client, message: str, language: str) -> str:
         lang_instruction = f"\n\nRespond in {language}." if language and language != "English" else ""
         prompt = SYSTEM_PROMPT + lang_instruction + f"\n\nPilgrim's question: {message}"
 
-        if hasattr(client, 'models') and hasattr(client.models, 'generate_content'):
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=prompt
-            )
-            text = getattr(response, 'text', None) or getattr(response, 'output_text', None) or ""
-        elif hasattr(client, 'text_generation') and hasattr(client.text_generation, 'generate'):
-            response = client.text_generation.generate(model="gemini-2.0-flash", input=prompt)
-            text = getattr(response, 'text', None) or getattr(response, 'output_text', None) or ""
-        else:
-            raise AttributeError("Unsupported Gemini client interface")
+        response = client.generate_content(prompt)
+        text = response.text if hasattr(response, 'text') else ""
 
         text = text.strip() if isinstance(text, str) else ""
         if text:

@@ -35,6 +35,10 @@ async function loadLocations() {
   
   try {
     const response = await fetch('/api/locations');
+    if (!response.ok) {
+      console.warn('Locations API not available, using fallback');
+      return [];
+    }
     const data = await response.json();
     locationsCache = data.locations || [];
     return locationsCache;
@@ -54,31 +58,36 @@ async function sendMessage() {
 
   const lang = document.getElementById('language')?.value || 'English';
   
-  // Load locations for context
-  const locations = await loadLocations();
-  
-  // Add location context to message
-  const locationContext = locations.length > 0 
-    ? `\n\nAvailable locations: ${locations.map(l => l.name + ' (' + l.category + ')').join(', ')}`
-    : '';
-
   chatHistory.push({ role: 'user', content: text });
 
-  API.post('chat', {
-    message: text,
-    language: lang,
-  })
-    .then(data => {
-      thinking.remove();
-      const reply = data.reply || data.message || 'I could not generate a reply.';
-      appendMsg(reply, 'bot');
-      speakReply(reply, lang);
-      chatHistory.push({ role: 'assistant', content: reply });
-    })
-    .catch(err => {
-      thinking.remove();
-      appendMsg('I am reconnecting. Please try again in a moment.', 'bot');
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: text,
+        language: lang,
+      })
     });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    thinking.remove();
+    
+    const reply = data.reply || data.message || 'I could not generate a reply.';
+    appendMsg(reply, 'bot');
+    speakReply(reply, lang);
+    chatHistory.push({ role: 'assistant', content: reply });
+  } catch (err) {
+    thinking.remove();
+    console.error('Chat error:', err);
+    appendMsg('Sorry, I encountered an error. Please try again.', 'bot');
+  }
 }
 
 chatSend.addEventListener('click', sendMessage);
