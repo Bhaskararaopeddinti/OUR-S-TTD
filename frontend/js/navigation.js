@@ -8,6 +8,7 @@ let map = null;
 let markers = [];
 let userLocation = null;
 let allLocations = [];
+let routeControl = null;
 
 // Category icons for markers
 const categoryIcons = {
@@ -94,9 +95,10 @@ async function loadLocations() {
 function displayLocations(locations) {
   if (!map) return;
   
-  // Clear existing markers
+  // Clear existing markers and route
   markers.forEach(marker => map.removeLayer(marker));
   markers = [];
+  clearRoute();
   
   // Add new markers
   locations.forEach(loc => {
@@ -111,17 +113,99 @@ function displayLocations(locations) {
       })
     }).addTo(map);
     
-    // Add popup
     marker.bindPopup(`
       <div class="marker-popup">
         <strong>${loc.name}</strong><br>
         ${loc.description || ''}<br>
-        <button onclick="navigate('navigation')" style="margin-top: 5px;">Navigate</button>
+        <button onclick="routeToLocation(${loc.latitude}, ${loc.longitude}, '${loc.name.replace(/'/g, "\\'")}')" style="margin-top: 5px;">Route Here</button>
       </div>
     `);
     
+    marker.on('click', () => showLocationDetails(loc));
     markers.push(marker);
   });
+  
+  populateFacilityList(locations);
+}
+
+function populateFacilityList(locations) {
+  const list = document.getElementById('facilityList');
+  const details = document.getElementById('facilityDetails');
+  if (!list) return;
+
+  if (!locations.length) {
+    list.innerHTML = '<p class="hint">No facilities found for that search.</p>';
+    if (details) details.innerHTML = '<p class="hint">Select a facility marker to see details.</p>';
+    return;
+  }
+
+  list.innerHTML = locations.map(loc => `
+    <div class="facility-item" tabindex="0" role="button" onclick="focusOnLocation(${loc.latitude}, ${loc.longitude}, '${loc.name.replace(/'/g, "\\'")}')">
+      <strong>${loc.name}</strong>
+      <p>${loc.category.replace('_', ' ')}</p>
+      <button class="quick-action-btn small" onclick="event.stopPropagation(); routeToLocation(${loc.latitude}, ${loc.longitude}, '${loc.name.replace(/'/g, "\\'")}')">Route</button>
+    </div>
+  `).join('');
+
+  if (details && locations.length) {
+    showLocationDetails(locations[0]);
+  }
+}
+
+function showLocationDetails(loc) {
+  const details = document.getElementById('facilityDetails');
+  if (!details) return;
+  details.innerHTML = `
+    <h4>${loc.name}</h4>
+    <p>${loc.description || 'No description available.'}</p>
+    <p><strong>Category:</strong> ${loc.category}</p>
+    <p><strong>Address:</strong> ${loc.address || 'Not available'}</p>
+    <button class="quick-action-btn" onclick="routeToLocation(${loc.latitude}, ${loc.longitude}, '${loc.name.replace(/'/g, "\\'")}')">Show travel route</button>
+  `;
+}
+
+function focusOnLocation(lat, lng, name) {
+  if (!map) return;
+  map.setView([lat, lng], 16);
+  showToast(`Focused on ${name}`, 'info');
+}
+
+function clearRoute() {
+  if (routeControl) {
+    map.removeControl(routeControl);
+    routeControl = null;
+  }
+}
+
+function routeToLocation(lat, lng, name) {
+  if (!userLocation) {
+    showToast('Please share your current location first.', 'info');
+    return;
+  }
+
+  if (typeof L === 'undefined' || typeof L.Routing === 'undefined') {
+    showToast('Routing plugin not loaded.', 'error');
+    return;
+  }
+
+  clearRoute();
+  routeControl = L.Routing.control({
+    waypoints: [
+      L.latLng(userLocation.latitude, userLocation.longitude),
+      L.latLng(lat, lng)
+    ],
+    routeWhileDragging: false,
+    show: false,
+    addWaypoints: false,
+    draggableWaypoints: false,
+    lineOptions: {
+      styles: [{ color: '#ff8c00', opacity: 0.9, weight: 6 }]
+    },
+    router: L.Routing.osrmv1({
+      serviceUrl: 'https://router.project-osrm.org/route/v1/'
+    })
+  }).addTo(map);
+  showToast(`Routing to ${name}`, 'success');
 }
 
 // Re-center map
