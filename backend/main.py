@@ -10,11 +10,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-
 # ── Load .env ──────────────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
@@ -32,9 +27,6 @@ from backend.models import TransportRoute
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ── Rate Limiter ───────────────────────────────────────────────────────────
-limiter = Limiter(key_func=get_remote_address)
-
 # ── FastAPI App ────────────────────────────────────────────────────────────
 app = FastAPI(
     title="OURS TTD API",
@@ -44,8 +36,8 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
 )
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
 
 @app.get("/api/docs", include_in_schema=False)
 async def redirect_api_docs():
