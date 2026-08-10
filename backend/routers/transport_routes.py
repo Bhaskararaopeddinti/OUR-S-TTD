@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
+import math
 
 from ..database import get_db
 from ..models import TransportRoute, TransportType, NavigationLocation, User
@@ -13,6 +14,182 @@ from ..schemas import TransportRouteIn, TransportRouteUpdate
 from ..auth import current_claims
 
 router = APIRouter(prefix="/api/transport", tags=["Travel & Transport"])
+
+# TTD area bounding box (approximately covers Tirumala, Tirupati, and nearby pilgrimage areas)
+TTD_AREA_BOUNDS = {
+    "min_lat": 13.3,
+    "max_lat": 13.75,
+    "min_lng": 79.25,
+    "max_lng": 80.0
+}
+
+# Major transport hubs in TTD area for fallback routing
+MAJOR_TRANSPORT_HUBS = [
+    "Tirumala",
+    "Tirupati",
+    "Tirupati Central Bus Stand",
+    "Tirupati Railway Station",
+    "Alipiri Checkpost",
+    "Tirumala Bus Stand"
+]
+
+
+def is_location_in_ttd_area(location_name: str, db: Session) -> bool:
+    """Check if a location is within the TTD/Tirumala/Tirupati pilgrimage area."""
+    # First try to find the location in the database
+    location = db.query(NavigationLocation).filter(
+        NavigationLocation.name.ilike(f"%{location_name}%")
+    ).first()
+    
+    if location:
+        # Check if coordinates are within TTD area bounds
+        if (TTD_AREA_BOUNDS["min_lat"] <= location.latitude <= TTD_AREA_BOUNDS["max_lat"] and
+            TTD_AREA_BOUNDS["min_lng"] <= location.longitude <= TTD_AREA_BOUNDS["max_lng"]):
+            return True
+    
+    # Fallback: check if location name contains TTD-area keywords
+    ttd_keywords = [
+        "tirumala", "tirupati", "alipiri", "srivari mettu", "kapila", "tiruchanoor",
+        "srinivasa mangapuram", "thondavada", "govindaraja", "vakulamatha",
+        "karvetinagaram", "nagalapuram", "narayanavanam", "appalayagunta",
+        "nagari", "bugga", "surutupalli", "padmavathi", "kalyana venkateswara"
+    ]
+    
+    location_lower = location_name.lower()
+    for keyword in ttd_keywords:
+        if keyword in location_lower:
+            return True
+    
+    return False
+
+
+def calculate_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Calculate Haversine distance between two coordinates in kilometers."""
+    if not all([lat1, lng1, lat2, lng2]):
+        return 0.0
+    
+    R = 6371  # Earth radius in km
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = (math.sin(dlat/2) * math.sin(dlat/2) +
+         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
+         math.sin(dlng/2) * math.sin(dlng/2))
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
+
+
+def estimate_duration(distance_km: float) -> str:
+    """Estimate travel duration based on distance."""
+    if distance_km == 0:
+        return "N/A"
+    elif distance_km < 5:
+        return "10 - 20 mins"
+    elif distance_km < 15:
+        return "20 - 40 mins"
+    elif distance_km < 30:
+        return "40 - 60 mins"
+    else:
+        return "60 - 90 mins"
+
+
+def find_nearest_transport_hub(location_name: str, db: Session) -> Optional[str]:
+    """Find the nearest major transport hub to a given location."""
+    location = db.query(NavigationLocation).filter(
+        NavigationLocation.name.ilike(f"%{location_name}%")
+    ).first()
+    
+    if not location:
+        return None
+    
+    nearest_hub = None
+    min_distance = float('inf')
+    
+    for hub_name in MAJOR_TRANSPORT_HUBS:
+        hub = db.query(NavigationLocation).filter(
+            NavigationLocation.name.ilike(f"%{hub_name}%")
+        ).first()
+        
+        if hub:
+            distance = calculate_distance(
+                location.latitude, location.longitude,
+                hub.latitude, hub.longitude
+            )
+            if distance < min_distance:
+                min_distance = distance
+                nearest_hub = hub.name
+    
+    return nearest_hub
+
+
+def generate_fallback_transport(from_location: str, to_location: str, db: Session) -> dict:
+    """Generate a fallback transport recommendation when no direct route exists."""
+    # Get location coordinates for distance calculation
+    from_loc = db.query(NavigationLocation).filter(
+        NavigationLocation.name.ilike(f"%{from_location}%")
+    ).first()
+    
+    to_loc = db.query(NavigationLocation).filter(
+        NavigationLocation.name.ilike(f"%{to_location}%")
+    ).first()
+    
+    # Calculate distance if coordinates available
+    distance_km = 0.0
+    if from_loc and to_loc:
+        distance_km = calculate_distance(
+            from_loc.latitude, from_loc.longitude,
+            to_loc.latitude, to_loc.longitude
+        )
+    
+    # Find nearest hub for route suggestion
+    nearest_hub = find_nearest_transport_hub(from_location, db)
+    
+    # Determine appropriate vehicle type based on distance
+    if distance_km > 0:
+        if distance_km < 3:
+            vehicle_type = "Walking / Auto"
+            operator = "Local Transport"
+        elif distance_km < 20:
+            vehicle_type = "Local / Government Bus"
+            operator = "APSRTC / TTD"
+        else:
+            vehicle_type = "Bus / Taxi"
+            operator = "APSRTC / Licensed Operators"
+    else:
+        vehicle_type = "Local / Government Bus"
+        operator = "APSRTC / TTD"
+    
+    # Generate route description
+    if nearest_hub and nearest_hub.lower() != to_location.lower():
+        route_description = f"Connect via {nearest_hub} to reach destination. Verify local transport availability."
+    else:
+        route_description = "Direct connection available. Verify current transport service at the location."
+    
+    return {
+        "id": 0,  # Fallback routes have ID 0
+        "transport_type_id": None,
+        "source_location": from_location,
+        "destination_location": to_location,
+        "vehicle_type": vehicle_type,
+        "operator": operator,
+        "route_name": "Recommended Transport Connection",
+        "route_description": route_description,
+        "estimated_duration": estimate_duration(distance_km),
+        "fare": "Verify locally",
+        "operating_hours": "Verify locally",
+        "frequency": "Verify locally",
+        "booking_required": False,
+        "data_status": "FALLBACK",
+        "status": "Available",
+        "live_status": "Reference recommendation – verify current service",
+        "source": "System Generated Recommendation",
+        "source_url": "https://ttdevasthanams.ap.gov.in",
+        "last_verified": datetime.utcnow().strftime("%d/%m/%Y"),
+        "is_fallback": True,
+        "coords": {
+            "source": {"lat": from_loc.latitude, "lng": from_loc.longitude} if from_loc else None,
+            "destination": {"lat": to_loc.latitude, "lng": to_loc.longitude} if to_loc else None
+        }
+    }
 
 
 @router.get("/types")
@@ -51,7 +228,24 @@ def search_routes(
     data_status: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-    """Search transport routes by origin, destination, or vehicle type."""
+    """Search transport routes by origin, destination, or vehicle type with fallback support."""
+    # Validate locations if provided
+    if from_location and not is_location_in_ttd_area(from_location, db):
+        return {
+            "status": "error",
+            "message": "This transport service currently covers Tirumala, Tirupati and nearby pilgrimage locations.",
+            "count": 0,
+            "routes": []
+        }
+    
+    if to_location and not is_location_in_ttd_area(to_location, db):
+        return {
+            "status": "error",
+            "message": "This transport service currently covers Tirumala, Tirupati and nearby pilgrimage locations.",
+            "count": 0,
+            "routes": []
+        }
+    
     query = db.query(TransportRoute)
 
     if from_location:
@@ -93,12 +287,19 @@ def search_routes(
             "source": r.source or "Official TTD / APSRTC",
             "source_url": r.source_url or "https://ttdevasthanams.ap.gov.in",
             "last_verified": r.last_verified.strftime("%d/%m/%Y") if r.last_verified else datetime.utcnow().strftime("%d/%m/%Y"),
+            "is_fallback": False,
             "coords": {
                 "source": {"lat": src_loc.latitude, "lng": src_loc.longitude} if src_loc else None,
                 "destination": {"lat": dst_loc.latitude, "lng": dst_loc.longitude} if dst_loc else None
             }
         }
         enriched_routes.append(r_dict)
+
+    # FALLBACK: If no routes found and both locations are valid TTD locations, generate fallback
+    if not enriched_routes and from_location and to_location:
+        if is_location_in_ttd_area(from_location, db) and is_location_in_ttd_area(to_location, db):
+            fallback_route = generate_fallback_transport(from_location, to_location, db)
+            enriched_routes.append(fallback_route)
 
     return {
         "status": "success",

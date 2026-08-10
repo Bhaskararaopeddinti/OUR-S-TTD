@@ -35,7 +35,9 @@ async function fetchAndRenderRoutes(fromLoc, toLoc, mode) {
 
     const data = await API.get(`transport/search?${params.toString()}`);
 
-    if (data && data.routes && data.routes.length > 0) {
+    if (data && data.status === 'error') {
+      renderLocationError(container, data.message);
+    } else if (data && data.routes && data.routes.length > 0) {
       renderRouteCards(data.routes, container, fromLoc, toLoc);
     } else {
       renderNoResults(container, fromLoc, toLoc);
@@ -48,6 +50,18 @@ async function fetchAndRenderRoutes(fromLoc, toLoc, mode) {
         <button class="btn-ghost" style="margin-top:1rem;" onclick="fetchAndRenderRoutes('','','')">🔄 Retry</button>
       </div>`;
   }
+}
+
+function renderLocationError(container, message) {
+  container.innerHTML = `
+    <div class="dashboard-card" style="text-align:center;padding:2.5rem 2rem;color:var(--muted);">
+      <div style="font-size:2.5rem;margin-bottom:1rem;">📍</div>
+      <h3 style="color:var(--text);margin-bottom:0.5rem;">Location Outside Service Area</h3>
+      <p style="margin-bottom:1rem;">${message}</p>
+      <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+        <button class="btn-ghost" onclick="fetchAndRenderRoutes('','','')">Show All Routes</button>
+      </div>
+    </div>`;
 }
 
 function renderNoResults(container, fromLoc, toLoc) {
@@ -82,6 +96,15 @@ function getVehicleIcon(vehicleType) {
     'TAXI':           '🚕',
     'AUTO':           '🛺',
     'PACKAGE_TOUR':   '🛕',
+    'LOCAL / GOVERNMENT BUS': '🚌',
+    'BUS / TAXI': '🚌',
+    'WALKING / AUTO': '🚶',
+    'APSRTC Bus': '🚌',
+    'TTD Free Bus': '🚌',
+    'Dharma Radham': '🚌',
+    'Package Tour': '🛕',
+    'Taxi / Cab': '🚕',
+    'Walking': '🚶',
   };
   return icons[vehicleType] || '🚌';
 }
@@ -94,6 +117,15 @@ function getVehicleLabel(vehicleType) {
     'TAXI':           'Taxi / Cab',
     'AUTO':           'Auto Rickshaw',
     'PACKAGE_TOUR':   'Package Tour',
+    'LOCAL / GOVERNMENT BUS': 'Local / Government Bus',
+    'BUS / TAXI': 'Bus / Taxi',
+    'WALKING / AUTO': 'Walking / Auto',
+    'APSRTC Bus': 'APSRTC Bus',
+    'TTD Free Bus': 'TTD Free Bus',
+    'Dharma Radham': 'Dharma Radham',
+    'Package Tour': 'Package Tour',
+    'Taxi / Cab': 'Taxi / Cab',
+    'Walking': 'Walking',
   };
   return labels[vehicleType] || vehicleType || 'Bus';
 }
@@ -101,6 +133,7 @@ function getVehicleLabel(vehicleType) {
 function renderRouteCards(routes, container, fromLoc, toLoc) {
   const isFreeRoute = r => r.fare && r.fare.toLowerCase().includes('free');
   const isDemoRoute = r => r.data_status === 'DEMO' || (r.source && r.source.toLowerCase().includes('demo'));
+  const isFallbackRoute = r => r.is_fallback === true;
 
   container.innerHTML = `
     <div style="font-size:0.82rem;color:var(--muted);padding:0.25rem 0 0.5rem;">
@@ -112,7 +145,8 @@ function renderRouteCards(routes, container, fromLoc, toLoc) {
       const label     = getVehicleLabel(r.vehicle_type);
       const isFree    = isFreeRoute(r);
       const isDemo    = isDemoRoute(r);
-      const accentColor = isFree ? '#10B981' : 'var(--gold)';
+      const isFallback = isFallbackRoute(r);
+      const accentColor = isFallback ? '#3B82F6' : (isFree ? '#10B981' : 'var(--gold)');
 
       return `
       <div class="dashboard-card route-card" style="border-left: 5px solid ${accentColor}; padding: 1.25rem;" id="route-card-${r.id}">
@@ -123,6 +157,10 @@ function renderRouteCards(routes, container, fromLoc, toLoc) {
             <span style="background:rgba(255,255,255,0.07);color:${accentColor};font-weight:700;font-size:0.8rem;padding:0.25rem 0.65rem;border-radius:20px;">
               ${icon} ${label}
             </span>
+            ${isFallback ? `
+            <span style="background:rgba(59,130,246,0.15);color:#3B82F6;font-weight:600;font-size:0.75rem;padding:0.2rem 0.5rem;border-radius:15px;margin-left:0.5rem;">
+              ⭐ Recommended
+            </span>` : ''}
             <h3 style="margin-top:0.5rem;margin-bottom:0.2rem;font-size:1.1rem;">${r.route_name || (r.source_location + ' → ' + r.destination_location)}</h3>
             <p style="font-size:0.85rem;color:var(--muted);">
               📍 ${r.source_location || '—'} &nbsp;→&nbsp; 🏁 ${r.destination_location || '—'}
@@ -155,18 +193,25 @@ function renderRouteCards(routes, container, fromLoc, toLoc) {
           </div>
         </div>
 
+        <!-- Fallback Disclaimer if applicable -->
+        ${isFallback ? `
+        <div style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:6px;padding:0.5rem 0.75rem;margin-bottom:0.85rem;font-size:0.78rem;color:#3B82F6;">
+          ℹ️ <strong>Recommended transport based on available route information</strong> — Reference information, verify current service locally.
+        </div>` : ''}
+
         <!-- Demo Disclaimer if applicable -->
-        ${isDemo ? `
+        ${isDemo && !isFallback ? `
         <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:0.5rem 0.75rem;margin-bottom:0.85rem;font-size:0.78rem;color:#F59E0B;">
           ⚠️ <strong>Indicative / Demo Information</strong> — Verify at official TTD/APSRTC counter.
         </div>` : ''}
 
         <!-- Action Buttons -->
         <div style="display:flex;gap:0.65rem;flex-wrap:wrap;">
+          ${!isFallback ? `
           <button class="btn-primary" style="padding:0.55rem 1rem;font-size:0.88rem;"
             onclick="window.TTDApp.viewRouteDetails(${r.id}, '${(r.route_name||'').replace(/'/g,'').replace(/"/g,'')}')">
             📋 VIEW DETAILS
-          </button>
+          </button>` : ''}
           <button class="btn-ghost" style="padding:0.55rem 1rem;font-size:0.88rem;"
             onclick="window.TTDApp.navigateToRoute('${(r.source_location||'').replace(/'/g,'')}', '${(r.destination_location||'').replace(/'/g,'')}')">
             🗺️ VIEW ROUTE
