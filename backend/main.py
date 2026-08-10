@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
 # ── Load .env ──────────────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
