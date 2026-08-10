@@ -4,7 +4,8 @@
  */
 'use strict';
 
-const CACHE_NAME = 'ours-ttd-v2';
+const CACHE_NAME = 'ours-ttd-v3';
+
 const STATIC_ASSETS = [
   '/',
   '/index.html',
