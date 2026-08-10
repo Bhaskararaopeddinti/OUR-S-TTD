@@ -5,7 +5,7 @@
 'use strict';
 
 const API = (() => {
-  const BASE = '/api/';
+  const BASE = 'http://localhost:8001/api/';
 
   function token() {
     return localStorage.getItem('authToken');
@@ -30,36 +30,45 @@ const API = (() => {
     return Promise.reject(err);
   }
 
-  return {
-    get: (path) => fetch(BASE + path, { headers: headers(false) }).then(handle),
+  function clean(path) {
+    return path.startsWith('/') ? path.slice(1) : path;
+  }
 
-    post: (path, body) => fetch(BASE + path, {
+  return {
+    get: (path) => fetch(BASE + clean(path), { headers: headers(false) }).then(handle),
+
+    post: (path, body) => fetch(BASE + clean(path), {
       method: 'POST',
       headers: headers(),
       body: JSON.stringify(body)
     }).then(handle),
 
-    put: (path, body) => fetch(BASE + path, {
+    put: (path, body) => fetch(BASE + clean(path), {
       method: 'PUT',
       headers: headers(),
       body: JSON.stringify(body)
     }).then(handle),
 
     // Authenticated wrappers (include Bearer token)
-    authGet: (path) => fetch(BASE + path, {
+    authGet: (path) => fetch(BASE + clean(path), {
       headers: { 'Content-Type': 'application/json', ...({ Authorization: `Bearer ${token()}` }) }
     }).then(handle),
 
-    authPost: (path, body) => fetch(BASE + path, {
+    authPost: (path, body) => fetch(BASE + clean(path), {
       method: 'POST',
       headers: headers(),
       body: JSON.stringify(body)
     }).then(handle),
 
-    authPut: (path, body) => fetch(BASE + path, {
+    authPut: (path, body) => fetch(BASE + clean(path), {
       method: 'PUT',
       headers: headers(),
       body: JSON.stringify(body)
+    }).then(handle),
+
+    authDelete: (path) => fetch(BASE + clean(path), {
+      method: 'DELETE',
+      headers: headers(false)
     }).then(handle),
   };
 })();

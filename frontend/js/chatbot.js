@@ -15,17 +15,22 @@ const voiceBtn     = document.getElementById('voiceInputBtn');
 
 let chatHistory = [];
 let locationsCache = null;
+let isSending = false;
 
 // Toggle panel
-chatFab.addEventListener('click', () => {
-  chatPanel.hidden = !chatPanel.hidden;
-  if (!chatPanel.hidden) chatInput.focus();
+chatFab?.addEventListener('click', () => {
+  if (chatPanel) {
+    chatPanel.hidden = !chatPanel.hidden;
+    if (!chatPanel.hidden) chatInput?.focus();
+  }
 });
-chatClose.addEventListener('click', () => { chatPanel.hidden = true; });
+chatClose?.addEventListener('click', () => { if (chatPanel) chatPanel.hidden = true; });
 
 // Clear chat
 chatClear?.addEventListener('click', () => {
-  chatMessages.innerHTML = `<div class="msg bot">Namaste! 🙏 How can I help you with your Tirumala pilgrimage?</div>`;
+  if (chatMessages) {
+    chatMessages.innerHTML = `<div class="msg bot">Namaste! 🙏 How can I help you with your Tirumala pilgrimage?</div>`;
+  }
   chatHistory = [];
 });
 
@@ -34,12 +39,7 @@ async function loadLocations() {
   if (locationsCache) return locationsCache;
   
   try {
-    const response = await fetch('/api/locations');
-    if (!response.ok) {
-      console.warn('Locations API not available, using fallback');
-      return [];
-    }
-    const data = await response.json();
+    const data = await API.get('locations');
     locationsCache = data.locations || [];
     return locationsCache;
   } catch (error) {
@@ -48,50 +48,75 @@ async function loadLocations() {
   }
 }
 
+// Helper to determine base URL dynamically
+function getChatEndpoint() {
+  if (window.location.origin && window.location.origin.startsWith('http')) {
+    return window.location.origin + '/api/chat';
+  }
+  return 'http://127.0.0.1:8001/api/chat';
+}
+
 // Send message
 async function sendMessage() {
+  if (!chatInput || isSending) return;
   const text = chatInput.value.trim();
   if (!text) return;
+
+  isSending = true;
+  if (chatSend) chatSend.disabled = true;
+
   appendMsg(text, 'user');
   chatInput.value = '';
   const thinking = appendMsg('Thinking…', 'bot thinking');
 
   const lang = document.getElementById('language')?.value || 'English';
-  
-  chatHistory.push({ role: 'user', content: text });
 
   try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    let data;
+    if (typeof API !== 'undefined' && API.post) {
+      data = await API.post('chat', {
         message: text,
         language: lang,
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+        history: chatHistory
+      });
+    } else {
+      const response = await fetch(getChatEndpoint(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          language: lang,
+          history: chatHistory
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      data = await response.json();
     }
 
-    const data = await response.json();
     thinking.remove();
     
     const reply = data.reply || data.message || 'I could not generate a reply.';
     appendMsg(reply, 'bot');
     speakReply(reply, lang);
+
+    // Save turn to history
+    chatHistory.push({ role: 'user', content: text });
     chatHistory.push({ role: 'assistant', content: reply });
   } catch (err) {
     thinking.remove();
     console.error('Chat error:', err);
-    appendMsg('Sorry, I encountered an error. Please try again.', 'bot');
+    appendMsg('The AI assistant is temporarily unavailable. Please try again in a moment.', 'bot');
+  } finally {
+    isSending = false;
+    if (chatSend) chatSend.disabled = false;
+    chatInput.focus();
   }
 }
 
-chatSend.addEventListener('click', sendMessage);
-chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(); });
+chatSend?.addEventListener('click', sendMessage);
+chatInput?.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(); });
 
 function appendMsg(text, className) {
   const div = document.createElement('div');

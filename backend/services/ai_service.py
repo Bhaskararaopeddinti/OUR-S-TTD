@@ -1,202 +1,254 @@
 """
 OURS TTD — AI Service
 Gemini-powered pilgrim assistant with TTD-specific knowledge.
-Falls back to keyword matching when no API key is configured.
-Integrates with all app features: Queue Intelligence, Navigation, Health, Notifications.
+Communicates directly with Google Gemini API using supported models (gemini-3.6-flash, gemini-3.5-flash).
+Provides explicit status and source tracking without silently swallowing failures.
 """
 import os
 import logging
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
-# ── Gemini configuration ──
-_model = None
+# Candidate models in order of preference
+MODEL_CANDIDATES = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest']
 
-def _get_model():
-    """Lazy-init the Gemini model; returns None if no API key."""
-    global _model
-    if _model is not None:
-        return _model
+_genai_client = None
+_genai_legacy_model = None
+
+
+def _init_gemini() -> bool:
+    """Initialise Gemini client or legacy model lazily."""
+    global _genai_client, _genai_legacy_model
+    if _genai_client is not None or _genai_legacy_model is not None:
+        return True
+
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
-        logger.info("GEMINI_API_KEY not set — using keyword fallback for chat.")
-        return None
+        logger.warning("GEMINI_API_KEY not configured in environment.")
+        return False
+
+    # Try modern google.genai SDK
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        _model = genai.GenerativeModel('gemini-2.0-flash')
-        logger.info("Gemini AI client initialised successfully.")
-        return _model
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        _genai_client = client
+        logger.info("Gemini initialized successfully with google.genai Client")
+        return True
     except Exception as e:
-        logger.warning("Failed to initialise Gemini: %s — falling back to keywords.", e)
-        return None
+        logger.debug("google.genai Client init attempt failed: %s", e)
+
+    # Fallback to google.generativeai SDK
+    try:
+        import google.generativeai as legacy_genai
+        legacy_genai.configure(api_key=api_key)
+        for model_name in MODEL_CANDIDATES:
+            try:
+                m = legacy_genai.GenerativeModel(model_name)
+                _genai_legacy_model = m
+                logger.info("Gemini initialized successfully with google.generativeai model: %s", model_name)
+                return True
+            except Exception as ex:
+                logger.debug("Legacy model %s init failed: %s", model_name, ex)
+                continue
+    except Exception as e:
+        logger.error("Failed to initialize legacy google.generativeai: %s", e)
+
+    return False
 
 
-SYSTEM_PROMPT = """You are OURS TTD Smart Pilgrim Assistant — a compassionate, knowledgeable guide for devotees visiting Lord Venkateswara Temple in Tirumala, India.
+SYSTEM_PROMPT = """You are OURS TTD AI Smart Pilgrim Assistant.
+Your job is to help pilgrims visiting Tirumala and Tirupati.
 
-CORE KNOWLEDGE:
-- The temple is officially managed by Tirumala Tirupati Devasthanams (TTD).
-- Darshan types: Sarva Darshan (free, long queue), Special Entry Darshan (SED, ₹300 ticket), VIP Break Darshan, Divya Darshan (for senior citizens/differently abled).
-- Temple opening hours: Generally 2:30 AM to 1:00 AM next day (nearly 24 hours). Brief closing for rituals.
-- Queue Complex: Vaikuntam Queue Complex I & II (VQC I, VQC II) — the main waiting areas.
-- Pilgrim Accommodation Complexes: PAC-1 through PAC-5. Booking via TTD website.
-- Dress code: Traditional and modest attire required. Men — dhoti/panche or formal trousers with shirt. Women — saree, churidar, or salwar kameez. Shorts, skirts above knee, sleeveless tops are not permitted.
-- Mobile phones: PROHIBITED inside the temple. Deposit at designated centres near VQC I, VQC II, PAC-3, PAC-5 (Venkatadri Nilayam), and near darshan lines. Retain your receipt token.
-- Laddus: One free laddu per darshan token. Additional laddus can be purchased at counters. Main Laddu Complex on West/East Mada Street.
-- Annaprasadam (free food): Matrusri Tarigonda Vengamamba Annaprasada Complex (MTVAC) serves ~65,000+ meals daily. Also at VQC compartments, PAC II, Rambagicha Bus Stand.
-- Medical: Aswini Hospital near Seshadri Nagar. TTD Helpline: 155257. Emergency aid stations on Alipiri and Srivari Mettu footpaths.
-- Transport: Buses from Tirupati to Tirumala. Two walking paths: Alipiri (3,550 steps, ~3-4 hours), Srivari Mettu (2,100 steps, ~2 hours).
-- Facilities: Restrooms at PAC I-V, VQC I & II, Kalyanakatta. Drinking water points throughout.
-- Hair offering (tonsure): Kalyanakatta complex, free of charge.
-- Cloak rooms and luggage deposit available near bus stand and VQC.
-- Hundi (donation box) inside the sanctum.
-- Brahmotsavam: Annual 9-day festival in September/October.
+You can help with:
+- Darshan guidance & Queue information
+- Crowd guidance & Queue predictions
+- TTD facilities & accommodation guidance
+- Temple etiquette, dress code & phone deposit
+- Annaprasadam (free food) & Laddu information
+- Cloak rooms & luggage deposit
+- Medical facilities & emergency assistance
+- Transportation, bus routes & parking
+- Navigation & walking trek footpaths (Alipiri, Srivari Mettu)
+- Weather-related planning & lost & found
+- Accessibility, senior citizen & Divya Darshan assistance
 
-APP FEATURES INTEGRATION:
-- AI Queue Intelligence: I can provide predictive queue analysis, crowd trends, best times to join, and AI advice based on time, day, and festivals.
-- Smart Navigation: I can help find nearest facilities (restrooms, food, medical, laddu counters, etc.) with crowd-aware routing and walking time estimates.
-- Health & Emergency Companion: I can help with health reminders, nearest medical centers, emergency contacts, and SOS assistance.
-- Smart Notifications: I can inform about queue changes, festivals, weather alerts, and temple announcements.
-
-LOCATION QUERIES:
-When users ask about locations (e.g., "where is the nearest restroom", "how to get to laddu counter", "find medical center"), guide them to use the Smart Navigation feature in the app which provides:
-- Interactive map with all facility locations
-- Real-time distance and walking time estimates
-- Crowd-aware routing recommendations
-- Direct navigation to any facility
-
-For specific location queries, mention key locations:
-- Sri Venkateswara Temple: Main temple complex
-- VQC I & II: Queue complexes
-- MTVAC: Annaprasadam complex
-- Aswini Hospital: Medical center near Seshadri Nagar
-- Laddu Counters: West/East Mada Street
-- Phone Deposit: VQC I, VQC II, PAC-3, PAC-5
-- Restrooms: PAC I-V, VQC I & II, Kalyanakatta
-
-BEHAVIOR:
-1. Be warm, respectful, and spiritually supportive. Start responses with appropriate greetings if the user seems to be greeting you.
-2. Always give factual, verified information from the knowledge above.
-3. When unsure, say "Please verify with TTD officials or visit tirumala.org for the most current information."
-4. Never fabricate queue times, booking slots, or operational data.
-5. For booking inquiries, mention that official booking is available through the TTD website (ttdevasthanams.ap.gov.in).
-6. Keep responses concise but complete — ideal for mobile reading.
-7. If the user asks in a specific language, respond in that same language.
-8. For emergencies, always advise calling TTD Helpline 155257 or visiting the nearest help desk.
-9. For location queries, direct users to the Smart Navigation feature for detailed maps and directions.
-10. For queue queries, mention the AI Queue Intelligence feature for predictive analysis.
-11. For health queries, mention the Health & Emergency Companion feature.
-12. Respond in the language requested by the user.
+Guidance Rules:
+1. Give concise, warm, respectful, and easy-to-understand answers.
+2. Never invent live TTD information (such as live booking availability, exact queue wait minutes, live crowd level, or bus schedules) unless provided in the system context.
+3. If specific live information is unavailable, state clearly that it is unavailable and direct the user to the appropriate application feature (AI Queue Intelligence, Smart Navigation, Health & Emergency Companion, etc.).
+4. Never state false coordinates or fake distance metrics. Direct location queries to Smart Navigation.
+5. Transport Guidance: Always use verified transport records from the system context. If the pilgrim asks for a route where no verified record is present in context, state: "I don't have verified current transport information for that route." Never invent bus numbers, fares, frequency, or live schedules.
+6. The assistant should be especially easy for first-time pilgrims and senior citizens to understand.
 """
 
 
-def pilgrim_reply(message: str, language: str = "English") -> str:
-    """Generate a reply to a pilgrim's question. Uses Gemini if available, else keywords."""
-    client = _get_model()
-    if client:
-        return _gemini_reply(client, message, language)
-    return _keyword_reply(message)
+def _build_db_context(message: str, db: Optional[Any] = None) -> str:
+    """Retrieve relevant application database facts to attach as context for Gemini."""
+    context_parts = []
+    msg_lower = message.lower()
+
+    # Queue status context
+    if any(k in msg_lower for k in ("queue", "wait", "crowd", "darshan line", "density", "line")):
+        try:
+            from backend.services.ttd_official import public_status
+            from backend.services.queue_prediction import predict_queue_status
+            status = public_status()
+            pred = predict_queue_status(status.get("wait_minutes", 120), status.get("crowd_density", "Moderate"))
+            context_parts.append(
+                f"[SYSTEM CONTEXT - LIVE QUEUE DATA]: Current wait = {status.get('wait_minutes')} mins, "
+                f"Crowd density = {status.get('crowd_density')}. AI Prediction: {pred.get('trend')} - {pred.get('recommendation')}."
+            )
+        except Exception as e:
+            logger.debug("Could not fetch queue context: %s", e)
+
+    # Transport context
+    if any(k in msg_lower for k in ("bus", "transport", "route", "reach", "tirupati", "tirumala", "fare", "shuttle", "alipiri", "mettu", "tour")):
+        try:
+            from backend.models import TransportRoute
+            if db:
+                routes = db.query(TransportRoute).all()
+                if routes:
+                    r_lines = []
+                    for r in routes:
+                        r_lines.append(
+                            f"- {r.route_name} ({r.vehicle_type}, Operator: {r.operator}, Fare: {r.fare}, Hours: {r.operating_hours}, Freq: {r.frequency}, Status: {r.data_status}, Source: {r.source})"
+                        )
+                    context_parts.append(f"[SYSTEM CONTEXT - VERIFIED TTD TRANSPORT DATABASE]:\n" + "\n".join(r_lines))
+        except Exception as e:
+            logger.debug("Could not fetch transport context: %s", e)
+
+    # Facilities context
+    if any(k in msg_lower for k in ("medical", "hospital", "doctor", "annaprasadam", "food", "eat", "restroom", "toilet", "laddu", "phone", "deposit", "parking")):
+        try:
+            from backend.services.facilities_data import FACILITIES
+            relevant = [f"{f['name']} ({f['kind']}, Distance: ~{f.get('distance_m', 'N/A')}m)" for f in FACILITIES[:5]]
+            context_parts.append(f"[SYSTEM CONTEXT - TTD FACILITIES DIRECTORY]: {', '.join(relevant)}")
+        except Exception as e:
+            logger.debug("Could not fetch facilities context: %s", e)
+
+    return "\n".join(context_parts)
 
 
-def _gemini_reply(client, message: str, language: str) -> str:
-    """Call Gemini API for an intelligent response."""
+def pilgrim_reply(
+    message: str,
+    language: str = "English",
+    history: Optional[List[Dict[str, Any]]] = None,
+    db: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Generate a reply to a pilgrim's question using Gemini.
+    Returns structured response dictionary containing reply, language, source, and ai_available.
+    """
+    logger.info("CHAT REQUEST RECEIVED: language=%s, msg_len=%d", language, len(message))
+
+    if not _init_gemini():
+        logger.error("GEMINI REQUEST FAILED: Gemini API key or client is unavailable.")
+        return {
+            "reply": "The AI assistant is temporarily unavailable. Please try again in a moment.",
+            "language": language,
+            "source": "fallback",
+            "ai_available": False
+        }
+
+    logger.info("GEMINI REQUEST STARTED")
+
+    db_context = _build_db_context(message, db)
+    lang_instruction = f"\n\nPlease respond in {language}." if language and language != "English" else ""
+
+    prompt_parts = [SYSTEM_PROMPT]
+    if db_context:
+        prompt_parts.append(db_context)
+    if lang_instruction:
+        prompt_parts.append(lang_instruction)
+    prompt_parts.append(f"\nPilgrim's Question: {message}")
+
+    full_prompt = "\n\n".join(prompt_parts)
+
     try:
-        lang_instruction = f"\n\nRespond in {language}." if language and language != "English" else ""
-        prompt = SYSTEM_PROMPT + lang_instruction + f"\n\nPilgrim's question: {message}"
-
-        response = client.generate_content(prompt)
-        text = response.text if hasattr(response, 'text') else ""
-
-        text = text.strip() if isinstance(text, str) else ""
-        if text:
-            return text
-        return _keyword_reply(message)
+        reply_text = _generate_with_gemini(full_prompt, history)
+        if reply_text:
+            logger.info("GEMINI RESPONSE SUCCESS")
+            return {
+                "reply": reply_text,
+                "language": language,
+                "source": "gemini",
+                "ai_available": True
+            }
+        else:
+            logger.error("GEMINI REQUEST FAILED: Empty response from model.")
+            return {
+                "reply": "The AI assistant is temporarily unavailable. Please try again in a moment.",
+                "language": language,
+                "source": "fallback",
+                "ai_available": False
+            }
     except Exception as e:
-        logger.error("Gemini API error: %s", e)
-        return _keyword_reply(message)
+        safe_error = str(e).split("key=")[0].split("API_KEY=")[0]
+        logger.error("GEMINI REQUEST FAILED: %s", safe_error)
+        return {
+            "reply": "The AI assistant is temporarily unavailable. Please try again in a moment.",
+            "language": language,
+            "source": "fallback",
+            "ai_available": False
+        }
 
 
-def _keyword_reply(message: str) -> str:
-    """Fallback keyword-based reply when Gemini is unavailable."""
-    query = message.lower()
+def _generate_with_gemini(full_prompt: str, history: Optional[List[Dict[str, Any]]] = None) -> Optional[str]:
+    """Send prompt to Gemini model using available client."""
+    global _genai_client, _genai_legacy_model
 
-    # Location queries - direct to Smart Navigation
-    if any(x in query for x in ("take me to", "navigate to", "go to", "where is", "location", "find", "nearest", "how to get to", "direction", "navigate")):
-        if any(x in query for x in ("medical", "hospital", "doctor")):
-            return ("Nearest medical center is Aswini Hospital, about 280 metres away. "
-                    "Open the Smart Navigation feature and tap Navigate to start walking directions.")
-        if any(x in query for x in ("food", "annaprasadam", "meal", "eat")):
-            return ("Nearest Anna Prasadam complex is available. "
-                    "Open Smart Navigation to see the closest meal center, distance, walking time, and ETA.")
-        if any(x in query for x in ("restroom", "toilet", "washroom", "bathroom")):
-            return ("The nearest restrooms are at PAC I-V, VQC I & II and Kalyanakatta. "
-                    "Use Smart Navigation to view the best walking route and estimated time.")
-        if any(x in query for x in ("laddu", "prasad", "prasadam")):
-            return ("The nearest laddu counter is the Main Laddu Complex on West/East Mada Street. "
-                    "Use Smart Navigation to get walking directions and crowd details.")
-        if any(x in query for x in ("phone", "mobile", "deposit")):
-            return ("Mobile phones are prohibited inside the temple. "
-                    "Use Smart Navigation to find the nearest deposit centre at VQC I & II, PAC-3, or PAC-5.")
-        if any(x in query for x in ("parking", "car", "vehicle")):
-            return ("Parking is available at Alipiri and Tirumala. "
-                    "Open Smart Navigation to find the nearest available parking and route there.")
-        if any(x in query for x in ("temple", "darshan", "sv temple", "sri venkateswara")):
-            return ("Destination found: Sri Venkateswara Temple. "
-                    "Use Smart Navigation to view the walking route, distance, and ETA.")
-        return ("For location and navigation questions, please use the Smart Navigation feature in the app. "
-                "It provides an interactive map, live walking routes, ETA, and turn-by-turn directions.")
+    formatted_prompt = full_prompt
+    if history and isinstance(history, list):
+        recent_history = history[-6:]
+        history_lines = []
+        for h in recent_history:
+            if isinstance(h, dict):
+                role = h.get('role', h.get('type', 'user')).capitalize()
+                content = h.get('content', h.get('message', ''))
+                if content and content != "Thinking...":
+                    history_lines.append(f"{role}: {content}")
+        if history_lines:
+            formatted_prompt = f"RECENT CONVERSATION HISTORY:\n" + "\n".join(history_lines) + f"\n\n{full_prompt}"
 
-    # Queue queries - mention AI Queue Intelligence
-    if any(x in query for x in ("queue", "wait", "darshan", "line")):
-        return ("Check the AI Queue Intelligence feature in the app for predictive queue analysis. "
-                "It provides crowd trends, best times to join, and AI advice based on time, day, and festivals. "
-                "Historically, early mornings (2:30 AM–5 AM) and post-lunch (1 PM–3 PM) tend to be less crowded.")
+    # Modern google.genai Client
+    if _genai_client is not None:
+        for model_name in MODEL_CANDIDATES:
+            try:
+                response = _genai_client.models.generate_content(
+                    model=model_name,
+                    contents=formatted_prompt
+                )
+                if response and hasattr(response, 'text') and response.text:
+                    return response.text.strip()
+            except Exception as e:
+                logger.debug("Client generate_content with %s failed: %s", model_name, e)
+                continue
 
-    # Health queries - mention Health & Emergency Companion
-    if any(x in query for x in ("health", "emergency", "sos", "medical help")):
-        return ("Use the Health & Emergency Companion feature for health support. "
-                "It provides health reminders, nearest medical centers, emergency contacts, and SOS assistance. "
-                "For immediate help, call TTD Helpline: 155257.")
+    # Fallback to legacy google.generativeai
+    if _genai_legacy_model is not None:
+        try:
+            response = _genai_legacy_model.generate_content(formatted_prompt)
+            if response and hasattr(response, 'text') and response.text:
+                return response.text.strip()
+        except Exception as e:
+            logger.debug("Legacy model generate_content failed: %s", e)
 
-    # Other queries
-    if any(x in query for x in ("dress", "attire", "wear", "cloth")):
-        return ("Traditional, modest attire is required. Men: dhoti or formal trousers with shirt. "
-                "Women: saree, churidar, or salwar kameez. Shorts, sleeveless tops, and short skirts are not permitted.")
+    # Re-try initializing google.genai client if needed
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if api_key:
+        try:
+            from google import genai
+            client = genai.Client(api_key=api_key)
+            _genai_client = client
+            for model_name in MODEL_CANDIDATES:
+                try:
+                    res = client.models.generate_content(model=model_name, contents=formatted_prompt)
+                    if res and hasattr(res, 'text') and res.text:
+                        return res.text.strip()
+                except Exception:
+                    continue
+        except Exception as e:
+            logger.debug("Re-init client attempt failed: %s", e)
 
-    if any(x in query for x in ("book", "ticket", "slot", "seva", "accommodation", "room", "stay")):
-        return ("Official bookings for darshan, accommodation, and sevas are available on the TTD website: "
-                "ttdevasthanams.ap.gov.in. This app will integrate booking when TTD provides API access.")
-
-    if any(x in query for x in ("hair", "tonsure", "kalyanakatta", "mundan")):
-        return ("Hair offering (tonsure) is done at the Kalyanakatta complex, free of charge. "
-                "Use Smart Navigation to find its location.")
-
-    if any(x in query for x in ("walk", "footpath", "alipiri", "srivari mettu", "steps")):
-        return ("Two walking paths: Alipiri footpath (3,550 steps, ~3-4 hours) and "
-                "Srivari Mettu (2,100 steps, ~2 hours). Both have rest stops, water points, and emergency aid. "
-                "Use Smart Navigation for detailed route information.")
-
-    if any(x in query for x in ("hundi", "donat", "offer")):
-        return ("The Hundi (donation box) is inside the sanctum. You can also make donations online "
-                "through the TTD website. All donations receive official receipts.")
-
-    if any(x in query for x in ("festival", "brahmotsavam", "utsav")):
-        return ("Brahmotsavam is the annual 9-day festival in September/October, featuring grand processions "
-                "and special rituals. Other major festivals include Vaikunta Ekadasi and Rathasapthami. "
-                "Check Smart Notifications for festival alerts.")
-
-    if any(x in query for x in ("wheelchair", "senior", "elderly", "disabled", "divya")):
-        return ("Free wheelchair assistance is available at medical centres and help desks. "
-                "Senior citizens (65+) and differently abled devotees qualify for Divya Darshan "
-                "with shorter wait times. Use Smart Navigation to find help desks.")
-
-    if any(x in query for x in ("hello", "hi", "namaste", "namaskar")):
-        return ("Namaste! 🙏 Welcome to OURS TTD. I can help with queue status, temple facilities, "
-                "navigation, health support, and more. Use the Smart Navigation feature for location queries "
-                "and AI Queue Intelligence for queue predictions. How can I assist you?")
-
-    return ("Namaste! I can help with queue status (check AI Queue Intelligence), "
-            "location queries (use Smart Navigation), health support (Health & Emergency Companion), "
-            "temple etiquette, food, facilities, phone deposit, dress code, and booking info. "
-            "What would you like to know?")
+    return None

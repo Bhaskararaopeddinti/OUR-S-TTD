@@ -217,8 +217,7 @@ async function loadLocations() {
   allLocations = getDefaultTirumalaLocations();
   
   try {
-    const response = await fetch('/api/locations');
-    const data = await response.json();
+    const data = await API.get('locations');
     if (data.locations && data.locations.length > 0) {
       allLocations = data.locations;
     }
@@ -856,15 +855,10 @@ async function showNearest() {
   }
 
   try {
-    const response = await fetch(`/api/navigation/nearby?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}&limit=8`);
-    const data = await response.json();
-    if (response.ok) {
-      allLocations = data.nearest || [];
-      displayLocations(allLocations);
-      showToast(`Found ${data.count} nearby facilities`, 'success');
-    } else {
-      showToast(data.detail || 'Failed to fetch nearby facilities.', 'error');
-    }
+    const data = await API.get(`navigation/nearby?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}&limit=8`);
+    allLocations = data.nearest || [];
+    displayLocations(allLocations);
+    showToast(`Found ${data.count || allLocations.length} nearby facilities`, 'success');
   } catch (error) {
     console.error('Nearby error:', error);
     showToast('Unable to fetch nearby facilities.', 'error');
@@ -890,8 +884,7 @@ async function getCurrentLocation() {
       }
 
       try {
-        const response = await fetch(`/api/navigation/reverse?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}`);
-        const info = await response.json();
+        const info = await API.get(`navigation/reverse?latitude=${userLocation.latitude}&longitude=${userLocation.longitude}`);
         if (locationDisplay) {
           locationDisplay.innerHTML = `
             <strong>${info.display_name || 'Current Location'}</strong>

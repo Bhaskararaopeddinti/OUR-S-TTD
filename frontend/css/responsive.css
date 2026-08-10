@@ -1,12 +1,67 @@
-/* responsive.css – breakpoint overrides */
+/* responsive.css – Comprehensive Breakpoint & Background Adaptability */
+
+/* ── Desktop & Large Monitors (1366px, 1440px, 1920px) ── */
+@media (min-width: 1200px) {
+  body, .dashboard-container {
+    background-position: center center;
+    background-attachment: fixed;
+  }
+}
+
+/* ── Laptop & Small Desktops (1025px - 1199px) ── */
+@media (min-width: 1025px) and (max-width: 1199px) {
+  body, .dashboard-container {
+    background-position: center center;
+  }
+  .main-content {
+    padding: 1.5rem;
+  }
+}
+
+/* ── Tablet (768px - 1024px) ── */
+@media (max-width: 1024px) {
+  body, .dashboard-container {
+    background-position: center top;
+  }
+  .sidebar {
+    width: 240px;
+  }
+  .main-content {
+    margin-left: 240px;
+    width: calc(100% - 240px);
+    padding: 1.25rem;
+  }
+}
+
+/* ── Mobile & Small Tablets (<= 767px) ── */
+@media (max-width: 767px) {
+  body, .dashboard-container {
+    background-position: center top;
+    background-attachment: scroll;
+  }
+  .sidebar {
+    width: 280px;
+    transform: translateX(-100%);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 1rem;
+  }
+  .sidebar-toggle {
+    display: flex !important;
+  }
+}
+
+/* ── Small Mobile (<= 480px) ── */
 @media (max-width: 480px) {
   h1 { font-size: 1.5rem; }
-  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .stats-grid, .live-stats-grid { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
   .analytics-grid { grid-template-columns: 1fr 1fr; }
   .sos-options { grid-template-columns: 1fr; }
   .assist-buttons { flex-direction: column; }
-  dialog { width: 96vw; }
-}
-@media (min-width: 769px) {
-  .nav-links { display: flex; }
+  dialog { width: 94vw; padding: 1.25rem; }
 }

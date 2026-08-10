@@ -28,7 +28,7 @@ function initHealthProfile() {
     };
 
     try {
-      const response = await API.put('/profile', profileData);
+      const response = await API.put('profile', profileData);
       document.getElementById('healthProfileStatus').textContent = 'Health profile saved successfully!';
       document.getElementById('healthProfileStatus').className = 'status success';
       loadHealthCard();
@@ -43,7 +43,7 @@ function initHealthProfile() {
 // Load and display health card
 async function loadHealthCard() {
   try {
-    const profile = await API.get('/profile');
+    const profile = await API.get('profile');
     
     document.getElementById('hcName').textContent = profile.name || '—';
     document.getElementById('hcAge').textContent = `Age: ${profile.age || '—'}`;
@@ -146,7 +146,7 @@ function initReminders() {
     };
 
     try {
-      await API.post('/health/reminders', reminderData);
+      await API.post('health/reminders', reminderData);
       document.getElementById('reminderStatus').textContent = 'Reminder set successfully!';
       document.getElementById('reminderStatus').className = 'status success';
       loadActiveReminders();
@@ -163,7 +163,7 @@ async function loadActiveReminders() {
   if (!container) return;
 
   try {
-    const reminders = await API.get('/health/reminders');
+    const reminders = await API.get('health/reminders');
     
     if (reminders.length === 0) {
       container.innerHTML = '<li class="empty-state">No active reminders</li>';
@@ -211,7 +211,7 @@ function initMedicalFinder() {
         const { latitude, longitude } = position.coords;
         
         try {
-          const response = await API.get('/nearby', {
+          const response = await API.get('nearby', {
             latitude,
             longitude,
             kind: 'medical',

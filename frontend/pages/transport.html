@@ -1,0 +1,84 @@
+<!-- transport.html – TTD Travel & Transport Guide page -->
+<section class="transport-page fade-in">
+  <div class="dashboard-header" style="margin-bottom: 1.5rem;">
+    <h1>🚌 TTD Travel &amp; Transport Guide</h1>
+    <p class="dashboard-subtitle">Find verified transport options for your Tirumala pilgrimage.</p>
+  </div>
+
+  <!-- Demo Disclaimer Banner -->
+  <div style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.4); border-radius: 8px; padding: 0.85rem 1.1rem; margin-bottom: 1.5rem; font-size: 0.88rem; color: #F59E0B; display: flex; gap: 0.6rem; align-items: flex-start;">
+    <span style="font-size: 1.1rem; flex-shrink:0;">ℹ️</span>
+    <span><strong>Indicative / Demo Data:</strong> Bus timings, fares and availability shown here are indicative demo data. Please check official <a href="https://www.apsrtconline.in" target="_blank" rel="noopener" style="color:#F59E0B; text-decoration:underline;">APSRTC</a> or <a href="https://ttdevasthanams.ap.gov.in" target="_blank" rel="noopener" style="color:#F59E0B; text-decoration:underline;">TTD</a> information for current schedules and fares.</span>
+  </div>
+
+  <div class="dashboard-grid">
+    <!-- Route Search Card -->
+    <div class="dashboard-card search-card" style="grid-column: 1/-1; padding: 1.25rem;">
+      <h3 style="margin-bottom: 1rem; color: var(--gold); font-size: 1.1rem;">🔍 Search Transport Options</h3>
+      <div class="search-bar" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end;">
+
+        <div style="flex: 1; min-width: 200px;">
+          <label for="transportFromSelect" style="display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.3rem;">FROM (Origin)</label>
+          <select id="transportFromSelect" style="width: 100%; padding: 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-card); color: var(--text);">
+            <option value="">All Starting Locations</option>
+            <option value="Tirupati Bus Station">Tirupati Bus Station</option>
+            <option value="Tirupati Railway Station">Tirupati Railway Station</option>
+            <option value="Tirupati Airport">Tirupati Airport</option>
+            <option value="Tirumala Bus Station">Tirumala Bus Station</option>
+            <option value="Alipiri">Alipiri</option>
+            <option value="Alipiri Footpath">Alipiri Footpath</option>
+            <option value="Srivari Mettu">Srivari Mettu</option>
+            <option value="Vaikuntam Queue Complex">Vaikuntam Queue Complex</option>
+            <option value="Tiruchanur Padmavathi Temple">Tiruchanur Padmavathi Temple</option>
+            <option value="Govindaraja Swamy Temple">Govindaraja Swamy Temple</option>
+            <option value="Kapila Theertham">Kapila Theertham</option>
+            <option value="Srinivasa Mangapuram">Srinivasa Mangapuram</option>
+          </select>
+        </div>
+
+        <div style="flex: 1; min-width: 200px;">
+          <label for="transportToSelect" style="display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.3rem;">TO (Destination)</label>
+          <select id="transportToSelect" style="width: 100%; padding: 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-card); color: var(--text);">
+            <option value="">All Destinations</option>
+            <option value="Tirumala Bus Station">Tirumala Bus Station</option>
+            <option value="Tirumala Temple">Tirumala Temple</option>
+            <option value="Tirupati Bus Station">Tirupati Bus Station</option>
+            <option value="Tirupati Railway Station">Tirupati Railway Station</option>
+            <option value="Tirupati Airport">Tirupati Airport</option>
+            <option value="Alipiri">Alipiri</option>
+            <option value="Alipiri Footpath">Alipiri Footpath</option>
+            <option value="Srivari Mettu">Srivari Mettu</option>
+            <option value="Vaikuntam Queue Complex">Vaikuntam Queue Complex</option>
+            <option value="Tiruchanur Padmavathi Temple">Tiruchanur Padmavathi Temple</option>
+            <option value="Govindaraja Swamy Temple">Govindaraja Swamy Temple</option>
+            <option value="Kapila Theertham">Kapila Theertham</option>
+            <option value="Srinivasa Mangapuram">Srinivasa Mangapuram</option>
+          </select>
+        </div>
+
+        <div style="flex: 1; min-width: 180px;">
+          <label for="transportModeSelect" style="display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.3rem;">TRANSPORT TYPE</label>
+          <select id="transportModeSelect" style="width: 100%; padding: 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-card); color: var(--text);">
+            <option value="">All Types</option>
+            <option value="GOVERNMENT_BUS">🚌 APSRTC Government Bus</option>
+            <option value="TTD_BUS">🚌 TTD Free Bus</option>
+            <option value="WALKING">🚶 Walking Footpath</option>
+            <option value="TAXI">🚕 Taxi / Cab</option>
+          </select>
+        </div>
+
+        <div style="min-width: 160px;">
+          <button id="transportSearchBtn" class="btn-primary" style="width: 100%; padding: 0.7rem 1.25rem; font-weight: 700;">
+            🚌 FIND TRANSPORT
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Transport Route Cards Container -->
+    <div id="transportRoutesContainer" style="grid-column: 1/-1; display: flex; flex-direction: column; gap: 1.25rem;">
+      <div style="text-align: center; padding: 2rem; color: var(--muted);">Loading transport options...</div>
+    </div>
+  </div>
+</section>

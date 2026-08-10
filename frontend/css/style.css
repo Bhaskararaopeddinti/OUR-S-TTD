@@ -8,15 +8,16 @@
 
 /* ── CSS Custom Properties ── */
 :root {
-  /* Tirumala Color Palette */
-  --primary: #16A34A;
-  --primary-light: #22C55E;
-  --primary-dark: #15803D;
-  --primary-bg: #DCFCE7;
+  /* Celestial Royal Blue & Sacred Gold Palette */
+  --primary: #1E40AF;
+  --primary-light: #3B82F6;
+  --primary-dark: #0F172A;
+  --primary-bg: #EFF6FF;
   --secondary: #F8FAFC;
   --accent: #D4AF37;
-  --gold: #D4AF37;
-  --gold-light: #F5DEB3;
+  --gold: #F59E0B;
+  --gold-light: #FEF3C7;
+  --cyan: #06B6D4;
   
   /* Neutral Colors */
   --white: #FFFFFF;
@@ -33,37 +34,37 @@
   --gray-900: #111827;
   
   /* Semantic Colors */
-  --success: #16A34A;
-  --danger: #DC2626;
+  --success: #10B981;
+  --danger: #EF4444;
   --warning: #F59E0B;
   --info: #3B82F6;
   
   /* Dark Mode Colors */
-  --dark-bg: #0F172A;
-  --dark-surface: #1E293B;
-  --dark-card: #334155;
-  --dark-border: #475569;
-  --dark-text: #F1F5F9;
+  --dark-bg: #090D16;
+  --dark-surface: #0F172A;
+  --dark-card: rgba(30, 41, 59, 0.85);
+  --dark-border: rgba(51, 65, 85, 0.8);
+  --dark-text: #F8FAFC;
   --dark-muted: #94A3B8;
   
   /* Light Mode Colors */
-  --light-bg: #F8FAFC;
+  --light-bg: #F0F4F8;
   --light-surface: #FFFFFF;
-  --light-card: #FFFFFF;
-  --light-border: #E5E7EB;
-  --light-text: #1F2937;
-  --light-muted: #6B7280;
+  --light-card: rgba(255, 255, 255, 0.90);
+  --light-border: #CBD5E1;
+  --light-text: #0F172A;
+  --light-muted: #475569;
   
   /* Design Tokens */
   --radius-sm: 0.5rem;
   --radius: 0.75rem;
   --radius-lg: 1rem;
   --radius-xl: 1.5rem;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow: 0 4px 12px rgba(15, 23, 42, 0.15), 0 0 1px rgba(212, 175, 55, 0.2);
+  --shadow-lg: 0 12px 24px -4px rgba(15, 23, 42, 0.25), 0 0 15px rgba(59, 130, 246, 0.2);
+  --shadow-xl: 0 20px 30px -5px rgba(9, 13, 22, 0.4), 0 0 25px rgba(212, 175, 55, 0.25);
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --font-heading: 'Poppins', system-ui, -apple-system, sans-serif;
   --font-body: 'Inter', system-ui, -apple-system, sans-serif;
 }
@@ -76,8 +77,8 @@ html.dark {
   --border: var(--dark-border);
   --text: var(--dark-text);
   --muted: var(--dark-muted);
-  --glass: rgba(255,255,255,0.05);
-  --glass-border: rgba(255,255,255,0.10);
+  --glass: rgba(15, 23, 42, 0.75);
+  --glass-border: rgba(212, 175, 55, 0.3);
 }
 html:not(.dark) {
   --bg: var(--light-bg);
@@ -86,8 +87,8 @@ html:not(.dark) {
   --border: var(--light-border);
   --text: var(--light-text);
   --muted: var(--light-muted);
-  --glass: rgba(255,255,255,0.70);
-  --glass-border: rgba(255,255,255,0.90);
+  --glass: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(59, 130, 246, 0.25);
 }
 
 /* ── Global Reset ── */
@@ -95,11 +96,18 @@ html:not(.dark) {
 html { scroll-behavior: smooth; font-size: 16px; }
 body {
   font-family: var(--font-body);
-  background: var(--bg);
+  background: linear-gradient(135deg, rgba(9, 13, 22, 0.78), rgba(15, 23, 42, 0.84)),
+              url('../assets/images/ttd-balaji.jpg') no-repeat center center fixed;
+  background-size: cover;
   color: var(--text);
   line-height: 1.6;
   min-height: 100vh;
   transition: background var(--transition), color var(--transition);
+}
+html:not(.dark) body {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(240, 244, 248, 0.76)),
+              url('../assets/images/ttd-balaji.jpg') no-repeat center center fixed;
+  background-size: cover;
 }
 img, video { max-width: 100%; display: block; }
 a { color: var(--primary); text-decoration: none; }
@@ -119,12 +127,12 @@ p  { color: var(--muted); margin-bottom: 0.5rem; }
 
 /* ── Site Header ── */
 .site-header {
-  background: linear-gradient(135deg, var(--primary-dark) 0%, #2f7f5a 45%, var(--primary) 100%);
+  background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 50%, #2563EB 100%);
   color: #fff;
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.3), 0 0 10px rgba(212, 175, 55, 0.2);
 }
 
 .nav-bar {
@@ -267,9 +275,10 @@ p  { color: var(--muted); margin-bottom: 0.5rem; }
 
 /* ── App Root ── */
 .app-root {
-  max-width: 1280px;
-  margin: 2rem auto;
-  padding: 0 1.5rem 3rem;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 4rem;
 }
 
 /* ── Cards ── */
@@ -550,16 +559,16 @@ dialog {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   color: var(--text);
-  border: 1px solid rgba(22, 163, 74, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 dialog::backdrop { 
-  background: linear-gradient(135deg, rgba(22, 163, 74, 0.3) 0%, rgba(21, 128, 61, 0.4) 100%);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 58, 138, 0.85) 100%);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 .dialog-inner { 
   padding: 2.5rem;
-  background: linear-gradient(135deg, rgba(22, 163, 74, 0.02) 0%, rgba(21, 128, 61, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.05) 0%, rgba(59, 130, 246, 0.08) 100%);
   border-radius: var(--radius-xl);
 }
 .dialog-header { 
@@ -600,9 +609,9 @@ dialog::backdrop {
   gap: 0.75rem;
   margin-bottom: 1.5rem;
   padding: 1rem;
-  background: linear-gradient(135deg, var(--primary-bg) 0%, rgba(22, 163, 74, 0.1) 100%);
+  background: linear-gradient(135deg, var(--primary-bg) 0%, rgba(59, 130, 246, 0.15) 100%);
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(22, 163, 74, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .auth-logo .om {
@@ -626,7 +635,9 @@ dialog::backdrop {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 50%, var(--primary-light) 100%);
+  background: linear-gradient(135deg, rgba(9, 13, 22, 0.90) 0%, rgba(15, 23, 42, 0.92) 50%, rgba(30, 58, 138, 0.90) 100%),
+              url('../assets/images/ttd-balaji.jpg') no-repeat center center;
+  background-size: cover;
   display: flex;
   align-items: center;
   justify-content: center;

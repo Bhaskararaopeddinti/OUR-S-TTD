@@ -25,8 +25,9 @@ from backend.models import (
     Notification
 )
 from backend.auth import hash_password
-from backend.routers import auth_routes, core
+from backend.routers import auth_routes, core, transport_routes
 from backend.routers.navigation import router as locations_router, navigation_router
+from backend.models import TransportRoute
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,11 +40,17 @@ app = FastAPI(
     title="OURS TTD API",
     version="2.0.0",
     description="AI Smart Pilgrim Assistant – production-ready API",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.get("/api/docs", include_in_schema=False)
+async def redirect_api_docs():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/docs")
 
 # ── CORS ───────────────────────────────────────────────────────────────────
 cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
@@ -59,6 +66,7 @@ app.add_middleware(
 # API ROUTES FIRST - routers have their own prefixes defined
 app.include_router(auth_routes.router)
 app.include_router(core.router)
+app.include_router(transport_routes.router)
 app.include_router(locations_router)
 app.include_router(navigation_router)
 
@@ -104,21 +112,48 @@ NAV_LOCATIONS = [
     dict(name="Alipiri Parking", category="parking", description="Main parking area at Alipiri base", latitude=13.6300, longitude=79.3200),
 ]
 
+def migrate_users_columns(db):
+    """Ensure newly added User columns exist in SQLite database."""
+    try:
+        from sqlalchemy import text
+        res = db.execute(text("PRAGMA table_info(users)")).fetchall()
+        cols = {row[1] for row in res}
+        if "is_active" not in cols:
+            db.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+            logger.info("Migrated SQLite: added is_active to users table")
+        if "reset_token" not in cols:
+            db.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR(100)"))
+            logger.info("Migrated SQLite: added reset_token to users table")
+        if "reset_token_expires" not in cols:
+            db.execute(text("ALTER TABLE users ADD COLUMN reset_token_expires DATETIME"))
+            logger.info("Migrated SQLite: added reset_token_expires to users table")
+        db.commit()
+    except Exception as e:
+        logger.warning("Users column migration check: %s", e)
+
 def seed_db():
     """Seed initial data – runs only on first startup (idempotent)."""
     Base.metadata.create_all(engine)
     db = SessionLocal()
     try:
+        migrate_users_columns(db)
         # Demo admin
-        if not db.query(User).filter_by(email="admin@oursttd.demo").first():
+        admin_user = db.query(User).filter_by(email="admin@oursttd.demo").first()
+        if not admin_user:
             admin = User(
                 name="Demo Admin",
                 email="admin@oursttd.demo",
                 password_hash=hash_password("DemoAdmin123"),
                 role="admin",
+                is_active=True
             )
             db.add(admin)
             logger.info("Demo admin user created.")
+        elif admin_user.role != "admin":
+            admin_user.role = "admin"
+            admin_user.is_active = True
+            db.commit()
+            logger.info("Updated demo admin user role to admin.")
 
         # Queue status placeholder
         if not db.query(QueueStatus).first():
@@ -146,6 +181,50 @@ def seed_db():
             for loc in NAV_LOCATIONS:
                 db.add(NavigationLocation(**loc))
 
+        # Transport routes
+        if not db.query(TransportRoute).first():
+            db.add_all([
+                TransportRoute(
+                    source_location="Tirupati Bus Stand",
+                    destination_location="Tirumala",
+                    vehicle_type="GOVERNMENT_BUS",
+                    operator="APSRTC",
+                    route_name="Tirupati Central Bus Stand → Tirumala Ghat Road",
+                    estimated_duration="45 - 60 mins",
+                    fare="₹65 / person",
+                    operating_hours="24 Hours Active",
+                    frequency="Every 2-3 mins",
+                    status="Available",
+                    source="TTD Official Verified"
+                ),
+                TransportRoute(
+                    source_location="CRO Tirumala",
+                    destination_location="VQC Queue Complex",
+                    vehicle_type="TTD_BUS",
+                    operator="TTD Devasthanams",
+                    route_name="TTD Free Dharma Ratham (Internal Shuttle)",
+                    estimated_duration="10 - 20 mins",
+                    fare="FREE",
+                    operating_hours="24 Hours Active",
+                    frequency="Continuous",
+                    status="Available",
+                    source="100% Free TTD Service"
+                ),
+                TransportRoute(
+                    source_location="Srivari Mettu",
+                    destination_location="Tirumala",
+                    vehicle_type="WALKING",
+                    operator="TTD Footpath Trek",
+                    route_name="Srivari Mettu Traditional Trek (2,388 Steps)",
+                    estimated_duration="2 - 3 Hours",
+                    fare="Free (Traditional Trek)",
+                    operating_hours="6:00 AM - 5:00 PM",
+                    frequency="Continuous",
+                    status="Open",
+                    source="TTD Verified Footpath"
+                )
+            ])
+
         db.commit()
         logger.info("Database seeded successfully.")
     except Exception as e:
@@ -170,15 +249,32 @@ async def startup():
     
     # Seed database
     seed_db()
+
+    # Seed comprehensive bus/transport demo routes
+    try:
+        from backend.seed_bus_routes import seed_bus_routes
+        seed_bus_routes()
+        logger.info("Bus route seeding completed.")
+    except Exception as e:
+        logger.warning("Bus route seeding skipped: %s", e)
+
     logger.info("OURS TTD API started. Gemini key: %s",
-                "✓ configured" if os.getenv("GEMINI_API_KEY") else "✗ not set (keyword fallback)")
+                "configured" if os.getenv("GEMINI_API_KEY") else "not set (keyword fallback)")
 
 
 # ── Static Files (Frontend) ────────────────────────────────────────────────
-# Mount static files at /static for CSS, JS, images
-app.mount("/static", StaticFiles(directory=str(ROOT / "frontend")), name="static")
+frontend_dir = ROOT / "frontend"
+for folder in ["css", "js", "pages", "images", "assets"]:
+    folder_path = frontend_dir / folder
+    if folder_path.exists():
+        app.mount(f"/{folder}", StaticFiles(directory=str(folder_path)), name=folder)
+
+@app.get("/manifest.json")
+async def serve_manifest():
+    return FileResponse(frontend_dir / "manifest.json")
 
 # Serve index.html at root
 @app.get("/")
 async def serve_index():
-    return FileResponse(ROOT / "frontend" / "index.html")
+    return FileResponse(frontend_dir / "index.html")
+

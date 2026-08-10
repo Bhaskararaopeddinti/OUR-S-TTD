@@ -18,6 +18,9 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(20), default="pilgrim")
     language: Mapped[str] = mapped_column(String(20), default="English")
     phone: Mapped[str] = mapped_column(String(20), default="")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    reset_token: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    reset_token_expires: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     profile: Mapped["PilgrimProfile"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -185,3 +188,93 @@ class AuditLog(Base):
     details: Mapped[str] = mapped_column(Text, default="")
     ip_address: Mapped[str] = mapped_column(String(45), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class TransportType(Base):
+    """Transport categories (e.g. APSRTC Bus, TTD Free Bus, Dharma Radham, Package Tour, Taxi, Walking)."""
+    __tablename__ = "transport_types"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    operator: Mapped[str] = mapped_column(String(100), default="APSRTC / TTD")
+    is_free: Mapped[bool] = mapped_column(Boolean, default=False)
+    source: Mapped[str] = mapped_column(String(100), default="Official TTD")
+    source_url: Mapped[str] = mapped_column(String(255), default="https://ttdevasthanams.ap.gov.in")
+    last_verified: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    status: Mapped[str] = mapped_column(String(40), default="Active")
+
+
+class TransportRoute(Base):
+    """Verified travel and transport route details."""
+    __tablename__ = "transport_routes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    transport_type_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_location_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    destination_location_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_location: Mapped[str] = mapped_column(String(120), index=True)
+    destination_location: Mapped[str] = mapped_column(String(120), index=True)
+    vehicle_type: Mapped[str] = mapped_column(String(40), index=True) # GOVERNMENT_BUS, TTD_BUS, TAXI, AUTO, WALKING, PACKAGE_TOUR
+    operator: Mapped[str] = mapped_column(String(100), default="APSRTC")
+    route_name: Mapped[str] = mapped_column(String(160))
+    route_description: Mapped[str] = mapped_column(Text, default="")
+    estimated_duration: Mapped[str] = mapped_column(String(60), default="45 mins")
+    fare: Mapped[str] = mapped_column(String(60), default="Free")
+    operating_hours: Mapped[str] = mapped_column(String(80), default="24/7 Active")
+    frequency: Mapped[str] = mapped_column(String(80), default="Continuous")
+    booking_required: Mapped[bool] = mapped_column(Boolean, default=False)
+    data_status: Mapped[str] = mapped_column(String(40), default="VERIFIED") # VERIFIED, NEEDS_REVIEW, OUTDATED, INACTIVE
+    status: Mapped[str] = mapped_column(String(40), default="Available")
+    live_status: Mapped[str] = mapped_column(String(60), default="Live tracking unavailable")
+    current_location: Mapped[str] = mapped_column(String(120), default="")
+    eta: Mapped[str] = mapped_column(String(40), default="")
+    next_stop: Mapped[str] = mapped_column(String(120), default="")
+    vehicle_id: Mapped[str] = mapped_column(String(60), default="")
+    gps_timestamp: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    source: Mapped[str] = mapped_column(String(100), default="TTD Official Verified")
+    source_url: Mapped[str] = mapped_column(String(255), default="https://ttdevasthanams.ap.gov.in")
+    last_verified: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class TransportStop(Base):
+    """Intermediate or destination stop along a transport route."""
+    __tablename__ = "transport_stops"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    route_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    name: Mapped[str] = mapped_column(String(120))
+    location_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    transport_type: Mapped[str] = mapped_column(String(40), default="Bus")
+    source: Mapped[str] = mapped_column(String(100), default="Official TTD")
+    last_verified: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+
+class CrowdAnalysis(Base):
+    """Computer vision crowd analysis from admin uploaded images."""
+    __tablename__ = "crowd_analyses"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    location_id: Mapped[int] = mapped_column(Integer, default=1)
+    location_name: Mapped[str] = mapped_column(String(120), default="Sarva Darshan VQC")
+    image_url: Mapped[str] = mapped_column(Text, default="")
+    crowd_level: Mapped[str] = mapped_column(String(20)) # LOW, MODERATE, HIGH, VERY HIGH
+    detected_count: Mapped[int] = mapped_column(Integer, default=0)
+    confidence: Mapped[float] = mapped_column(Float, default=0.92)
+    admin_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class QueueRecord(Base):
+    """Structured darshan queue record with source tracking."""
+    __tablename__ = "queue_records"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    location_id: Mapped[int] = mapped_column(Integer, default=1)
+    location_name: Mapped[str] = mapped_column(String(120), default="Vaikuntam Queue Complex (VQC)")
+    crowd_level: Mapped[str] = mapped_column(String(20), default="MODERATE")
+    estimated_wait_minutes: Mapped[int] = mapped_column(Integer, default=180)
+    source: Mapped[str] = mapped_column(String(40), default="AI_PREDICTION") # ADMIN_IMAGE, MANUAL_ADMIN, OFFICIAL_TTD_API, AI_PREDICTION, DEMO
+    confidence: Mapped[float] = mapped_column(Float, default=0.90)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+

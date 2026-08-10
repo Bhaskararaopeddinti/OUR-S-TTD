@@ -1,18 +1,129 @@
-<!-- admin.html – admin analytics dashboard -->
-<section class="admin-page">
+<!-- admin.html – admin analytics & transport management dashboard -->
+<section class="admin-page fade-in">
   <h2>🛡️ Admin Dashboard</h2>
-  <p id="adminAuthNotice" class="notice">Sign in with an admin account to view analytics.</p>
+  <p id="adminAuthNotice" class="notice">Sign in with an admin account to view analytics and manage transport routes.</p>
   <div id="adminContent" hidden>
     <div class="analytics-grid">
-      <div class="stat-card accent" id="aTotal"><span class="big">—</span><span>Total Pilgrims</span></div>
+      <div class="stat-card accent" id="aTotal"><span class="big" id="aTotalPilgrims">—</span><span>Total Pilgrims</span></div>
       <div class="stat-card accent" id="aAlerts"><span class="big">—</span><span>Open Alerts</span></div>
-      <div class="stat-card accent" id="aLost"><span class="big">—</span><span>Lost &amp; Found Open</span></div>
-      <div class="stat-card accent" id="aChats"><span class="big">—</span><span>AI Chats Today</span></div>
+      <div class="stat-card accent" id="aLost"><span class="big" id="aLostFound">—</span><span>Lost &amp; Found Open</span></div>
+      <div class="stat-card accent" id="aChats"><span class="big" id="aTotalChats">—</span><span>AI Chats Today</span></div>
     </div>
-    <div class="charts-row card">
-      <canvas id="chartAlerts" height="180"></canvas>
+
+    <!-- Crowd Image Upload & Intelligence -->
+    <div class="dashboard-card" style="margin-top: 1.5rem;">
+      <h3>📸 Admin Crowd Image Upload & AI Analysis</h3>
+      <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem;">Upload queue/crowd photos to calculate live crowd level using AI Computer Vision.</p>
+      
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+        <div>
+          <label style="display:block; margin-bottom:0.4rem; font-size:0.85rem;">Location</label>
+          <select id="adminCrowdLocation" class="lang-select" style="width:100%;">
+            <option value="Vaikuntam Queue Complex (VQC I)">Vaikuntam Queue Complex I (VQC I)</option>
+            <option value="Vaikuntam Queue Complex (VQC II)">Vaikuntam Queue Complex II (VQC II)</option>
+            <option value="Sarva Darshan Line">Sarva Darshan Line</option>
+            <option value="Special Entry Darshan (SED ₹300)">Special Entry Darshan (SED ₹300)</option>
+            <option value="Annaprasadam Complex (MTVAC)">Annaprasadam Complex (MTVAC)</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:0.4rem; font-size:0.85rem;">Override Crowd Level (Optional)</label>
+          <select id="adminCrowdOverride" class="lang-select" style="width:100%;">
+            <option value="">Auto-Detect via AI</option>
+            <option value="LOW">LOW (Wait &lt; 1 hr)</option>
+            <option value="MODERATE">MODERATE (Wait 2-3 hrs)</option>
+            <option value="HIGH">HIGH (Wait 4-6 hrs)</option>
+            <option value="VERY HIGH">VERY HIGH (Wait 8+ hrs)</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:0.4rem; font-size:0.85rem;">Crowd Image</label>
+          <input type="file" id="adminCrowdFile" accept="image/*" style="width:100%; font-size:0.85rem;" />
+        </div>
+      </div>
+      <div style="margin-top:1rem;">
+        <button id="adminUploadCrowdBtn" class="quick-action-btn" style="background: linear-gradient(135deg, var(--gold), #D4AF37); color:#000;">⚡ Analyze & Update Live Queue</button>
+        <span id="adminCrowdStatus" style="margin-left:1rem; font-size:0.88rem;"></span>
+      </div>
     </div>
-    <section class="card">
+
+    <!-- Admin Transport Routes Management -->
+    <div class="dashboard-card" style="margin-top: 1.5rem;">
+      <h3>🚌 Admin Transport Routes & Verification Management</h3>
+      <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem;">Add, edit, and maintain verified TTD transport options, fares, and data verification status.</p>
+
+      <form id="adminAddRouteForm" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; margin-bottom: 1.25rem;">
+        <div>
+          <label style="font-size: 0.8rem; display:block; margin-bottom:0.2rem;">Route Name</label>
+          <input type="text" name="route_name" placeholder="e.g., Tirupati → Tirumala Express" required style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);" />
+        </div>
+        <div>
+          <label style="font-size: 0.8rem; display:block; margin-bottom:0.2rem;">From Location</label>
+          <input type="text" name="source_location" placeholder="e.g., Tirupati Central Bus Stand" required style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);" />
+        </div>
+        <div>
+          <label style="font-size: 0.8rem; display:block; margin-bottom:0.2rem;">To Location</label>
+          <input type="text" name="destination_location" placeholder="e.g., Tirumala" required style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);" />
+        </div>
+        <div>
+          <label style="font-size: 0.8rem; display:block; margin-bottom:0.2rem;">Vehicle / Category</label>
+          <select name="vehicle_type" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);">
+            <option value="APSRTC Bus">APSRTC Bus</option>
+            <option value="TTD Free Bus">TTD Free Bus</option>
+            <option value="Dharma Radham">Dharma Radham</option>
+            <option value="Package Tour">Package Tour</option>
+            <option value="Taxi">Taxi / Cab</option>
+            <option value="Walking">Walking Footpath</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size: 0.8rem; display:block; margin-bottom:0.2rem;">Operator</label>
+          <input type="text" name="operator" placeholder="APSRTC / TTD" default="APSRTC" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);" />
+        </div>
+        <div>
+          <label style="font-size: 0.8rem; display:block; margin-bottom:0.2rem;">Fare</label>
+          <input type="text" name="fare" placeholder="₹65 / FREE" default="FREE" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);" />
+        </div>
+        <div>
+          <label style="font-size: 0.8rem; display:block; margin-bottom:0.2rem;">Duration & Hours</label>
+          <input type="text" name="estimated_duration" placeholder="45 mins (24/7)" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);" />
+        </div>
+        <div>
+          <label style="font-size: 0.8rem; display:block; margin-bottom:0.2rem;">Data Status</label>
+          <select name="data_status" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);">
+            <option value="VERIFIED">VERIFIED</option>
+            <option value="NEEDS_REVIEW">NEEDS_REVIEW</option>
+            <option value="OUTDATED">OUTDATED</option>
+            <option value="INACTIVE">INACTIVE</option>
+          </select>
+        </div>
+        <div style="grid-column: 1/-1; margin-top: 0.5rem;">
+          <button type="submit" class="btn-primary" style="padding: 0.6rem 1.5rem;">➕ Save Transport Route</button>
+          <span id="adminRouteFormStatus" style="margin-left: 1rem; font-size: 0.85rem;"></span>
+        </div>
+      </form>
+
+      <div style="overflow-x: auto; margin-top: 1rem;">
+        <table id="adminRoutesTable" style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--border); text-align:left;">
+              <th style="padding:0.5rem;">Route Name</th>
+              <th style="padding:0.5rem;">Type</th>
+              <th style="padding:0.5rem;">Fare</th>
+              <th style="padding:0.5rem;">Status</th>
+              <th style="padding:0.5rem;">Last Verified</th>
+              <th style="padding:0.5rem;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="adminRoutesBody">
+            <tr><td colspan="6" style="padding:1rem; text-align:center;">Loading transport routes...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent Emergency Alerts Table -->
+    <section class="card" style="margin-top: 1.5rem;">
       <h3>Recent Emergency Alerts</h3>
       <table id="alertsTable">
         <thead><tr><th>#</th><th>Type</th><th>Status</th><th>Time</th></tr></thead>

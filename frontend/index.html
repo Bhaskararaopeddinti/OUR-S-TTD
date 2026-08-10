@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#8b1a14" />
+  <meta name="theme-color" content="#0f172a" />
   <meta name="description" content="OURS TTD – AI Smart Pilgrim Companion for Tirumala. Live queue, navigation, Gemini AI chatbot, emergency SOS and more." />
   <meta name="keywords" content="Tirumala, TTD, Tirupati, Pilgrimage, Darshan, Queue, AI Assistant" />
   <meta name="author" content="OURS TTD Project" />
@@ -103,9 +103,17 @@
         <span class="nav-icon">🤖</span>
         <span class="nav-text">AI Assistant</span>
       </button>
+      <button class="nav-item" data-page="transport" role="menuitem">
+        <span class="nav-icon">🚌</span>
+        <span class="nav-text">Travel & Transport</span>
+      </button>
       <button class="nav-item" data-page="settings" role="menuitem">
         <span class="nav-icon">⚙️</span>
         <span class="nav-text">Settings</span>
+      </button>
+      <button class="nav-item admin-only-item" data-page="admin" role="menuitem" style="display: none;">
+        <span class="nav-icon">🛡️</span>
+        <span class="nav-text">Admin Panel</span>
       </button>
     </nav>
 
@@ -117,6 +125,10 @@
           <div class="user-name">Pilgrim</div>
           <div class="user-role">Guest</div>
         </div>
+      </div>
+      <div class="sidebar-footer-actions">
+        <button id="authBtn" class="sidebar-auth-btn" aria-label="Login or logout">Login</button>
+        <button id="themeToggle" class="sidebar-theme-btn" aria-label="Toggle dark/light mode" title="Toggle Theme">🌙</button>
       </div>
     </div>
   </aside>
@@ -213,15 +225,36 @@
         <span>Full Name</span>
         <input id="authName" type="text" placeholder="Your full name" autocomplete="name" />
       </label>
-      <label>
+      <label id="emailLabel">
         <span>Email Address</span>
         <input id="authEmail" type="email" placeholder="you@example.com" required autocomplete="email" />
       </label>
-      <label>
+      <label id="passwordLabel">
         <span>Password</span>
         <input id="authPassword" type="password" placeholder="Minimum 8 characters" required minlength="8" autocomplete="current-password" />
       </label>
+      
+      <!-- Reset password fields (hidden by default) -->
+      <div id="resetFields" hidden>
+        <label>
+          <span>Reset Token</span>
+          <input id="resetToken" type="text" placeholder="Enter reset token" />
+        </label>
+        <label>
+          <span>New Password</span>
+          <input id="newPassword" type="password" placeholder="Minimum 8 characters" minlength="8" />
+        </label>
+        <label>
+          <span>Confirm New Password</span>
+          <input id="confirmPassword" type="password" placeholder="Confirm new password" minlength="8" />
+        </label>
+        <button type="button" id="submitResetBtn" class="btn-primary" style="width:100%;margin-top:.5rem;">Submit New Password</button>
+      </div>
+
       <button type="submit" style="width:100%;margin-top:.5rem;" id="authSubmit" class="btn-primary">Login</button>
+      <div id="forgotPwdWrapper" style="text-align:right; margin-top:0.4rem;">
+        <button type="button" id="forgotPasswordBtn" class="btn-ghost" style="border:none; padding:0; font-size:0.8rem; color:var(--gold);">Forgot Password?</button>
+      </div>
       <p id="authStatus" class="status" role="status" aria-live="polite"></p>
       <hr class="divider" />
       <button type="button" class="btn-ghost" style="width:100%;" id="authSwitch">New pilgrim? Create an account</button>
@@ -276,19 +309,22 @@
 <script src="js/booking.js"></script>
 <script src="js/maps.js"></script>
 <script src="js/dashboard.js"></script>
+<script src="js/transport.js"></script>
 
 <script>
-  // ═══════════════════════════════════════
-  // Hide Loading Screen
-  // ═══════════════════════════════════════
-  window.addEventListener('load', () => {
+  function hideLoader() {
     const loadingScreen = document.getElementById('loadingScreen');
     if (loadingScreen) {
       setTimeout(() => {
         loadingScreen.classList.add('hidden');
-      }, 1500);
+      }, 500);
     }
-  });
+  }
+  if (document.readyState === 'complete') {
+    hideLoader();
+  } else {
+    window.addEventListener('load', hideLoader);
+  }
 
   // ═══════════════════════════════════════
   // Register Service Worker (PWA)

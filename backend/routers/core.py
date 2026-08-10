@@ -24,7 +24,7 @@ from backend.services.translation import supported_languages
 from backend.services.google_translation import translate_text, get_language_code
 from backend.services.location_service import find_nearby_facilities, format_distance, get_facility_directions
 from backend.services.notification_service import generate_smart_notifications, get_notification_summary
-from backend.auth import current_claims
+from backend.auth import current_claims, get_current_user, get_current_admin
 from backend.services.ttd_official import public_status
 from backend.services.facilities_data import FACILITIES
 
@@ -108,15 +108,24 @@ def facility_directions(
 # ──────────────────────── AI Chat ────────────────────────
 @router.post("/chat")
 def chat(data: ChatIn, db: Session = Depends(get_db)):
-    """AI-powered pilgrim assistant (Gemini or keyword fallback)."""
-    reply = pilgrim_reply(data.message, data.language)
+    """AI-powered pilgrim assistant powered by Gemini API."""
+    res = pilgrim_reply(
+        message=data.message,
+        language=data.language,
+        history=data.history,
+        db=db
+    )
+    reply_text = res.get("reply", "")
 
     # Save conversation to history (anonymous if no auth)
-    db.add(ChatHistory(role="user", message=data.message, language=data.language))
-    db.add(ChatHistory(role="assistant", message=reply, language=data.language))
-    db.commit()
+    try:
+        db.add(ChatHistory(role="user", message=data.message, language=data.language))
+        db.add(ChatHistory(role="assistant", message=reply_text, language=data.language))
+        db.commit()
+    except Exception:
+        db.rollback()
 
-    return {"reply": reply, "language": data.language}
+    return res
 
 
 # ──────────────────────── SOS ────────────────────────
@@ -368,19 +377,16 @@ def map_locations(category: str | None = None, db: Session = Depends(get_db)):
 
 # ──────────────────────── User Profile ────────────────────────
 @router.get("/profile")
-def get_profile(claims=Depends(current_claims), db: Session = Depends(get_db)):
-    user_id = int(claims["sub"])
-    user = db.query(User).filter_by(id=user_id).first()
-    if not user:
-        raise HTTPException(404, "User not found")
-    profile = user.profile
+def get_profile(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    profile = current_user.profile
     return {
-        "id": user.id,
-        "name": user.name,
-        "email": user.email,
-        "role": user.role,
-        "language": user.language,
-        "phone": user.phone,
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "role": current_user.role,
+        "language": current_user.language,
+        "phone": current_user.phone,
+        "is_active": getattr(current_user, 'is_active', True),
         "age": profile.age if profile else None,
         "blood_group": profile.blood_group if profile else "",
         "medical_conditions": profile.medical_conditions if profile else "",
@@ -390,33 +396,28 @@ def get_profile(claims=Depends(current_claims), db: Session = Depends(get_db)):
 
 
 @router.put("/profile")
-def update_profile(data: ProfileUpdate, claims=Depends(current_claims), db: Session = Depends(get_db)):
-    user_id = int(claims["sub"])
-    user = db.query(User).filter_by(id=user_id).first()
-    if not user:
-        raise HTTPException(404, "User not found")
-
+def update_profile(data: ProfileUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if data.name is not None:
-        user.name = data.name
+        current_user.name = data.name
     if data.phone is not None:
-        user.phone = data.phone
+        current_user.phone = data.phone
     if data.language is not None:
-        user.language = data.language
+        current_user.language = data.language
 
     # Profile fields
-    if not user.profile:
-        user.profile = PilgrimProfile(user_id=user.id)
+    if not current_user.profile:
+        current_user.profile = PilgrimProfile(user_id=current_user.id)
 
     if data.age is not None:
-        user.profile.age = data.age
+        current_user.profile.age = data.age
     if data.blood_group is not None:
-        user.profile.blood_group = data.blood_group
+        current_user.profile.blood_group = data.blood_group
     if data.medical_conditions is not None:
-        user.profile.medical_conditions = data.medical_conditions
+        current_user.profile.medical_conditions = data.medical_conditions
     if data.emergency_contact is not None:
-        user.profile.emergency_contact = data.emergency_contact
+        current_user.profile.emergency_contact = data.emergency_contact
     if data.wheelchair_required is not None:
-        user.profile.wheelchair_required = data.wheelchair_required
+        current_user.profile.wheelchair_required = data.wheelchair_required
 
     db.commit()
     return {"message": "Profile updated successfully."}
@@ -424,9 +425,7 @@ def update_profile(data: ProfileUpdate, claims=Depends(current_claims), db: Sess
 
 # ──────────────────────── Admin Analytics ────────────────────────
 @router.get("/admin/analytics")
-def analytics(claims=Depends(current_claims), db: Session = Depends(get_db)):
-    if claims["role"] != "admin":
-        raise HTTPException(403, "Admin access required")
+def analytics(admin_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     return {
         "total_pilgrims": db.query(User).filter_by(role="pilgrim").count(),
         "total_users": db.query(User).count(),
@@ -441,9 +440,7 @@ def analytics(claims=Depends(current_claims), db: Session = Depends(get_db)):
 
 
 @router.get("/admin/emergencies")
-def admin_emergencies(claims=Depends(current_claims), db: Session = Depends(get_db)):
-    if claims["role"] != "admin":
-        raise HTTPException(403, "Admin access required")
+def admin_emergencies(admin_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     alerts = db.query(EmergencyAlert).order_by(EmergencyAlert.created_at.desc()).limit(100).all()
     return [
         {

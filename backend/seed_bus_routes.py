@@ -1,0 +1,430 @@
+"""
+OURS TTD – Comprehensive Bus Transport Seed Script
+Seeds all major TTD pilgrim bus routes with demo/indicative data.
+Run this once to populate the database.
+"""
+import sys, os
+sys.path.insert(0, r"C:\Users\BHASKAR\Desktop\OUR'S TDD")
+
+from backend.database import SessionLocal
+from backend.models import TransportRoute
+from datetime import datetime
+
+DEMO_ROUTES = [
+    # ── TIRUPATI BUS STATION → TIRUMALA ──────────────────────────
+    dict(
+        source_location="Tirupati Bus Station",
+        destination_location="Tirumala Bus Station",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Tirupati Bus Station → Tirumala (APSRTC)",
+        route_description="Regular APSRTC pilgrim bus via Alipiri Ghat Road to Tirumala.",
+        estimated_duration="40 – 60 mins",
+        fare="₹65 / person (indicative)",
+        operating_hours="24 Hours (Indicative)",
+        frequency="Every 5–10 mins (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    dict(
+        source_location="Tirupati Bus Station",
+        destination_location="Tirumala Bus Station",
+        vehicle_type="TTD_BUS",
+        operator="TTD Devasthanams",
+        route_name="Tirupati Bus Station → Tirumala (TTD Free Bus)",
+        route_description="TTD free pilgrim shuttle bus from Tirupati to Tirumala.",
+        estimated_duration="45 – 65 mins",
+        fare="FREE",
+        operating_hours="24 Hours (Indicative)",
+        frequency="Frequent (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://ttdevasthanams.ap.gov.in",
+    ),
+    # ── TIRUMALA BUS STATION → TIRUPATI ──────────────────────────
+    dict(
+        source_location="Tirumala Bus Station",
+        destination_location="Tirupati Bus Station",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Tirumala → Tirupati Bus Station (APSRTC)",
+        route_description="Return APSRTC bus from Tirumala down the Ghat Road.",
+        estimated_duration="40 – 60 mins",
+        fare="₹65 / person (indicative)",
+        operating_hours="24 Hours (Indicative)",
+        frequency="Every 5–10 mins (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    dict(
+        source_location="Tirumala Bus Station",
+        destination_location="Tirupati Bus Station",
+        vehicle_type="TTD_BUS",
+        operator="TTD Devasthanams",
+        route_name="Tirumala → Tirupati Bus Station (TTD Free Bus)",
+        route_description="TTD free return shuttle bus from Tirumala to Tirupati.",
+        estimated_duration="45 – 65 mins",
+        fare="FREE",
+        operating_hours="24 Hours (Indicative)",
+        frequency="Frequent (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://ttdevasthanams.ap.gov.in",
+    ),
+    # ── TIRUPATI RAILWAY STATION → TIRUMALA ──────────────────────
+    dict(
+        source_location="Tirupati Railway Station",
+        destination_location="Tirumala Bus Station",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Tirupati Railway Station → Tirumala (APSRTC)",
+        route_description="Take a local bus / auto from Railway Station to Tirupati Bus Stand, then board Tirumala-bound bus.",
+        estimated_duration="50 – 70 mins",
+        fare="₹70 – ₹85 / person (indicative)",
+        operating_hours="24 Hours (Indicative)",
+        frequency="Frequent (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── TIRUMALA → TIRUPATI RAILWAY STATION ──────────────────────
+    dict(
+        source_location="Tirumala Bus Station",
+        destination_location="Tirupati Railway Station",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Tirumala → Tirupati Railway Station (APSRTC)",
+        route_description="APSRTC bus from Tirumala to Tirupati Bus Stand, then local transport to Railway Station.",
+        estimated_duration="55 – 75 mins",
+        fare="₹70 – ₹85 / person (indicative)",
+        operating_hours="24 Hours (Indicative)",
+        frequency="Frequent (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── ALIPIRI → TIRUMALA ──────────────────────────────────────
+    dict(
+        source_location="Alipiri",
+        destination_location="Tirumala Bus Station",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Alipiri → Tirumala (APSRTC)",
+        route_description="Bus from Alipiri base to Tirumala Hill via Ghat Road.",
+        estimated_duration="35 – 55 mins",
+        fare="₹55 / person (indicative)",
+        operating_hours="24 Hours (Indicative)",
+        frequency="Every 10 mins (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── TIRUMALA → ALIPIRI ──────────────────────────────────────
+    dict(
+        source_location="Tirumala Bus Station",
+        destination_location="Alipiri",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Tirumala → Alipiri (APSRTC)",
+        route_description="Return bus from Tirumala Hill down to Alipiri base.",
+        estimated_duration="35 – 55 mins",
+        fare="₹55 / person (indicative)",
+        operating_hours="24 Hours (Indicative)",
+        frequency="Every 10 mins (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── TIRUMALA BUS STATION → TEMPLE ────────────────────────────
+    dict(
+        source_location="Tirumala Bus Station",
+        destination_location="Tirumala Temple",
+        vehicle_type="TTD_BUS",
+        operator="TTD Devasthanams",
+        route_name="Tirumala Bus Station → Temple (TTD Dharma Ratham)",
+        route_description="TTD free internal shuttle connecting bus stand to temple area.",
+        estimated_duration="10 – 20 mins",
+        fare="FREE",
+        operating_hours="24 Hours (Indicative)",
+        frequency="Continuous (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://ttdevasthanams.ap.gov.in",
+    ),
+    # ── TIRUPATI BUS STATION → TIRUCHANUR ────────────────────────
+    dict(
+        source_location="Tirupati Bus Station",
+        destination_location="Tiruchanur Padmavathi Temple",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Tirupati Bus Station → Tiruchanur (Local Bus)",
+        route_description="Local APSRTC bus from Tirupati to Tiruchanur Sri Padmavathi Temple.",
+        estimated_duration="15 – 30 mins",
+        fare="₹15 – ₹25 / person (indicative)",
+        operating_hours="5:00 AM – 10:00 PM (Indicative)",
+        frequency="Every 15 mins (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── TIRUCHANUR → TIRUPATI BUS STATION ────────────────────────
+    dict(
+        source_location="Tiruchanur Padmavathi Temple",
+        destination_location="Tirupati Bus Station",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Tiruchanur → Tirupati Bus Station (Local Bus)",
+        route_description="Return local bus from Tiruchanur Padmavathi Temple to Tirupati.",
+        estimated_duration="15 – 30 mins",
+        fare="₹15 – ₹25 / person (indicative)",
+        operating_hours="5:00 AM – 10:00 PM (Indicative)",
+        frequency="Every 15 mins (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── TIRUPATI RAILWAY STATION → TIRUCHANUR ────────────────────
+    dict(
+        source_location="Tirupati Railway Station",
+        destination_location="Tiruchanur Padmavathi Temple",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Tirupati Railway Station → Tiruchanur (Local Bus)",
+        route_description="Local bus from Railway Station area to Tiruchanur Padmavathi Temple.",
+        estimated_duration="20 – 35 mins",
+        fare="₹20 – ₹30 / person (indicative)",
+        operating_hours="5:00 AM – 10:00 PM (Indicative)",
+        frequency="Every 20 mins (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── TIRUPATI → GOVINDARAJA SWAMY TEMPLE ──────────────────────
+    dict(
+        source_location="Tirupati Bus Station",
+        destination_location="Govindaraja Swamy Temple",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Tirupati → Govindaraja Swamy Temple (Local Bus)",
+        route_description="Local bus to the famous Govindaraja Swamy Temple in Tirupati town.",
+        estimated_duration="10 – 20 mins",
+        fare="₹10 – ₹15 / person (indicative)",
+        operating_hours="5:30 AM – 9:00 PM (Indicative)",
+        frequency="Every 15 mins (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── GOVINDARAJA SWAMY → TIRUPATI BUS STATION ─────────────────
+    dict(
+        source_location="Govindaraja Swamy Temple",
+        destination_location="Tirupati Bus Station",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Govindaraja Swamy Temple → Tirupati Bus Station",
+        route_description="Return local bus from Govindaraja Swamy Temple to Tirupati Bus Station.",
+        estimated_duration="10 – 20 mins",
+        fare="₹10 – ₹15 / person (indicative)",
+        operating_hours="5:30 AM – 9:00 PM (Indicative)",
+        frequency="Every 15 mins (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── TIRUPATI → KAPILA THEERTHAM ──────────────────────────────
+    dict(
+        source_location="Tirupati Bus Station",
+        destination_location="Kapila Theertham",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Tirupati → Kapila Theertham (Local Bus)",
+        route_description="Local bus to Kapila Theertham, the sacred waterfall and Shiva temple.",
+        estimated_duration="15 – 25 mins",
+        fare="₹10 – ₹20 / person (indicative)",
+        operating_hours="5:30 AM – 8:00 PM (Indicative)",
+        frequency="Every 20 mins (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── KAPILA THEERTHAM → TIRUPATI ──────────────────────────────
+    dict(
+        source_location="Kapila Theertham",
+        destination_location="Tirupati Bus Station",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Kapila Theertham → Tirupati Bus Station",
+        route_description="Return local bus from Kapila Theertham to Tirupati.",
+        estimated_duration="15 – 25 mins",
+        fare="₹10 – ₹20 / person (indicative)",
+        operating_hours="5:30 AM – 8:00 PM (Indicative)",
+        frequency="Every 20 mins (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── TIRUPATI → SRINIVASA MANGAPURAM ──────────────────────────
+    dict(
+        source_location="Tirupati Bus Station",
+        destination_location="Srinivasa Mangapuram",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Tirupati → Srinivasa Mangapuram (Regional Bus)",
+        route_description="Regional bus from Tirupati to Srinivasa Mangapuram Kalyana Venkateswara Swamy Temple.",
+        estimated_duration="30 – 45 mins",
+        fare="₹25 – ₹40 / person (indicative)",
+        operating_hours="5:00 AM – 9:00 PM (Indicative)",
+        frequency="Every 30 mins (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── SRINIVASA MANGAPURAM → TIRUPATI ──────────────────────────
+    dict(
+        source_location="Srinivasa Mangapuram",
+        destination_location="Tirupati Bus Station",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC",
+        route_name="Srinivasa Mangapuram → Tirupati Bus Station",
+        route_description="Return regional bus from Srinivasa Mangapuram to Tirupati.",
+        estimated_duration="30 – 45 mins",
+        fare="₹25 – ₹40 / person (indicative)",
+        operating_hours="5:00 AM – 9:00 PM (Indicative)",
+        frequency="Every 30 mins (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── TIRUPATI AIRPORT → TIRUPATI BUS STATION ──────────────────
+    dict(
+        source_location="Tirupati Airport",
+        destination_location="Tirupati Bus Station",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC / City Transport",
+        route_name="Tirupati Airport → Tirupati Bus Station",
+        route_description="Public transport / APSRTC from Tirupati Airport to Tirupati Bus Station / City.",
+        estimated_duration="30 – 45 mins",
+        fare="₹50 – ₹80 / person (indicative)",
+        operating_hours="Depends on flight schedule (Indicative)",
+        frequency="Limited / Indicative",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── TIRUPATI BUS STATION → TIRUPATI AIRPORT ──────────────────
+    dict(
+        source_location="Tirupati Bus Station",
+        destination_location="Tirupati Airport",
+        vehicle_type="GOVERNMENT_BUS",
+        operator="APSRTC / City Transport",
+        route_name="Tirupati Bus Station → Tirupati Airport",
+        route_description="Public transport from Tirupati Bus Station to Tirupati Airport.",
+        estimated_duration="30 – 45 mins",
+        fare="₹50 – ₹80 / person (indicative)",
+        operating_hours="Depends on flight schedule (Indicative)",
+        frequency="Limited / Indicative",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://www.apsrtconline.in",
+    ),
+    # ── TIRUMALA INTERNAL: QUEUE COMPLEX → TEMPLE ────────────────
+    dict(
+        source_location="Vaikuntam Queue Complex",
+        destination_location="Tirumala Temple",
+        vehicle_type="TTD_BUS",
+        operator="TTD Devasthanams",
+        route_name="VQC Queue Complex → Tirumala Temple (Dharma Ratham)",
+        route_description="TTD free internal Dharma Ratham shuttle from Vaikuntam Queue Complex to the temple.",
+        estimated_duration="10 – 20 mins",
+        fare="FREE",
+        operating_hours="24 Hours (Indicative)",
+        frequency="Continuous (Indicative)",
+        status="Available",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://ttdevasthanams.ap.gov.in",
+    ),
+    # ── SRIVARI METTU FOOTPATH ────────────────────────────────────
+    dict(
+        source_location="Srivari Mettu",
+        destination_location="Tirumala Bus Station",
+        vehicle_type="WALKING",
+        operator="TTD Footpath Trek",
+        route_name="Srivari Mettu Traditional Trek (2,388 Steps)",
+        route_description="Traditional walking pilgrimage route from Srivari Mettu to Tirumala Hill. 2,388 steps.",
+        estimated_duration="2 – 3 Hours",
+        fare="Free (Traditional Trek)",
+        operating_hours="6:00 AM – 5:00 PM (Indicative)",
+        frequency="Continuous",
+        status="Open",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://ttdevasthanams.ap.gov.in",
+    ),
+    # ── ALIPIRI FOOTPATH ──────────────────────────────────────────
+    dict(
+        source_location="Alipiri Footpath",
+        destination_location="Tirumala Temple",
+        vehicle_type="WALKING",
+        operator="TTD Footpath Trek",
+        route_name="Alipiri Footpath Trek (3,550 Steps)",
+        route_description="Classic walking pilgrimage from Alipiri to Tirumala. 3,550 steps, approx. 3–4 hours.",
+        estimated_duration="3 – 4 Hours",
+        fare="Free (Traditional Trek)",
+        operating_hours="All hours permitted (Indicative)",
+        frequency="Continuous",
+        status="Open",
+        data_status="DEMO",
+        source="Indicative / Demo Data",
+        source_url="https://ttdevasthanams.ap.gov.in",
+    ),
+]
+
+def seed_bus_routes():
+    db = SessionLocal()
+    added = 0
+    skipped = 0
+    try:
+        for route_data in DEMO_ROUTES:
+            existing = db.query(TransportRoute).filter_by(
+                route_name=route_data["route_name"]
+            ).first()
+            if existing:
+                skipped += 1
+                continue
+            route = TransportRoute(**route_data)
+            db.add(route)
+            added += 1
+        db.commit()
+        print(f"[OK] Seeded {added} new bus routes. Skipped {skipped} duplicates.")
+    except Exception as e:
+        db.rollback()
+        print(f"[ERROR] Seeding bus routes failed: {e}")
+        raise
+    finally:
+        db.close()
+
+if __name__ == "__main__":
+    seed_bus_routes()

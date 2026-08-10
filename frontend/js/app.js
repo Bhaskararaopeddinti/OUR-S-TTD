@@ -21,6 +21,7 @@ const PAGES = {
   emergency:  renderEmergency,
   accommodation: renderAccommodation,
   chatbot:    renderChatbot,
+  transport:  renderTransport,
   settings:   renderSettings,
   home:       renderHome,
   services:   renderServices,
@@ -51,7 +52,7 @@ function setTheme(dark) {
   document.documentElement.classList.toggle('dark', dark);
   localStorage.setItem('theme', dark ? 'dark' : 'light');
 }
-document.getElementById('themeToggle').addEventListener('click', () => {
+document.getElementById('themeToggle')?.addEventListener('click', () => {
   setTheme(!document.documentElement.classList.contains('dark'));
 });
 // Init theme
@@ -81,68 +82,291 @@ const authTitle  = document.getElementById('authTitle');
 const authName   = document.getElementById('authName');
 const nameLabel  = document.getElementById('nameLabel');
 let isRegistering = false;
+let isResetMode   = false;
 
-authBtn.addEventListener('click', () => {
+function formatAuthError(err) {
+  if (!err) return 'An unexpected error occurred. Please try again.';
+  if (typeof err === 'string') return err;
+  
+  if (err instanceof TypeError || (err.message && err.message.includes('Failed to fetch'))) {
+    return 'Server unavailable. Please check if backend is running.';
+  }
+
+  const detail = err.detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail.map(item => item.msg || JSON.stringify(item)).join('; ');
+  }
+  if (err.message) return err.message;
+  return 'Authentication failed. Please check your inputs.';
+}
+
+function resetAuthModalView() {
+  isRegistering = false;
+  isResetMode = false;
+  if (nameLabel) nameLabel.hidden = true;
+  const emailLabel = document.getElementById('emailLabel');
+  const passwordLabel = document.getElementById('passwordLabel');
+  const resetFields = document.getElementById('resetFields');
+  const forgotPwdWrapper = document.getElementById('forgotPwdWrapper');
+  const submitBtn = document.getElementById('authSubmit');
+
+  if (emailLabel) emailLabel.hidden = false;
+  if (passwordLabel) passwordLabel.hidden = false;
+  if (resetFields) resetFields.hidden = true;
+  if (forgotPwdWrapper) forgotPwdWrapper.hidden = false;
+  if (submitBtn) {
+    submitBtn.hidden = false;
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Login';
+  }
+  if (authTitle) authTitle.textContent = 'Login to Your Journey';
+  if (authSwitch) {
+    authSwitch.hidden = false;
+    authSwitch.textContent = 'New pilgrim? Create an account';
+  }
+  if (authStatus) {
+    authStatus.className = 'status';
+    authStatus.textContent = '';
+  }
+}
+
+authBtn?.addEventListener('click', () => {
   if (authToken) { logout(); return; }
+  resetAuthModalView();
   authDialog.showModal();
 });
-document.getElementById('authClose').addEventListener('click', () => authDialog.close());
+document.getElementById('authClose')?.addEventListener('click', () => authDialog?.close());
 
-authSwitch.addEventListener('click', () => {
+authSwitch?.addEventListener('click', () => {
   isRegistering = !isRegistering;
-  nameLabel.hidden = !isRegistering;
-  authTitle.textContent = isRegistering ? 'Create Your Account' : 'Login to Your Journey';
-  document.getElementById('authSubmit').textContent = isRegistering ? 'Create Account' : 'Login';
-  authSwitch.textContent = isRegistering ? 'Already registered? Login' : 'New pilgrim? Create an account';
-  authStatus.textContent = '';
+  if (nameLabel) nameLabel.hidden = !isRegistering;
+  if (authTitle) authTitle.textContent = isRegistering ? 'Create Your Account' : 'Login to Your Journey';
+  const submitBtn = document.getElementById('authSubmit');
+  if (submitBtn) submitBtn.textContent = isRegistering ? 'Create Account' : 'Login';
+  if (authSwitch) authSwitch.textContent = isRegistering ? 'Already registered? Login' : 'New pilgrim? Create an account';
+  if (authStatus) {
+    authStatus.className = 'status';
+    authStatus.textContent = '';
+  }
 });
 
-authForm.addEventListener('submit', async e => {
-  e.preventDefault();
-  authStatus.textContent = '';
-  const submit = document.getElementById('authSubmit');
-  submit.disabled = true;
-  submit.innerHTML = '<span class="spinner"></span> Please wait…';
+document.getElementById('forgotPasswordBtn')?.addEventListener('click', async () => {
+  const emailInput = document.getElementById('authEmail');
+  const email = emailInput ? emailInput.value.trim() : '';
+  if (!email) {
+    if (authStatus) {
+      authStatus.className = 'status error';
+      authStatus.textContent = 'Please enter your email address above to reset password.';
+    }
+    return;
+  }
+  if (authStatus) {
+    authStatus.className = 'status';
+    authStatus.textContent = '⏳ Requesting password reset...';
+  }
+  try {
+    const res = await API.post('auth/forgot-password', { email });
+    if (authStatus) {
+      authStatus.className = 'status success';
+      authStatus.textContent = res.message || 'Password reset instructions sent!';
+    }
+    const resetFields = document.getElementById('resetFields');
+    if (resetFields) {
+      resetFields.hidden = false;
+      if (res.dev_reset_token) {
+        const tokenInput = document.getElementById('resetToken');
+        if (tokenInput) tokenInput.value = res.dev_reset_token;
+      }
+    }
+  } catch (err) {
+    if (authStatus) {
+      authStatus.className = 'status error';
+      authStatus.textContent = formatAuthError(err);
+    }
+  }
+});
+
+document.getElementById('submitResetBtn')?.addEventListener('click', async () => {
+  const token = document.getElementById('resetToken')?.value.trim();
+  const newPassword = document.getElementById('newPassword')?.value;
+  const confirmPassword = document.getElementById('confirmPassword')?.value;
+
+  if (!token) {
+    if (authStatus) {
+      authStatus.className = 'status error';
+      authStatus.textContent = 'Please enter the reset token.';
+    }
+    return;
+  }
+  if (!newPassword || newPassword.length < 8) {
+    if (authStatus) {
+      authStatus.className = 'status error';
+      authStatus.textContent = 'New password must be at least 8 characters long.';
+    }
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    if (authStatus) {
+      authStatus.className = 'status error';
+      authStatus.textContent = 'New password and confirmation password do not match.';
+    }
+    return;
+  }
+
+  if (authStatus) {
+    authStatus.className = 'status';
+    authStatus.textContent = '⏳ Updating password...';
+  }
 
   try {
-    const body = { email: document.getElementById('authEmail').value, password: document.getElementById('authPassword').value };
-    if (isRegistering) body.name = document.getElementById('authName').value;
+    const res = await API.post('auth/reset-password', {
+      token,
+      new_password: newPassword,
+      confirm_password: confirmPassword
+    });
+    if (authStatus) {
+      authStatus.className = 'status success';
+      authStatus.textContent = res.message || 'Password reset successfully! You can now log in.';
+    }
+    setTimeout(() => {
+      resetAuthModalView();
+    }, 1800);
+  } catch (err) {
+    if (authStatus) {
+      authStatus.className = 'status error';
+      authStatus.textContent = formatAuthError(err);
+    }
+  }
+});
+
+authForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  if (authStatus) {
+    authStatus.className = 'status';
+    authStatus.textContent = '';
+  }
+
+  const emailVal = document.getElementById('authEmail')?.value.trim();
+  const passwordVal = document.getElementById('authPassword')?.value;
+
+  if (!emailVal) {
+    if (authStatus) {
+      authStatus.className = 'status error';
+      authStatus.textContent = 'Please enter your email address.';
+    }
+    return;
+  }
+  if (!passwordVal) {
+    if (authStatus) {
+      authStatus.className = 'status error';
+      authStatus.textContent = 'Please enter your password.';
+    }
+    return;
+  }
+
+  const submit = document.getElementById('authSubmit');
+  if (submit) {
+    submit.disabled = true;
+    submit.innerHTML = '<span class="spinner"></span> Please wait…';
+  }
+
+  try {
+    const body = { email: emailVal, password: passwordVal };
+    if (isRegistering) {
+      const nameVal = document.getElementById('authName')?.value.trim();
+      if (!nameVal) {
+        throw { detail: 'Please enter your full name.' };
+      }
+      body.name = nameVal;
+    }
     const endpoint = isRegistering ? 'auth/register' : 'auth/login';
     const data = await API.post(endpoint, body);
     authToken = data.access_token;
     localStorage.setItem('authToken', authToken);
-    authStatus.textContent = '✓ Signed in! Welcome.';
-    submit.textContent = 'Done';
-    setTimeout(() => {
-      authDialog.close();
-      onAuthSuccess();
-    }, 700);
+    if (authStatus) {
+      authStatus.className = 'status success';
+      authStatus.textContent = '✓ Signed in! Welcome.';
+    }
+    if (submit) submit.textContent = 'Done';
+    setTimeout(async () => {
+      if (authDialog) authDialog.close();
+      await onAuthSuccess(true);
+    }, 500);
   } catch (err) {
-    authStatus.className = 'status error';
-    authStatus.textContent = err.detail || 'Sign in failed. Please check your details.';
-    submit.disabled = false;
-    submit.textContent = isRegistering ? 'Create Account' : 'Login';
+    if (authStatus) {
+      authStatus.className = 'status error';
+      authStatus.textContent = formatAuthError(err);
+    }
+    if (submit) {
+      submit.disabled = false;
+      submit.textContent = isRegistering ? 'Create Account' : 'Login';
+    }
   }
 });
 
-function onAuthSuccess() {
-  authBtn.textContent = '✓ Signed In';
-  // Show admin link if admin
-  API.get('profile').then(profile => {
+async function onAuthSuccess(redirect = false) {
+  const authBtn = document.getElementById('authBtn');
+
+  if (!authToken) {
+    logout();
+    return;
+  }
+
+  try {
+    const profile = await API.authGet('profile');
     authUser = profile;
-    if (profile.role === 'admin') {
-      document.getElementById('adminLink').hidden = false;
+
+    const userName = document.querySelector('.user-name');
+    const userRole = document.querySelector('.user-role');
+    if (userName) userName.textContent = profile.name || 'Pilgrim';
+    if (userRole) userRole.textContent = profile.role || 'Pilgrim';
+
+    const adminNavItem = document.querySelector('.admin-only-item');
+    if (adminNavItem) {
+      if (profile.role === 'admin' || profile.role === 'super_admin') {
+        adminNavItem.style.display = 'flex';
+      } else {
+        adminNavItem.style.display = 'none';
+      }
     }
-  }).catch(() => {});
+
+    if (authBtn) authBtn.textContent = 'Logout';
+
+    if (redirect) {
+      navigate('dashboard');
+    } else if (currentPage === 'admin') {
+      renderAdmin();
+    }
+    return profile;
+  } catch (err) {
+    console.warn('Auth token verification failed:', err);
+    logout();
+  }
 }
 
 function logout() {
   authToken = null;
   authUser  = null;
   localStorage.removeItem('authToken');
-  authBtn.textContent = 'Login';
-  document.getElementById('adminLink').hidden = true;
-  navigate('home');
+
+  const authBtn = document.getElementById('authBtn');
+  if (authBtn) authBtn.textContent = 'Login';
+
+  const adminNavItem = document.querySelector('.admin-only-item');
+  if (adminNavItem) adminNavItem.style.display = 'none';
+
+  const userName = document.querySelector('.user-name');
+  const userRole = document.querySelector('.user-role');
+  if (userName) userName.textContent = 'Pilgrim';
+  if (userRole) userRole.textContent = 'Guest';
+
+  navigate('dashboard');
+
+  if (authDialog && typeof authDialog.showModal === 'function') {
+    resetAuthModalView();
+    authDialog.showModal();
+  }
 }
 
 // Check if already logged in on page load
@@ -252,16 +476,39 @@ function renderChatbot() {
   fetch('pages/chatbot.html')
     .then(response => response.text())
     .then(html => {
-      document.getElementById('appRoot').innerHTML = html;
-      if (typeof initChatbot === 'function') {
-        initChatbot();
-      }
+      const root = document.getElementById('appRoot');
+      root.innerHTML = html;
+      // Give the DOM a tick to settle before attaching events
+      setTimeout(() => {
+        if (typeof initChatbot === 'function') {
+          initChatbot();
+        }
+        // Ensure sendBtn and Enter key always work regardless of module load order
+        const sendBtn  = document.getElementById('sendBtn');
+        const chatInput = document.getElementById('chatInput');
+        if (sendBtn && !sendBtn._bound) {
+          sendBtn._bound = true;
+          sendBtn.addEventListener('click', () => {
+            if (typeof sendMessage === 'function') sendMessage();
+          });
+        }
+        if (chatInput && !chatInput._bound) {
+          chatInput._bound = true;
+          chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              if (typeof sendMessage === 'function') sendMessage();
+            }
+          });
+        }
+      }, 50);
     })
     .catch(error => {
       console.error('Failed to load chatbot page:', error);
       document.getElementById('appRoot').innerHTML = '<p class="error">Failed to load chatbot page.</p>';
     });
 }
+
 
 // ── SETTINGS PAGE ─────────────────────────────
 function renderSettings() {
@@ -283,6 +530,22 @@ function renderSettings() {
       </div>
     </section>
   `;
+}
+
+// ── TRAVEL & TRANSPORT PAGE ───────────────────
+function renderTransport() {
+  fetch('pages/transport.html')
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('appRoot').innerHTML = html;
+      if (typeof initTransport === 'function') {
+        initTransport();
+      }
+    })
+    .catch(error => {
+      console.error('Failed to load transport page:', error);
+      document.getElementById('appRoot').innerHTML = '<p class="error">Failed to load transport page.</p>';
+    });
 }
 
 // ── Original Home Page (for reference) ───────────
@@ -575,6 +838,22 @@ function renderNavigation() {
     });
 }
 
+// ── TRANSPORT PAGE ────────────────────────────
+function renderTransport() {
+  fetch('pages/transport.html')
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById('appRoot').innerHTML = html;
+      if (typeof initTransport === 'function') {
+        initTransport();
+      }
+    })
+    .catch(err => {
+      console.error('Failed to load transport page:', err);
+      document.getElementById('appRoot').innerHTML = '<p class="error">Failed to load transport page.</p>';
+    });
+}
+
 function renderLandmarks() {
   const grid = document.getElementById('landmarkGrid');
   if (!grid) return;
@@ -793,68 +1072,73 @@ async function searchLostFound() {
 
 // ── ADMIN PAGE ────────────────────────────────
 function renderAdmin() {
-  const isAdmin = authUser && authUser.role === 'admin';
-  document.getElementById('appRoot').innerHTML = `
-    <section class="fade-in">
-      <h2>🛡️ Admin Dashboard</h2>
-      ${!authToken ? `
-        <div class="card" style="text-align:center;padding:2.5rem;">
-          <p>Admin login required.</p>
-          <button class="btn-primary" onclick="document.getElementById('authBtn').click()">Login</button>
-        </div>
-      ` : !isAdmin ? `
-        <div class="notice">⛔ Admin access required. Sign in with an admin account.</div>
-      ` : `
-        <div class="analytics-grid">
-          <div class="stat-card accent"><span class="big" id="aTotalPilgrims">—</span><span>Total Pilgrims</span></div>
-          <div class="stat-card accent"><span class="big" id="aAlerts">—</span><span>Open Alerts</span></div>
-          <div class="stat-card accent"><span class="big" id="aLostFound">—</span><span>Lost &amp; Found</span></div>
-          <div class="stat-card accent"><span class="big" id="aTotalChats">—</span><span>AI Chats</span></div>
-          <div class="stat-card accent"><span class="big" id="aBookings">—</span><span>Bookings</span></div>
-          <div class="stat-card accent"><span class="big" id="aFeedback">—</span><span>Feedback</span></div>
-        </div>
-
-        <div class="card">
-          <h3>🚨 Recent Emergency Alerts</h3>
-          <div style="overflow-x:auto;">
-            <table>
-              <thead><tr><th>#</th><th>Type</th><th>Description</th><th>Status</th><th>Time</th></tr></thead>
-              <tbody id="alertsBody"><tr><td colspan="5">Loading…</td></tr></tbody>
-            </table>
-          </div>
-        </div>
-      `}
-    </section>
-  `;
-  if (authToken && isAdmin) loadAdminData();
+  const isAdmin = authUser && (authUser.role === 'admin' || authUser.role === 'super_admin');
+  fetch('pages/admin.html')
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById('appRoot').innerHTML = html;
+      const notice = document.getElementById('adminAuthNotice');
+      const content = document.getElementById('adminContent');
+      if (!authToken || !isAdmin) {
+        if (notice) {
+          notice.hidden = false;
+          notice.innerHTML = '⛔ <strong>403 Forbidden</strong>: Administrator credentials required. Normal users cannot access admin pages.';
+        }
+        if (content) content.hidden = true;
+      } else {
+        if (notice) notice.hidden = true;
+        if (content) content.hidden = false;
+        loadAdminData();
+        if (typeof window.initAdminModule === 'function') {
+          window.initAdminModule();
+        }
+        if (typeof window.loadAdminTransportRoutes === 'function') {
+          window.loadAdminTransportRoutes();
+        }
+      }
+    })
+    .catch(err => {
+      console.error('Failed to load admin template:', err);
+    });
 }
 
 async function loadAdminData() {
   try {
     const stats = await API.authGet('admin/analytics');
-    document.getElementById('aTotalPilgrims').textContent = stats.total_pilgrims;
-    document.getElementById('aAlerts').textContent        = stats.emergency_alerts_open;
-    document.getElementById('aLostFound').textContent     = stats.lost_found_open;
-    document.getElementById('aTotalChats').textContent    = stats.total_chats;
-    document.getElementById('aBookings').textContent      = stats.total_bookings;
-    document.getElementById('aFeedback').textContent      = stats.total_feedback;
+    const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val ?? '—'; };
+    setEl('aTotalPilgrims', stats.total_pilgrims);
+    setEl('aAlerts',        stats.emergency_alerts_open);
+    setEl('aLostFound',     stats.lost_found_open);
+    setEl('aTotalChats',    stats.total_chats);
+  } catch (err) {
+    if (err && (err.status === 403 || err.detail?.includes('Forbidden') || err.detail?.includes('Administrator'))) {
+      const notice = document.getElementById('adminAuthNotice');
+      const content = document.getElementById('adminContent');
+      if (notice) {
+        notice.hidden = false;
+        notice.innerHTML = '⛔ <strong>403 Forbidden</strong>: Backend verification failed. Administrator credentials required.';
+      }
+      if (content) content.hidden = true;
+    }
+  }
 
+  try {
     const alerts = await API.authGet('admin/emergencies');
     const tbody = document.getElementById('alertsBody');
+    if (!tbody) return;
     tbody.innerHTML = alerts.length
       ? alerts.map(a => `
           <tr>
             <td>${a.id}</td>
             <td><strong>${a.alert_type}</strong></td>
-            <td>${a.description || '—'}</td>
-            <td><span style="color:${a.status==='open'?'var(--danger)':'var(--success)'};">${a.status}</span></td>
+            <td><span style="color:${a.status==='open'?'var(--danger)':'var(--success)'}">${a.status}</span></td>
             <td>${new Date(a.created_at).toLocaleString()}</td>
           </tr>
         `).join('')
-      : '<tr><td colspan="5">No alerts recorded.</td></tr>';
+      : '<tr><td colspan="4">No alerts recorded.</td></tr>';
   } catch (err) {
     const tbody = document.getElementById('alertsBody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="5">Could not load data.</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="4">Could not load alerts.</td></tr>';
   }
 }
 
@@ -862,6 +1146,7 @@ async function loadAdminData() {
 window.navigate = navigate;
 window.openFacilityChat = openFacilityChat;
 window.openMapsDirections = openMapsDirections;
+window.fetchAndRenderRoutes = fetchAndRenderRoutes;
 
 // ── Initial render ─────────────────────────────
 navigate('home');

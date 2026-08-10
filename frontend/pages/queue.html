@@ -8,9 +8,16 @@
   <div class="queue-grid">
     <!-- Current Status -->
     <div class="dashboard-card queue-status-card">
-      <h3>📊 Current Queue Status</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
+        <h3 style="margin:0;">📊 Current Queue Status</h3>
+        <span class="pill open" style="background: rgba(245, 158, 11, 0.15); color: var(--gold);" id="queueSourceTag">AI Estimated / Admin Data</span>
+      </div>
       <div id="queueStatus">
         <div class="loading">Loading queue data...</div>
+      </div>
+      <div style="margin-top: 1rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <button class="quick-action-btn" onclick="navigate('navigation')">🗺️ View on Map</button>
+        <button class="quick-action-btn secondary" onclick="navigate('chatbot')">🤖 Ask AI Assistant</button>
       </div>
     </div>
 

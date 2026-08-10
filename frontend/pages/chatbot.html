@@ -43,13 +43,17 @@
           <button class="quick-prompt" onclick="sendQuickPrompt('Where is the nearest food?')">🍚 Nearest food</button>
           <button class="quick-prompt" onclick="sendQuickPrompt('What is the queue status?')">⏳ Queue status</button>
           <button class="quick-prompt" onclick="sendQuickPrompt('Where can I get medical help?')">🏥 Medical help</button>
-          <button class="quick-prompt" onclick="sendQuickPrompt('How do I get to the temple?')">🛕 Temple directions</button>
+          <button class="quick-prompt" onclick="sendQuickPrompt('How do I get to the temple?')">🛕 Temple</button>
+          <button class="quick-prompt" onclick="sendQuickPrompt('How can I go from Tirupati to Tirumala by bus?')">🚌 Bus to Tirumala</button>
+          <button class="quick-prompt" onclick="sendQuickPrompt('How can I reach Padmavathi Temple from Tirupati?')">🛕 Padmavathi Temple</button>
+          <button class="quick-prompt" onclick="sendQuickPrompt('What transport options are available from Tirupati Railway Station to Tirumala?')">🚉 From Railway Station</button>
         </div>
-        <div class="input-wrapper">
-          <input type="text" id="chatInput" placeholder="Ask me anything about Tirumala..." />
-          <button id="sendBtn" class="send-btn">📤</button>
+        <div class="input-wrapper" style="display:flex;gap:0.5rem;align-items:center;">
+          <input type="text" id="chatInput" placeholder="Ask about buses, queue, food, temple..." style="flex:1;" />
+          <button id="sendBtn" class="send-btn btn-primary" style="padding:0.6rem 1.1rem;font-size:0.9rem;font-weight:700;min-width:70px;border-radius:8px;white-space:nowrap;" title="Send message (or press Enter)">Send ➤</button>
           <button id="voiceBtn" class="voice-btn" title="Voice input">🎤</button>
         </div>
+        <p style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem;">Press <kbd style="background:rgba(255,255,255,0.1);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.72rem;">Enter</kbd> or click <strong>Send</strong> to submit.</p>
       </div>
     </div>
 
@@ -84,12 +88,16 @@
     <div class="dashboard-card examples-card">
       <h3>💬 Example Questions</h3>
       <div class="example-questions">
-        <button class="example-question" onclick="sendQuickPrompt('Where is the nearest Anna Prasadam centre?')">Where is the nearest Anna Prasadam centre?</button>
+        <button class="example-question" onclick="sendQuickPrompt('Where is the nearest Anna Prasadam centre?')">Where is the nearest Anna Prasadam?</button>
         <button class="example-question" onclick="sendQuickPrompt('How long is the darshan queue?')">How long is the darshan queue?</button>
         <button class="example-question" onclick="sendQuickPrompt('Find me a hospital nearby')">Find me a hospital nearby</button>
         <button class="example-question" onclick="sendQuickPrompt('Where can I stay for free?')">Where can I stay for free?</button>
+        <button class="example-question" onclick="sendQuickPrompt('How can I go from Tirupati to Tirumala by bus?')">Bus from Tirupati to Tirumala?</button>
+        <button class="example-question" onclick="sendQuickPrompt('Is there a bus from Tirumala to Tirupati?')">Bus from Tirumala to Tirupati?</button>
+        <button class="example-question" onclick="sendQuickPrompt('How do I reach Padmavathi Temple from Tirupati?')">How to reach Padmavathi Temple?</button>
+        <button class="example-question" onclick="sendQuickPrompt('What transport options are available from Tirupati Railway Station to Tirumala?')">Railway Station to Tirumala transport?</button>
+        <button class="example-question" onclick="sendQuickPrompt('How much time does the bus take from Tirupati to Tirumala?')">Bus duration: Tirupati to Tirumala?</button>
         <button class="example-question" onclick="sendQuickPrompt('What are the temple timings?')">What are the temple timings?</button>
-        <button class="example-question" onclick="sendQuickPrompt('How do I get emergency help?')">How do I get emergency help?</button>
       </div>
     </div>
 

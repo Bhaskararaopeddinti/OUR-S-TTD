@@ -17,9 +17,29 @@ class LoginIn(BaseModel):
     email: EmailStr
     password: str
 
+class UserOut(BaseModel):
+    id: int
+    name: str
+    email: EmailStr
+    role: str
+    language: Optional[str] = "English"
+    is_active: bool = True
+
+    class Config:
+        from_attributes = True
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    user: Optional[UserOut] = None
+
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+class ResetPasswordIn(BaseModel):
+    token: str = Field(min_length=1)
+    new_password: str = Field(min_length=8, max_length=72)
+    confirm_password: str = Field(min_length=8, max_length=72)
 
 class ProfileUpdate(BaseModel):
     name: Optional[str] = None
@@ -129,6 +149,55 @@ class HealthReminderUpdate(BaseModel):
     interval_minutes: Optional[int] = None
 
 
+# ──── Password Reset ────
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+# ──── Transport Routes ────
+class TransportRouteIn(BaseModel):
+    source_location: str = Field(min_length=2, max_length=120)
+    destination_location: str = Field(min_length=2, max_length=120)
+    vehicle_type: str = Field(min_length=2, max_length=40)
+    operator: str = Field(default="APSRTC")
+    route_name: str = Field(min_length=2, max_length=160)
+    route_description: Optional[str] = ""
+    estimated_duration: str = Field(default="45 mins")
+    fare: str = Field(default="Free")
+    operating_hours: str = Field(default="24/7 Active")
+    frequency: str = Field(default="Continuous")
+    status: str = Field(default="Available")
+    data_status: str = Field(default="VERIFIED")
+    source: str = Field(default="Official TTD Verified")
+    source_url: str = Field(default="https://ttdevasthanams.ap.gov.in")
+
+class TransportRouteUpdate(BaseModel):
+    source_location: Optional[str] = None
+    destination_location: Optional[str] = None
+    vehicle_type: Optional[str] = None
+    operator: Optional[str] = None
+    route_name: Optional[str] = None
+    route_description: Optional[str] = None
+    estimated_duration: Optional[str] = None
+    fare: Optional[str] = None
+    operating_hours: Optional[str] = None
+    frequency: Optional[str] = None
+    status: Optional[str] = None
+    data_status: Optional[str] = None
+    source: Optional[str] = None
+    source_url: Optional[str] = None
+
+
+
+# ──── Crowd Upload & Analysis ────
+class CrowdUploadIn(BaseModel):
+    location_id: int = 1
+    location_name: str = "Vaikuntam Queue Complex (VQC)"
+    image_base64: Optional[str] = None
+    manual_crowd_level: Optional[str] = None  # LOW, MODERATE, HIGH, VERY HIGH
+
+
 # ──── Notifications ────
 class NotificationMarkRead(BaseModel):
     notification_ids: list[int] = []
+

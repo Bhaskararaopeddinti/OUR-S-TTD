@@ -5,6 +5,7 @@
 'use strict';
 
 let chatHistory = [];
+let isPageSending = false;
 
 // Initialize chatbot page
 function initChatbot() {
@@ -31,6 +32,9 @@ const LANGUAGE_LABELS = {
   hi: 'Hindi',
   ta: 'Tamil',
   kn: 'Kannada',
+  ml: 'Malayalam',
+  mr: 'Marathi',
+  bn: 'Bengali'
 };
 
 // Send message
@@ -38,7 +42,7 @@ function sendMessage() {
   const input = document.getElementById('chatInput');
   const message = input.value.trim();
   
-  if (!message) return;
+  if (!message || isPageSending) return;
   
   // Add user message to chat
   addMessage(message, 'user');
@@ -52,8 +56,11 @@ function sendMessage() {
 
 // Send quick prompt
 function sendQuickPrompt(prompt) {
-  document.getElementById('chatInput').value = prompt;
-  sendMessage();
+  const input = document.getElementById('chatInput');
+  if (input) {
+    input.value = prompt;
+    sendMessage();
+  }
 }
 
 // Add message to chat
@@ -75,15 +82,24 @@ function addMessage(content, type) {
   
   chatMessages.appendChild(messageDiv);
   chatMessages.scrollTop = chatMessages.scrollHeight;
-  
-  // Add to history
-  chatHistory.push({ type, content, timestamp: new Date().toISOString() });
+}
+
+// Helper to determine base URL dynamically
+function getApiEndpoint() {
+  if (window.location.origin && window.location.origin.startsWith('http')) {
+    return window.location.origin + '/api/chat';
+  }
+  return 'http://127.0.0.1:8001/api/chat';
 }
 
 // Get AI response
 async function getAIResponse(message) {
   const chatMessages = document.getElementById('chatMessages');
+  const sendBtn = document.getElementById('sendBtn');
   
+  isPageSending = true;
+  if (sendBtn) sendBtn.disabled = true;
+
   // Add typing indicator
   const typingDiv = document.createElement('div');
   typingDiv.className = 'message bot-message typing';
@@ -93,45 +109,60 @@ async function getAIResponse(message) {
       <p>Thinking...</p>
     </div>
   `;
-  chatMessages.appendChild(typingDiv);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+  chatMessages?.appendChild(typingDiv);
+  if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
   
   try {
     const languageCode = document.getElementById('chatLanguage')?.value || 'en';
     const language = LANGUAGE_LABELS[languageCode] || 'English';
 
-    // Call AI API
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ message, language })
-    });
-    
-    const data = await response.json();
+    let data;
+    if (typeof API !== 'undefined' && API.post) {
+      data = await API.post('chat', {
+        message: message,
+        language: language,
+        history: chatHistory
+      });
+    } else {
+      const response = await fetch(getApiEndpoint(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: message,
+          language: language,
+          history: chatHistory
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      data = await response.json();
+    }
     
     // Remove typing indicator
     typingDiv.remove();
     
-    // Add AI response
-    addMessage(data.reply || data.message || 'I apologize, but I could not process your request.', 'bot');
+    const reply = data.reply || data.message || 'I apologize, but I could not process your request.';
+    addMessage(reply, 'bot');
+
+    // Save turn to history
+    chatHistory.push({ role: 'user', content: message });
+    chatHistory.push({ role: 'assistant', content: reply });
     
   } catch (error) {
-    // Remove typing indicator
     typingDiv.remove();
-    
-    // Add error message
-    addMessage('I apologize, but I am having trouble connecting. Please try again later.', 'bot');
-    
+    addMessage('The AI assistant is temporarily unavailable. Please try again in a moment.', 'bot');
     console.error('AI chat error:', error);
+  } finally {
+    isPageSending = false;
+    if (sendBtn) sendBtn.disabled = false;
   }
 }
 
 // Start voice input
 function startVoiceInput() {
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    showToast('Voice input not supported in this browser', 'error');
+    if (typeof showToast === 'function') showToast('Voice input not supported in this browser', 'error');
     return;
   }
   
@@ -143,22 +174,22 @@ function startVoiceInput() {
   recognition.interimResults = false;
   
   recognition.onstart = () => {
-    showToast('Listening...', 'info');
+    if (typeof showToast === 'function') showToast('Listening...', 'info');
   };
   
   recognition.onresult = (event) => {
     const transcript = event.results[0][0].transcript;
-    document.getElementById('chatInput').value = transcript;
-    showToast('Voice captured!', 'success');
+    const input = document.getElementById('chatInput');
+    if (input) input.value = transcript;
+    if (typeof showToast === 'function') showToast('Voice captured!', 'success');
   };
   
   recognition.onerror = (event) => {
-    showToast('Voice input error: ' + event.error, 'error');
+    if (typeof showToast === 'function') showToast('Voice input error: ' + event.error, 'error');
   };
   
   recognition.onend = () => {
-    // Automatically send if we got a result
-    if (document.getElementById('chatInput').value) {
+    if (document.getElementById('chatInput')?.value) {
       sendMessage();
     }
   };
@@ -181,7 +212,7 @@ function clearChat() {
   `;
   
   chatHistory = [];
-  showToast('Chat cleared', 'info');
+  if (typeof showToast === 'function') showToast('Chat cleared', 'info');
 }
 
 // Initialize when DOM is ready

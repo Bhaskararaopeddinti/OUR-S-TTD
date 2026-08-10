@@ -74,8 +74,7 @@ function calculateTithi(date) {
 // Load queue status from API
 async function loadQueueStatus() {
     try {
-        const response = await fetch('/api/queue');
-        const data = await response.json();
+        const data = await API.get('queue');
         
         const queueWaitElement = document.getElementById('queueWaitTime');
         const crowdLevelElement = document.getElementById('crowdLevel');

@@ -14,7 +14,7 @@ async function loadQueueIntelligence() {
   const festivalContainer = document.getElementById('festivalImpact');
 
   try {
-    const data = await API.get('/queue');
+    const data = await API.get('queue');
     
     // Display current status
     if (statusContainer) {
@@ -145,7 +145,7 @@ async function loadHeroStats() {
   if (!heroQueue || !heroCrowd) return;
 
   try {
-    const data = await API.get('/queue');
+    const data = await API.get('queue');
     heroQueue.textContent = `${data.wait_minutes || '—'} min`;
     heroCrowd.textContent = data.crowd_density || '—';
   } catch (error) {
