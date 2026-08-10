@@ -5,7 +5,14 @@
 'use strict';
 
 const API = (() => {
-  const BASE = 'http://localhost:8001/api/';
+  const getApiBase = () => {
+    if (typeof window !== 'undefined' && (window.location.protocol === 'file:' || window.location.port === '5500' || window.location.port === '5501')) {
+      return 'http://localhost:8000/api/';
+    }
+    return '/api/';
+  };
+  const BASE = getApiBase();
+
 
   function token() {
     return localStorage.getItem('authToken');
