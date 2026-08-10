@@ -248,7 +248,12 @@ async def startup():
         logger.error(f"Failed to create tables: {e}")
     
     # Seed database
-    seed_db()
+    try:
+        seed_db()
+        logger.info("Database seeding completed.")
+    except Exception as e:
+        logger.error(f"Database seeding failed: {e}")
+
 
     # Seed comprehensive bus/transport demo routes
     try:

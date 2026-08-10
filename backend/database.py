@@ -2,27 +2,33 @@ import os
 import logging
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
-from urllib.parse import urlparse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./ours_ttd.db")
 
-# Configure engine based on database type
-if DATABASE_URL.startswith("sqlite"):
-    # SQLite configuration
-    connect_args = {"check_same_thread": False}
-    engine = create_engine(DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)
-    logger.info("Using SQLite database")
-elif DATABASE_URL.startswith("postgresql"):
-    # PostgreSQL configuration
-    connect_args = {}
-    engine = create_engine(DATABASE_URL, connect_args=connect_args, pool_pre_ping=True, pool_size=5, max_overflow=10)
-    logger.info("Using PostgreSQL database")
-else:
-    raise ValueError(f"Unsupported database URL scheme: {DATABASE_URL}")
+# Render uses postgres://, SQLAlchemy 2.0 requires postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+def _init_engine(url: str):
+    if url.startswith("postgresql"):
+        try:
+            eng = create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=10)
+            with eng.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            logger.info("✓ Using PostgreSQL database")
+            return eng
+        except Exception as e:
+            logger.warning("✗ PostgreSQL connection failed (%s). Falling back to local SQLite database.", e)
+            url = "sqlite:///./ours_ttd.db"
+    
+    eng = create_engine(url, connect_args={"check_same_thread": False}, pool_pre_ping=True)
+    logger.info("Using SQLite database (%s)", url)
+    return eng
+
+engine = _init_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class Base(DeclarativeBase):
@@ -45,3 +51,4 @@ def test_connection():
     except Exception as e:
         logger.error(f"✗ Database connection failed: {e}")
         return False
+
