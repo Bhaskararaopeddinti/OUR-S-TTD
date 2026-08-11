@@ -362,7 +362,7 @@ async function onAuthSuccess(redirect = false) {
     if (authBtn) authBtn.textContent = 'Logout';
 
     if (redirect) {
-      navigate('dashboard');
+      navigate(['admin', 'super_admin'].includes(profile.role) ? 'admin' : 'dashboard');
     } else if (currentPage === 'admin') {
       renderAdmin();
     }
@@ -402,7 +402,7 @@ function logout() {
   if (userName) userName.textContent = 'Pilgrim';
   if (userRole) userRole.textContent = 'Guest';
 
-  navigate('dashboard');
+  navigate('home');
 
   if (authDialog && typeof authDialog.showModal === 'function') {
     resetAuthModalView();
@@ -454,13 +454,43 @@ adminAuthForm?.addEventListener('submit', async (e) => {
   }
 });
 
-// Check if already logged in on page load
-if (authToken) onAuthSuccess();
-
-
 // ── HOME PAGE ─────────────────────────────────
 function renderHome() {
-  navigate('dashboard');
+  const root = document.getElementById('appRoot');
+  root.innerHTML = `
+    <section class="entry-screen" aria-labelledby="entryTitle">
+      <div class="entry-brand"><span class="om">ॐ</span> OURS TTD</div>
+      <p class="entry-tagline">AI Smart Pilgrim Companion</p>
+      <div class="entry-welcome">
+        <h1 id="entryTitle">Welcome to OURS TTD</h1>
+        <p>Choose how you want to continue.</p>
+      </div>
+      <div class="entry-options">
+        <article class="entry-option pilgrim-option">
+          <div class="entry-icon">👤</div>
+          <h2>Pilgrim</h2>
+          <p>Login as a pilgrim to access your personal dashboard and journey tools.</p>
+          <button type="button" class="btn-primary entry-button" id="entryPilgrimLogin">User Login</button>
+        </article>
+        <article class="entry-option admin-option">
+          <div class="entry-icon">🛡️</div>
+          <h2>Admin</h2>
+          <p>Authorized personnel can access the protected Admin Portal.</p>
+          <button type="button" class="btn-primary entry-button" id="entryAdminLogin">Admin Login</button>
+        </article>
+      </div>
+    </section>`;
+
+  document.getElementById('entryPilgrimLogin')?.addEventListener('click', () => {
+    resetAuthModalView();
+    switchAuthTab('pilgrim');
+    authDialog?.showModal();
+  });
+  document.getElementById('entryAdminLogin')?.addEventListener('click', () => {
+    resetAuthModalView();
+    switchAuthTab('admin');
+    authDialog?.showModal();
+  });
 }
 
 // ── DASHBOARD PAGE ───────────────────────────
@@ -1235,6 +1265,12 @@ window.openMapsDirections = openMapsDirections;
 window.fetchAndRenderRoutes = fetchAndRenderRoutes;
 
 // ── Initial render ─────────────────────────────
-navigate('home');
+// Verify a restored session with the backend before showing a dashboard.
+// Guests always begin at the two-option welcome screen.
+if (authToken) {
+  onAuthSuccess(true);
+} else {
+  navigate('home');
+}
 // Load hero queue stats
 loadHeroStats();
