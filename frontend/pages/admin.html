@@ -1,20 +1,231 @@
-<!-- admin.html – admin analytics & transport management dashboard -->
+<!-- admin.html – Full Admin Portal: Pilgrim Flow Data Entry, Queue Analytics, Transport Management -->
 <section class="admin-page fade-in">
-  <h2>🛡️ Admin Dashboard</h2>
-  <p id="adminAuthNotice" class="notice">Sign in with an admin account to view analytics and manage transport routes.</p>
+
+  <!-- ═══════════════════════ AUTH GUARD ═══════════════════════ -->
+  <div id="adminAuthNotice" class="notice admin-auth-notice" style="display:none;">
+    <div style="font-size:2rem;">🔒</div>
+    <h3>Admin Access Required</h3>
+    <p>You must log in with an <strong>Admin account</strong> to view this portal.</p>
+    <button onclick="window.loginAsAdmin()" class="btn-primary" style="margin-top:1rem;">🛡️ Open Admin Login</button>
+  </div>
+
+  <!-- ═══════════════════════ MAIN ADMIN CONTENT ═══════════════════════ -->
   <div id="adminContent" hidden>
-    <div class="analytics-grid">
-      <div class="stat-card accent" id="aTotal"><span class="big" id="aTotalPilgrims">—</span><span>Total Pilgrims</span></div>
-      <div class="stat-card accent" id="aAlerts"><span class="big">—</span><span>Open Alerts</span></div>
-      <div class="stat-card accent" id="aLost"><span class="big" id="aLostFound">—</span><span>Lost &amp; Found Open</span></div>
-      <div class="stat-card accent" id="aChats"><span class="big" id="aTotalChats">—</span><span>AI Chats Today</span></div>
+
+    <!-- ── ADMIN HEADER ── -->
+    <div class="admin-header-bar">
+      <div class="admin-header-brand">
+        <span class="om">ॐ</span>
+        <div>
+          <div class="admin-title">OURS TTD</div>
+          <div class="admin-subtitle">Admin Portal</div>
+        </div>
+      </div>
+      <div class="admin-header-info">
+        <div class="admin-info-item">
+          <span class="admin-info-label">Admin</span>
+          <span id="adminHeaderName" class="admin-info-value">—</span>
+        </div>
+        <div class="admin-info-item">
+          <span class="admin-info-label">Date</span>
+          <span id="adminHeaderDate" class="admin-info-value">—</span>
+        </div>
+        <div class="admin-info-item">
+          <span class="admin-info-label">Time (UTC)</span>
+          <span id="adminHeaderTime" class="admin-info-value">—</span>
+        </div>
+        <div class="admin-info-item">
+          <span class="admin-info-label">Session In</span>
+          <span id="adminSessionIn" class="admin-info-value">—</span>
+        </div>
+      </div>
+      <button id="adminLogoutBtn" class="btn-danger-sm">⏻ Logout</button>
     </div>
 
-    <!-- Crowd Image Upload & Intelligence -->
+    <!-- ── SUMMARY CARDS ── -->
+    <div class="analytics-grid" style="margin-top:1.5rem;">
+      <div class="stat-card accent">
+        <span class="stat-icon">👥</span>
+        <span class="big" id="cardTotalPilgrims">—</span>
+        <span>Total Pilgrims Today</span>
+      </div>
+      <div class="stat-card accent">
+        <span class="stat-icon">🏟️</span>
+        <span class="big" id="cardCurrentCrowd">—</span>
+        <span>Current Crowd</span>
+      </div>
+      <div class="stat-card accent">
+        <span class="stat-icon">📥</span>
+        <span class="big" id="cardIncoming">—</span>
+        <span>Incoming (Last Slot)</span>
+      </div>
+      <div class="stat-card accent">
+        <span class="stat-icon">📤</span>
+        <span class="big" id="cardOutgoing">—</span>
+        <span>Outgoing (Last Slot)</span>
+      </div>
+      <div class="stat-card accent queue-status-card" id="cardQueueStatusCard">
+        <span class="stat-icon">⏳</span>
+        <span class="big" id="cardQueueStatus">—</span>
+        <span>Queue Status</span>
+      </div>
+      <div class="stat-card accent">
+        <span class="stat-icon">🔮</span>
+        <span class="big" id="cardPredictedCrowd">—</span>
+        <span>Predicted Next Slot</span>
+      </div>
+    </div>
+
+    <!-- ── QUEUE STATUS PANEL ── -->
+    <div class="dashboard-card" style="margin-top:1.5rem;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+        <div>
+          <h3>🔴 Current Queue Status</h3>
+          <div style="display:flex; align-items:center; gap:1.5rem; margin-top:0.5rem; flex-wrap:wrap;">
+            <div>
+              <div style="font-size:0.8rem; color:var(--muted);">Status</div>
+              <div id="queueStatusBadge" class="queue-badge queue-badge-moderate">MODERATE</div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem; color:var(--muted);">Trend</div>
+              <div id="queueTrendDisplay" style="font-size:1.2rem; font-weight:700; color:var(--gold);">→ STABLE</div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem; color:var(--muted);">Crowd Pressure</div>
+              <div style="margin-top:0.3rem;">
+                <div class="pressure-bar-bg">
+                  <div id="pressureBar" class="pressure-bar-fill" style="width:0%"></div>
+                </div>
+                <span id="pressurePercent" style="font-size:0.8rem; color:var(--muted);">0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="prediction-box">
+          <div style="font-size:0.8rem; color:var(--muted);">AI Prediction</div>
+          <p id="queuePredictionText" style="margin:0.3rem 0 0; font-size:0.9rem;">Loading prediction…</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DATA ENTRY FORM ── -->
+    <div class="dashboard-card" style="margin-top:1.5rem;">
+      <h3>📊 Enter Pilgrim Flow Data</h3>
+      <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem;">
+        Enter raw arrival and departure counts for each 2-hour time slot. The backend automatically calculates queue status and predictions.
+      </p>
+      <form id="pilgrimFlowForm">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
+
+          <div>
+            <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Date</label>
+            <input type="date" id="flowDate" name="date" class="admin-input" required />
+          </div>
+
+          <div>
+            <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Time Slot</label>
+            <select id="flowTimeSlot" name="time_slot" class="admin-select">
+              <option value="00:00|02:00">00:00 – 02:00</option>
+              <option value="02:00|04:00">02:00 – 04:00</option>
+              <option value="04:00|06:00">04:00 – 06:00</option>
+              <option value="06:00|08:00">06:00 – 08:00</option>
+              <option value="08:00|10:00">08:00 – 10:00</option>
+              <option value="10:00|12:00">10:00 – 12:00</option>
+              <option value="12:00|14:00">12:00 – 14:00</option>
+              <option value="14:00|16:00">14:00 – 16:00</option>
+              <option value="16:00|18:00">16:00 – 18:00</option>
+              <option value="18:00|20:00">18:00 – 20:00</option>
+              <option value="20:00|22:00">20:00 – 22:00</option>
+              <option value="22:00|00:00">22:00 – 00:00</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Incoming Pilgrims</label>
+            <input type="number" id="flowIncoming" name="incoming_pilgrims" class="admin-input" min="0" placeholder="e.g. 1800" required />
+          </div>
+
+          <div>
+            <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Outgoing Pilgrims</label>
+            <input type="number" id="flowOutgoing" name="outgoing_pilgrims" class="admin-input" min="0" placeholder="e.g. 700" required />
+          </div>
+
+          <div>
+            <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Festival / High-Demand Day?</label>
+            <div class="festival-toggle-group">
+              <label class="festival-radio">
+                <input type="radio" name="festival" id="festivalNo" value="false" checked />
+                <span>🗓️ Normal Day</span>
+              </label>
+              <label class="festival-radio">
+                <input type="radio" name="festival" id="festivalYes" value="true" />
+                <span>🎉 Festival Day</span>
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+        <div style="margin-top:1.25rem; display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+          <button type="submit" id="submitFlowBtn" class="btn-primary btn-glow">
+            ⚡ Submit Pilgrim Data
+          </button>
+          <span id="flowFormStatus" style="font-size:0.88rem;"></span>
+        </div>
+      </form>
+
+      <!-- Live Result After Submit -->
+      <div id="flowResultBox" class="flow-result-box" hidden>
+        <h4>✅ Data Submitted — Backend Analysis</h4>
+        <div id="flowResultContent" class="flow-result-grid"></div>
+      </div>
+    </div>
+
+    <!-- ── TIME SLOT TABLE ── -->
+    <div class="dashboard-card" style="margin-top:1.5rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+        <h3>📋 Time Slot History</h3>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <input type="date" id="tableFilterDate" class="admin-input" style="padding:0.35rem 0.7rem;" />
+          <button id="filterTableBtn" class="btn-ghost" style="padding:0.35rem 0.85rem;">Filter</button>
+          <button id="refreshTableBtn" class="btn-ghost" style="padding:0.35rem 0.85rem;">↻ Refresh</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="pilgrimFlowTable" class="admin-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Time Slot</th>
+              <th>Incoming</th>
+              <th>Outgoing</th>
+              <th>Net Change</th>
+              <th>Est. Crowd</th>
+              <th>Queue Status</th>
+              <th>Festival</th>
+            </tr>
+          </thead>
+          <tbody id="pilgrimFlowBody">
+            <tr><td colspan="8" style="text-align:center; padding:1.5rem; color:var(--muted);">No data yet. Submit entries above.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── CHART ── -->
+    <div class="dashboard-card" style="margin-top:1.5rem;">
+      <h3>📈 Pilgrim Flow Chart</h3>
+      <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem;">Visualises incoming, outgoing, and estimated crowd for today.</p>
+      <div style="position:relative; height:320px;">
+        <canvas id="pilgrimFlowChart"></canvas>
+      </div>
+    </div>
+
+    <!-- ── EXISTING SECTIONS ── -->
+    <!-- Crowd Image Upload -->
     <div class="dashboard-card" style="margin-top: 1.5rem;">
-      <h3>📸 Admin Crowd Image Upload & AI Analysis</h3>
+      <h3>📸 Admin Crowd Image Upload &amp; AI Analysis</h3>
       <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem;">Upload queue/crowd photos to calculate live crowd level using AI Computer Vision.</p>
-      
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
         <div>
           <label style="display:block; margin-bottom:0.4rem; font-size:0.85rem;">Location</label>
@@ -42,16 +253,15 @@
         </div>
       </div>
       <div style="margin-top:1rem;">
-        <button id="adminUploadCrowdBtn" class="quick-action-btn" style="background: linear-gradient(135deg, var(--gold), #D4AF37); color:#000;">⚡ Analyze & Update Live Queue</button>
+        <button id="adminUploadCrowdBtn" class="quick-action-btn" style="background: linear-gradient(135deg, var(--gold), #D4AF37); color:#000;">⚡ Analyze &amp; Update Live Queue</button>
         <span id="adminCrowdStatus" style="margin-left:1rem; font-size:0.88rem;"></span>
       </div>
     </div>
 
-    <!-- Admin Transport Routes Management -->
+    <!-- Transport Routes Management -->
     <div class="dashboard-card" style="margin-top: 1.5rem;">
-      <h3>🚌 Admin Transport Routes & Verification Management</h3>
+      <h3>🚌 Admin Transport Routes &amp; Verification Management</h3>
       <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem;">Add, edit, and maintain verified TTD transport options, fares, and data verification status.</p>
-
       <form id="adminAddRouteForm" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; margin-bottom: 1.25rem;">
         <div>
           <label style="font-size: 0.8rem; display:block; margin-bottom:0.2rem;">Route Name</label>
@@ -78,14 +288,14 @@
         </div>
         <div>
           <label style="font-size: 0.8rem; display:block; margin-bottom:0.2rem;">Operator</label>
-          <input type="text" name="operator" placeholder="APSRTC / TTD" default="APSRTC" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);" />
+          <input type="text" name="operator" placeholder="APSRTC / TTD" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);" />
         </div>
         <div>
           <label style="font-size: 0.8rem; display:block; margin-bottom:0.2rem;">Fare</label>
-          <input type="text" name="fare" placeholder="₹65 / FREE" default="FREE" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);" />
+          <input type="text" name="fare" placeholder="₹65 / FREE" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);" />
         </div>
         <div>
-          <label style="font-size: 0.8rem; display:block; margin-bottom:0.2rem;">Duration & Hours</label>
+          <label style="font-size: 0.8rem; display:block; margin-bottom:0.2rem;">Duration &amp; Hours</label>
           <input type="text" name="estimated_duration" placeholder="45 mins (24/7)" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);" />
         </div>
         <div>
@@ -102,7 +312,6 @@
           <span id="adminRouteFormStatus" style="margin-left: 1rem; font-size: 0.85rem;"></span>
         </div>
       </form>
-
       <div style="overflow-x: auto; margin-top: 1rem;">
         <table id="adminRoutesTable" style="width:100%; border-collapse:collapse; font-size:0.85rem;">
           <thead>
@@ -122,13 +331,26 @@
       </div>
     </div>
 
-    <!-- Recent Emergency Alerts Table -->
+    <!-- Emergency Alerts -->
     <section class="card" style="margin-top: 1.5rem;">
-      <h3>Recent Emergency Alerts</h3>
+      <h3>🚨 Recent Emergency Alerts</h3>
       <table id="alertsTable">
         <thead><tr><th>#</th><th>Type</th><th>Status</th><th>Time</th></tr></thead>
         <tbody id="alertsBody"></tbody>
       </table>
     </section>
-  </div>
+
+  </div><!-- end #adminContent -->
 </section>
+
+<!-- Chart.js CDN (loaded only once by admin portal) -->
+<script>
+if (!window.Chart) {
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+  s.onload = () => { if (typeof window.initPilgrimChart === 'function') window.initPilgrimChart(); };
+  document.head.appendChild(s);
+} else {
+  if (typeof window.initPilgrimChart === 'function') window.initPilgrimChart();
+}
+</script>

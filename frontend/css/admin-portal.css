@@ -1,0 +1,275 @@
+/* =====================================================
+   admin-portal.css – OURS TTD Admin Portal Styles
+   ===================================================== */
+
+/* ── Auth Dialog Tabs ─────────────────────────────── */
+.auth-tabs {
+  display: flex;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.06);
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 1rem;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 0.65rem 0.5rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted, #94A3B8);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.auth-tab.active {
+  background: linear-gradient(135deg, var(--saffron, #FF9500), var(--gold, #FFD700));
+  color: #111;
+  box-shadow: 0 4px 14px rgba(255,149,0,0.35);
+}
+
+.auth-tab:not(.active):hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--text, #fff);
+}
+
+/* ── Admin Login Notice ───────────────────────────── */
+.admin-login-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  color: #FCA5A5;
+  margin-bottom: 1rem;
+}
+
+.btn-admin-login {
+  background: linear-gradient(135deg, #7C3AED, #4F46E5) !important;
+  box-shadow: 0 4px 16px rgba(124,58,237,0.4) !important;
+}
+.btn-admin-login:hover {
+  box-shadow: 0 6px 24px rgba(124,58,237,0.6) !important;
+  transform: translateY(-1px);
+}
+
+/* ── Auth Guard Notice ────────────────────────────── */
+.admin-auth-notice {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4rem 2rem;
+  background: rgba(239,68,68,0.06);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 16px;
+  margin: 2rem auto;
+  max-width: 480px;
+}
+.admin-auth-notice h3 { margin: 0.5rem 0 0.3rem; font-size: 1.4rem; }
+.admin-auth-notice p  { color: var(--muted, #94A3B8); }
+
+/* ── Admin Header Bar ────────────────────────────── */
+.admin-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(79,70,229,0.1));
+  border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 16px;
+  padding: 1.25rem 1.75rem;
+}
+
+.admin-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.admin-header-brand .om { font-size: 2rem; color: var(--saffron, #FF9500); }
+.admin-title    { font-size: 1.3rem; font-weight: 800; color: var(--text, #fff); }
+.admin-subtitle { font-size: 0.78rem; color: var(--muted, #94A3B8); letter-spacing: 1px; text-transform: uppercase; }
+
+.admin-header-info {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.admin-info-item { display: flex; flex-direction: column; align-items: center; }
+.admin-info-label { font-size: 0.7rem; color: var(--muted, #94A3B8); text-transform: uppercase; letter-spacing: 0.5px; }
+.admin-info-value { font-size: 0.95rem; font-weight: 700; color: var(--gold, #FFD700); margin-top: 2px; }
+
+.btn-danger-sm {
+  background: rgba(239,68,68,0.15);
+  color: #F87171;
+  border: 1px solid rgba(239,68,68,0.4);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+}
+.btn-danger-sm:hover {
+  background: rgba(239,68,68,0.3);
+  box-shadow: 0 4px 12px rgba(239,68,68,0.3);
+}
+
+/* ── Queue Status Badges ─────────────────────────── */
+.queue-badge {
+  display: inline-block;
+  padding: 0.3rem 0.85rem;
+  border-radius: 99px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+}
+.queue-badge-low       { background: rgba(16,185,129,0.15); color: #10B981; border: 1px solid #10B981; }
+.queue-badge-moderate  { background: rgba(245,158,11,0.15); color: #F59E0B; border: 1px solid #F59E0B; }
+.queue-badge-high      { background: rgba(249,115,22,0.15); color: #F97316; border: 1px solid #F97316; }
+.queue-badge-very-high { background: rgba(239,68,68,0.15);  color: #EF4444; border: 1px solid #EF4444; }
+.queue-badge-critical  { background: rgba(124,58,237,0.15); color: #A855F7; border: 1px solid #A855F7; }
+
+/* ── Pressure Bar ────────────────────────────────── */
+.pressure-bar-bg   { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.1); width: 140px; overflow: hidden; }
+.pressure-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+
+/* ── Prediction Box ──────────────────────────────── */
+.prediction-box {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  border-radius: 10px;
+  padding: 0.85rem 1.1rem;
+  max-width: 340px;
+}
+
+/* ── Admin Input / Select ────────────────────────── */
+.admin-input,
+.admin-select {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(255,255,255,0.15));
+  background: var(--bg-card, rgba(255,255,255,0.04));
+  color: var(--text, #fff);
+  font-family: inherit;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+}
+.admin-input:focus,
+.admin-select:focus {
+  outline: none;
+  border-color: var(--saffron, #FF9500);
+  box-shadow: 0 0 0 3px rgba(255,149,0,0.15);
+}
+
+/* ── Festival Radio Group ────────────────────────── */
+.festival-toggle-group { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.festival-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  background: rgba(255,255,255,0.03);
+  font-size: 0.88rem;
+  transition: border-color 0.2s, background 0.2s;
+}
+.festival-radio:has(input:checked) {
+  border-color: var(--gold, #FFD700);
+  background: rgba(255,215,0,0.08);
+  color: var(--gold, #FFD700);
+}
+.festival-radio input { display: none; }
+
+/* ── Glow Submit Button ──────────────────────────── */
+.btn-glow {
+  animation: pulse-glow 2s infinite;
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 4px 16px rgba(255,149,0,0.3); }
+  50%       { box-shadow: 0 6px 28px rgba(255,149,0,0.6); }
+}
+
+/* ── Flow Result Box ─────────────────────────────── */
+.flow-result-box {
+  margin-top: 1.25rem;
+  background: rgba(16,185,129,0.07);
+  border: 1px solid rgba(16,185,129,0.25);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+.flow-result-box h4 { margin: 0 0 0.85rem; color: #10B981; }
+.flow-result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+.result-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+}
+.result-item span   { font-size: 0.75rem; color: var(--muted, #94A3B8); text-transform: uppercase; }
+.result-item strong { font-size: 1.05rem; font-weight: 700; }
+
+/* ── Admin Time Slot Table ───────────────────────── */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.87rem;
+}
+.admin-table thead tr {
+  background: rgba(255,255,255,0.04);
+  border-bottom: 2px solid var(--border, rgba(255,255,255,0.1));
+}
+.admin-table th {
+  padding: 0.6rem 0.85rem;
+  text-align: left;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted, #94A3B8);
+  white-space: nowrap;
+}
+.admin-table td {
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,0.06));
+  vertical-align: middle;
+}
+.admin-table tbody tr:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+/* ── User Dashboard Queue Card ───────────────────── */
+.queue-intel-card {
+  background: linear-gradient(135deg, rgba(124,58,237,0.12), rgba(79,70,229,0.08));
+  border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+
+/* ── Stat Cards – Icon ───────────────────────────── */
+.stat-card .stat-icon {
+  font-size: 1.6rem;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+/* ── Admin Page Container ────────────────────────── */
+.admin-page { padding: 0 0.5rem 2rem; }

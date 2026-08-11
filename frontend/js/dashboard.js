@@ -12,6 +12,7 @@ function loadDashboard() {
     
     // Load queue status
     loadQueueStatus();
+    loadQueueIntelligence();
     
     // Load weather information
     loadWeather();
@@ -24,6 +25,28 @@ function loadDashboard() {
     
     // Set up refresh interval
     setInterval(updateDateTime, 60000); // Update every minute
+}
+
+// Pilgrims receive only the public, backend-generated queue analysis.
+async function loadQueueIntelligence() {
+    try {
+        const data = await API.get('admin/queue-prediction');
+        const setText = (id, value) => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = value;
+        };
+        setText('queueDataSource', data.source === 'ADMIN_DATA' ? 'Live admin data' : 'AI prediction');
+        setText('intelQueueStatus', data.queue_status || 'N/A');
+        setText('intelCrowd', Number(data.estimated_crowd || 0).toLocaleString());
+        setText('intelTrend', data.trend_display || data.trend || 'STABLE');
+        setText('intelFestival', data.festival ? 'YES' : 'NO');
+        setText('intelPrediction', data.prediction || 'Queue prediction unavailable.');
+        setText('intelRecommendation', data.recommendation || 'Please follow TTD instructions.');
+    } catch (error) {
+        console.error('Failed to load queue intelligence:', error);
+        const prediction = document.getElementById('intelPrediction');
+        if (prediction) prediction.textContent = 'Queue intelligence is temporarily unavailable.';
+    }
 }
 
 // Update date and time display

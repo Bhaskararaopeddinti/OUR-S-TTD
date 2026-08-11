@@ -136,6 +136,37 @@
     </div>
   </div>
 
+  <!-- ── AI QUEUE INTELLIGENCE (live from admin data) ── -->
+  <div class="dashboard-card queue-intel-card" id="queueIntelCard" style="margin-top:0;">
+    <div class="card-header">
+      <span class="card-icon">🧠</span>
+      <h3>AI Queue Intelligence</h3>
+      <span id="queueDataSource" style="font-size:0.72rem; color:var(--muted); margin-left:auto; padding:0.2rem 0.5rem; background:rgba(255,255,255,0.06); border-radius:6px;">Loading…</span>
+    </div>
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:1rem; margin-top:0.75rem;">
+      <div style="text-align:center; padding:1rem; background:rgba(255,255,255,0.04); border-radius:12px;">
+        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:0.3rem; text-transform:uppercase;">Current Queue</div>
+        <div id="intelQueueStatus" style="font-size:1.4rem; font-weight:800; color:var(--gold);">—</div>
+      </div>
+      <div style="text-align:center; padding:1rem; background:rgba(255,255,255,0.04); border-radius:12px;">
+        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:0.3rem; text-transform:uppercase;">Estimated Crowd</div>
+        <div id="intelCrowd" style="font-size:1.4rem; font-weight:800; color:#A78BFA;">—</div>
+      </div>
+      <div style="text-align:center; padding:1rem; background:rgba(255,255,255,0.04); border-radius:12px;">
+        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:0.3rem; text-transform:uppercase;">Trend</div>
+        <div id="intelTrend" style="font-size:1.4rem; font-weight:800; color:#34D399;">—</div>
+      </div>
+      <div style="text-align:center; padding:1rem; background:rgba(255,255,255,0.04); border-radius:12px;">
+        <div style="font-size:0.75rem; color:var(--muted); margin-bottom:0.3rem; text-transform:uppercase;">Festival Day</div>
+        <div id="intelFestival" style="font-size:1.4rem; font-weight:800; color:#FBBF24;">—</div>
+      </div>
+    </div>
+    <div id="intelPrediction" style="margin-top:0.85rem; padding:0.85rem 1rem; background:rgba(124,58,237,0.08); border:1px solid rgba(124,58,237,0.2); border-radius:10px; font-size:0.88rem; color:var(--muted);">
+      Loading prediction…
+    </div>
+    <div id="intelRecommendation" style="margin-top:0.65rem; font-size:0.85rem; color:var(--text); font-style:italic;"></div>
+  </div>
+
   <!-- Weather Information -->
   <div class="dashboard-grid-2">
     <div class="dashboard-card weather-card">

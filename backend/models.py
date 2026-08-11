@@ -278,3 +278,34 @@ class QueueRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+
+class AdminSession(Base):
+    """Tracks admin login/logout sessions with server-generated timestamps."""
+    __tablename__ = "admin_sessions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    admin_id: Mapped[int] = mapped_column(Integer, index=True)
+    admin_email: Mapped[str] = mapped_column(String(150), default="")
+    session_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    login_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    logout_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class PilgrimFlowData(Base):
+    """Admin-entered 2-hour pilgrim arrival/departure counts per time slot."""
+    __tablename__ = "pilgrim_flow_data"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    date: Mapped[str] = mapped_column(String(20), index=True)           # YYYY-MM-DD
+    start_time: Mapped[str] = mapped_column(String(10))                  # HH:MM (24h)
+    end_time: Mapped[str] = mapped_column(String(10))
+    incoming_pilgrims: Mapped[int] = mapped_column(Integer, default=0)
+    outgoing_pilgrims: Mapped[int] = mapped_column(Integer, default=0)
+    net_pilgrims: Mapped[int] = mapped_column(Integer, default=0)        # backend-calculated
+    estimated_crowd: Mapped[int] = mapped_column(Integer, default=0)     # accumulated crowd
+    festival: Mapped[bool] = mapped_column(Boolean, default=False)
+    queue_status: Mapped[str] = mapped_column(String(20), default="MODERATE")  # backend-calculated
+    queue_pressure: Mapped[float] = mapped_column(Float, default=0.0)    # 0.0-1.0
+    created_by_admin: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+

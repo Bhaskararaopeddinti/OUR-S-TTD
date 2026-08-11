@@ -1,10 +1,11 @@
 import secrets
+import uuid
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import User
+from backend.models import User, AdminSession
 from backend.schemas import RegisterIn, LoginIn, Token, UserOut, ForgotPasswordIn, ResetPasswordIn
 from backend.auth import hash_password, verify_password, create_token
 
@@ -56,6 +57,27 @@ def login(data: LoginIn, db: Session = Depends(get_db)):
         raise HTTPException(status_code=403, detail="Account is disabled. Please contact TTD support.")
 
     token_str = create_token(user.id, user.role)
+
+    # Record admin session with server timestamp
+    if user.role in ("admin", "super_admin"):
+        try:
+            # Deactivate any previous active sessions
+            db.query(AdminSession).filter(
+                AdminSession.admin_id == user.id,
+                AdminSession.is_active == True
+            ).update({"is_active": False})
+            session = AdminSession(
+                admin_id=user.id,
+                admin_email=user.email,
+                session_id=str(uuid.uuid4()),
+                login_time=datetime.utcnow(),
+                is_active=True,
+            )
+            db.add(session)
+            db.commit()
+        except Exception:
+            db.rollback()  # Don't fail login if session tracking fails
+
     return Token(
         access_token=token_str,
         token_type="bearer",

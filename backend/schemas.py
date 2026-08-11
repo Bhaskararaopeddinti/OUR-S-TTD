@@ -2,7 +2,8 @@
 OURS TTD — Pydantic Schemas
 Request/response validation models for all API endpoints.
 """
-from pydantic import BaseModel, EmailStr, Field
+from datetime import datetime
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from typing import Optional
 
 
@@ -201,3 +202,83 @@ class CrowdUploadIn(BaseModel):
 class NotificationMarkRead(BaseModel):
     notification_ids: list[int] = []
 
+
+# ──── Admin Pilgrim Flow Data ────
+class PilgrimFlowDataIn(BaseModel):
+    date: str = Field(min_length=10, max_length=10)          # YYYY-MM-DD
+    start_time: str = Field(min_length=4, max_length=5)       # HH:MM
+    end_time: str = Field(min_length=4, max_length=5)         # HH:MM
+    incoming_pilgrims: int = Field(ge=0, description="Must be >= 0")
+    outgoing_pilgrims: int = Field(ge=0, description="Must be >= 0")
+    festival: bool = False
+
+    @field_validator("date")
+    @classmethod
+    def validate_date(cls, value: str) -> str:
+        try:
+            datetime.strptime(value, "%Y-%m-%d")
+        except ValueError as exc:
+            raise ValueError("Date must use YYYY-MM-DD format.") from exc
+        return value
+
+    @field_validator("start_time", "end_time")
+    @classmethod
+    def validate_time(cls, value: str) -> str:
+        try:
+            datetime.strptime(value, "%H:%M")
+        except ValueError as exc:
+            raise ValueError("Time must use HH:MM (24-hour) format.") from exc
+        return value
+
+    @model_validator(mode="after")
+    def validate_two_hour_slot(self):
+        start = datetime.strptime(self.start_time, "%H:%M")
+        end = datetime.strptime(self.end_time, "%H:%M")
+        duration = (end - start).total_seconds() / 3600
+        if duration <= 0:
+            duration += 24
+        if duration != 2:
+            raise ValueError("Time slot must be exactly two hours.")
+        if start.minute or end.minute or start.hour % 2:
+            raise ValueError("Time slots must start and end on even-hour boundaries.")
+        return self
+
+class PilgrimFlowDataOut(BaseModel):
+    id: int
+    date: str
+    start_time: str
+    end_time: str
+    incoming_pilgrims: int
+    outgoing_pilgrims: int
+    net_pilgrims: int
+    estimated_crowd: int
+    festival: bool
+    queue_status: str
+    queue_pressure: float
+    created_at: str
+
+class QueueAnalysisOut(BaseModel):
+    current_crowd: int
+    queue_status: str
+    queue_pressure: float
+    incoming_rate: int
+    outgoing_rate: int
+    net_rate: int
+    trend: str
+    prediction: str
+    festival: bool
+    total_incoming_today: int
+    total_outgoing_today: int
+    slots_recorded: int
+
+class AdminDashboardOut(BaseModel):
+    server_date: str
+    server_time: str
+    total_pilgrims_today: int
+    current_crowd: int
+    total_incoming: int
+    total_outgoing: int
+    queue_status: str
+    predicted_crowd: int
+    festival: bool
+    slots_recorded: int

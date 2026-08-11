@@ -30,6 +30,8 @@
   <link rel="stylesheet" href="css/responsive.css" />
   <link rel="stylesheet" href="css/components.css" />
   <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/admin-portal.css" />
+
 </head>
 <body>
 
@@ -208,7 +210,7 @@
 <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
 <!-- ═══════════════════════════════════════
-     AUTH DIALOG
+     AUTH DIALOG — Dual Pilgrim / Admin Login
 ════════════════════════════════════════ -->
 <dialog id="authDialog" aria-modal="true" aria-labelledby="authTitle">
   <div class="dialog-inner">
@@ -217,53 +219,91 @@
       <span class="brand-text">OURS TTD</span>
     </div>
     <div class="dialog-header">
-      <h2 id="authTitle">Login to Your Journey</h2>
+      <h2 id="authTitle">Welcome – Choose Login Type</h2>
       <button id="authClose" aria-label="Close login dialog">✕</button>
     </div>
-    <form id="authForm" novalidate>
-      <label id="nameLabel" hidden>
-        <span>Full Name</span>
-        <input id="authName" type="text" placeholder="Your full name" autocomplete="name" />
-      </label>
-      <label id="emailLabel">
-        <span>Email Address</span>
-        <input id="authEmail" type="email" placeholder="you@example.com" required autocomplete="email" />
-      </label>
-      <label id="passwordLabel">
-        <span>Password</span>
-        <input id="authPassword" type="password" placeholder="Minimum 8 characters" required minlength="8" autocomplete="current-password" />
-      </label>
-      
-      <!-- Reset password fields (hidden by default) -->
-      <div id="resetFields" hidden>
-        <label>
-          <span>Reset Token</span>
-          <input id="resetToken" type="text" placeholder="Enter reset token" />
-        </label>
-        <label>
-          <span>New Password</span>
-          <input id="newPassword" type="password" placeholder="Minimum 8 characters" minlength="8" />
-        </label>
-        <label>
-          <span>Confirm New Password</span>
-          <input id="confirmPassword" type="password" placeholder="Confirm new password" minlength="8" />
-        </label>
-        <button type="button" id="submitResetBtn" class="btn-primary" style="width:100%;margin-top:.5rem;">Submit New Password</button>
-      </div>
 
-      <button type="submit" style="width:100%;margin-top:.5rem;" id="authSubmit" class="btn-primary">Login</button>
-      <div id="forgotPwdWrapper" style="text-align:right; margin-top:0.4rem;">
-        <button type="button" id="forgotPasswordBtn" class="btn-ghost" style="border:none; padding:0; font-size:0.8rem; color:var(--gold);">Forgot Password?</button>
-      </div>
-      <p id="authStatus" class="status" role="status" aria-live="polite"></p>
-      <hr class="divider" />
-      <button type="button" class="btn-ghost" style="width:100%;" id="authSwitch">New pilgrim? Create an account</button>
-      <p style="font-size:.8rem;color:var(--muted);margin-top:.75rem;text-align:center;">
-        Demo admin: <strong>admin@oursttd.demo</strong> / <strong>DemoAdmin123</strong>
-      </p>
-    </form>
+    <!-- Login Type Tabs -->
+    <div class="auth-tabs" id="authTabs" role="tablist">
+      <button class="auth-tab active" id="tabPilgrim" role="tab" aria-selected="true" aria-controls="panelPilgrim">
+        🙏 Login as Pilgrim
+      </button>
+      <button class="auth-tab" id="tabAdmin" role="tab" aria-selected="false" aria-controls="panelAdmin">
+        🛡️ Admin Login
+      </button>
+    </div>
+
+    <!-- ── PILGRIM PANEL ── -->
+    <div id="panelPilgrim" role="tabpanel" aria-labelledby="tabPilgrim">
+      <form id="authForm" novalidate>
+        <label id="nameLabel" hidden>
+          <span>Full Name</span>
+          <input id="authName" type="text" placeholder="Your full name" autocomplete="name" />
+        </label>
+        <label id="emailLabel">
+          <span>Email Address</span>
+          <input id="authEmail" type="email" placeholder="you@example.com" required autocomplete="email" />
+        </label>
+        <label id="passwordLabel">
+          <span>Password</span>
+          <input id="authPassword" type="password" placeholder="Minimum 8 characters" required minlength="8" autocomplete="current-password" />
+        </label>
+
+        <!-- Reset password fields (hidden by default) -->
+        <div id="resetFields" hidden>
+          <label>
+            <span>Reset Token</span>
+            <input id="resetToken" type="text" placeholder="Enter reset token" />
+          </label>
+          <label>
+            <span>New Password</span>
+            <input id="newPassword" type="password" placeholder="Minimum 8 characters" minlength="8" />
+          </label>
+          <label>
+            <span>Confirm New Password</span>
+            <input id="confirmPassword" type="password" placeholder="Confirm new password" minlength="8" />
+          </label>
+          <button type="button" id="submitResetBtn" class="btn-primary" style="width:100%;margin-top:.5rem;">Submit New Password</button>
+        </div>
+
+        <button type="submit" style="width:100%;margin-top:.5rem;" id="authSubmit" class="btn-primary">Login as Pilgrim</button>
+        <div id="forgotPwdWrapper" style="text-align:right; margin-top:0.4rem;">
+          <button type="button" id="forgotPasswordBtn" class="btn-ghost" style="border:none; padding:0; font-size:0.8rem; color:var(--gold);">Forgot Password?</button>
+        </div>
+        <p id="authStatus" class="status" role="status" aria-live="polite"></p>
+        <hr class="divider" />
+        <button type="button" class="btn-ghost" style="width:100%;" id="authSwitch">New pilgrim? Create an account</button>
+        <p style="font-size:.8rem;color:var(--muted);margin-top:.75rem;text-align:center;">
+          Demo admin: <strong>admin@oursttd.demo</strong> / <strong>DemoAdmin123</strong>
+        </p>
+      </form>
+    </div>
+
+    <!-- ── ADMIN PANEL ── -->
+    <div id="panelAdmin" role="tabpanel" aria-labelledby="tabAdmin" hidden>
+      <form id="adminAuthForm" novalidate>
+        <div class="admin-login-notice">
+          <span>🔒</span>
+          <span>Admin credentials are verified by the backend. Unauthorized access is logged.</span>
+        </div>
+        <label>
+          <span>Admin Email</span>
+          <input id="adminEmail" type="email" placeholder="admin@oursttd.demo" required autocomplete="email" />
+        </label>
+        <label>
+          <span>Password</span>
+          <input id="adminPassword" type="password" placeholder="Admin password" required minlength="8" autocomplete="current-password" />
+        </label>
+        <button type="submit" id="adminAuthSubmit" class="btn-primary btn-admin-login" style="width:100%;margin-top:.5rem;">
+          🛡️ Admin Login
+        </button>
+        <p id="adminAuthStatus" class="status" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+
   </div>
 </dialog>
+
 
 <!-- ═══════════════════════════════════════
      FOOTER

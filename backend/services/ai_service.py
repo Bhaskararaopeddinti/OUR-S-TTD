@@ -88,17 +88,43 @@ def _build_db_context(message: str, db: Optional[Any] = None) -> str:
     context_parts = []
     msg_lower = message.lower()
 
-    # Queue status context
-    if any(k in msg_lower for k in ("queue", "wait", "crowd", "darshan line", "density", "line")):
+    # Queue status context — prefer live admin-entered data over AI prediction
+    if any(k in msg_lower for k in ("queue", "wait", "crowd", "darshan line", "density", "line", "pilgrim")):
         try:
-            from backend.services.ttd_official import public_status
-            from backend.services.queue_prediction import predict_queue_status
-            status = public_status()
-            pred = predict_queue_status(status.get("wait_minutes", 120), status.get("crowd_density", "Moderate"))
-            context_parts.append(
-                f"[SYSTEM CONTEXT - LIVE QUEUE DATA]: Current wait = {status.get('wait_minutes')} mins, "
-                f"Crowd density = {status.get('crowd_density')}. AI Prediction: {pred.get('trend')} - {pred.get('recommendation')}."
-            )
+            from datetime import date as dt_date
+            from backend.models import PilgrimFlowData
+            from sqlalchemy import desc
+            if db:
+                today = dt_date.today().strftime("%Y-%m-%d")
+                latest_flow = (
+                    db.query(PilgrimFlowData)
+                    .filter(PilgrimFlowData.date == today)
+                    .order_by(desc(PilgrimFlowData.start_time))
+                    .first()
+                )
+                if latest_flow:
+                    context_parts.append(
+                        f"[SYSTEM CONTEXT - LIVE ADMIN QUEUE DATA (Source: Admin-entered)]: "
+                        f"Current Estimated Crowd = {latest_flow.estimated_crowd:,} pilgrims, "
+                        f"Queue Status = {latest_flow.queue_status}, "
+                        f"Incoming this slot = {latest_flow.incoming_pilgrims}, "
+                        f"Outgoing this slot = {latest_flow.outgoing_pilgrims}, "
+                        f"Net change = {latest_flow.net_pilgrims:+d}, "
+                        f"Festival day = {'YES' if latest_flow.festival else 'NO'}, "
+                        f"Slot = {latest_flow.start_time}–{latest_flow.end_time}."
+                    )
+                else:
+                    # Fallback to AI prediction
+                    from backend.services.ttd_official import public_status
+                    from backend.services.queue_prediction import predict_queue_status
+                    status = public_status()
+                    pred = predict_queue_status(status.get("wait_minutes", 120), status.get("crowd_density", "Moderate"))
+                    context_parts.append(
+                        f"[SYSTEM CONTEXT - AI PREDICTED QUEUE (No admin data yet)]: "
+                        f"Current wait ≈ {status.get('wait_minutes')} mins, "
+                        f"Crowd density = {status.get('crowd_density')}. "
+                        f"AI Prediction: {pred.get('trend')} — {pred.get('recommendation')}."
+                    )
         except Exception as e:
             logger.debug("Could not fetch queue context: %s", e)
 

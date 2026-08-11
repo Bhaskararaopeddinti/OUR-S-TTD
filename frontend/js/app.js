@@ -84,6 +84,34 @@ const nameLabel  = document.getElementById('nameLabel');
 let isRegistering = false;
 let isResetMode   = false;
 
+// ── Auth Tab Switching ─────────────────────────
+function switchAuthTab(tab) {
+  const tabPilgrim  = document.getElementById('tabPilgrim');
+  const tabAdmin    = document.getElementById('tabAdmin');
+  const panelPilgrim = document.getElementById('panelPilgrim');
+  const panelAdmin   = document.getElementById('panelAdmin');
+
+  if (tab === 'admin') {
+    tabAdmin.classList.add('active');
+    tabAdmin.setAttribute('aria-selected', 'true');
+    tabPilgrim.classList.remove('active');
+    tabPilgrim.setAttribute('aria-selected', 'false');
+    panelAdmin.hidden = false;
+    panelPilgrim.hidden = true;
+  } else {
+    tabPilgrim.classList.add('active');
+    tabPilgrim.setAttribute('aria-selected', 'true');
+    tabAdmin.classList.remove('active');
+    tabAdmin.setAttribute('aria-selected', 'false');
+    panelPilgrim.hidden = false;
+    panelAdmin.hidden = true;
+  }
+}
+
+document.getElementById('tabPilgrim')?.addEventListener('click', () => switchAuthTab('pilgrim'));
+document.getElementById('tabAdmin')?.addEventListener('click',   () => switchAuthTab('admin'));
+
+
 function formatAuthError(err) {
   if (!err) return 'An unexpected error occurred. Please try again.';
   if (typeof err === 'string') return err;
@@ -118,7 +146,7 @@ function resetAuthModalView() {
   if (submitBtn) {
     submitBtn.hidden = false;
     submitBtn.disabled = false;
-    submitBtn.textContent = 'Login';
+    submitBtn.textContent = 'Login as Pilgrim';
   }
   if (authTitle) authTitle.textContent = 'Login to Your Journey';
   if (authSwitch) {
@@ -348,7 +376,20 @@ async function onAuthSuccess(redirect = false) {
 function logout() {
   authToken = null;
   authUser  = null;
+
+  // Notify backend to record OUT time (fire-and-forget)
+  try {
+    const storedToken = localStorage.getItem('authToken');
+    if (storedToken) {
+      fetch('/api/admin/logout', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${storedToken}`, 'Content-Type': 'application/json' }
+      }).catch(() => {}); // silently ignore if not admin
+    }
+  } catch (_) {}
+
   localStorage.removeItem('authToken');
+  localStorage.removeItem('adminSessionId');
 
   const authBtn = document.getElementById('authBtn');
   if (authBtn) authBtn.textContent = 'Login';
@@ -365,12 +406,57 @@ function logout() {
 
   if (authDialog && typeof authDialog.showModal === 'function') {
     resetAuthModalView();
+    switchAuthTab('pilgrim');
     authDialog.showModal();
   }
 }
 
+// ── Admin Auth Form Submit ─────────────────────
+const adminAuthForm = document.getElementById('adminAuthForm');
+adminAuthForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const adminEmail    = document.getElementById('adminEmail')?.value.trim();
+  const adminPassword = document.getElementById('adminPassword')?.value;
+  const adminStatus   = document.getElementById('adminAuthStatus');
+  const adminBtn      = document.getElementById('adminAuthSubmit');
+
+  if (!adminEmail || !adminPassword) {
+    if (adminStatus) { adminStatus.className = 'status error'; adminStatus.textContent = 'Please enter both email and password.'; }
+    return;
+  }
+
+  if (adminBtn) { adminBtn.disabled = true; adminBtn.innerHTML = '<span class="spinner"></span> Verifying…'; }
+  if (adminStatus) { adminStatus.className = 'status'; adminStatus.textContent = ''; }
+
+  try {
+    const data = await API.post('auth/login', { email: adminEmail, password: adminPassword });
+
+    // Verify server returned admin role — NEVER trust frontend role check alone
+    if (!data.user || !['admin', 'super_admin'].includes(data.user.role)) {
+      throw { detail: '403 Forbidden: This account does not have admin privileges.' };
+    }
+
+    authToken = data.access_token;
+    localStorage.setItem('authToken', authToken);
+
+    if (adminStatus) { adminStatus.className = 'status success'; adminStatus.textContent = '✓ Admin authenticated. Redirecting…'; }
+    if (adminBtn) adminBtn.textContent = 'Access Granted';
+
+    setTimeout(async () => {
+      if (authDialog) authDialog.close();
+      await onAuthSuccess(false);
+      navigate('admin');
+    }, 600);
+
+  } catch (err) {
+    if (adminStatus) { adminStatus.className = 'status error'; adminStatus.textContent = formatAuthError(err); }
+    if (adminBtn) { adminBtn.disabled = false; adminBtn.textContent = '🛡️ Admin Login'; }
+  }
+});
+
 // Check if already logged in on page load
 if (authToken) onAuthSuccess();
+
 
 // ── HOME PAGE ─────────────────────────────────
 function renderHome() {
