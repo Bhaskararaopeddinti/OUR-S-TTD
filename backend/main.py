@@ -113,6 +113,7 @@ def migrate_users_columns(db):
     # PostgreSQL schemas are created by SQLAlchemy metadata on startup; PRAGMA
     # is SQLite-only and would abort a PostgreSQL transaction.
     if db.bind.dialect.name != "sqlite":
+        logger.info("Using PostgreSQL - column migration handled by SQLAlchemy metadata")
         return
     try:
         from sqlalchemy import text
@@ -307,6 +308,14 @@ async def startup():
     # Test database connection first
     if not test_connection():
         logger.error("Database connection failed. Application may not function correctly.")
+    
+    # Log database type
+    db_type = database_kind()
+    logger.info(f"Database type: {db_type}")
+    if db_type == "postgresql":
+        logger.info("✓ Connected to Supabase PostgreSQL")
+    else:
+        logger.info("✓ Connected to SQLite (development mode)")
     
     # Create tables
     try:

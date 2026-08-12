@@ -6,8 +6,20 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./ours_ttd.db")
+# In production, DATABASE_URL must be set
+DATABASE_URL = os.getenv("DATABASE_URL")
 IS_PRODUCTION = os.getenv("RENDER") == "true" or os.getenv("ENVIRONMENT", "").lower() == "production"
+
+def _mask_url(url: str) -> str:
+    """Safely mask database URL for logging (hides password)."""
+    if not url:
+        return "Not set"
+    if "@" in url:
+        # Mask everything between protocol and @
+        parts = url.split("@")
+        protocol_part = parts[0].split("://")[0] + "://"
+        return f"{protocol_part}****:****@{parts[1]}"
+    return url[:20] + "..." if len(url) > 20 else url
 
 def _normalize_database_url(url: str) -> str:
     """Normalize database URL for SQLAlchemy + Supabase compatibility."""
@@ -44,7 +56,7 @@ def _init_engine(url: str):
             # Test connection
             with eng.connect() as conn:
                 conn.execute(text("SELECT 1"))
-            logger.info("✓ Using PostgreSQL database")
+            logger.info("✓ Using PostgreSQL database (Supabase)")
             return eng
         except Exception as e:
             # Provide detailed error diagnostics without exposing credentials
@@ -61,9 +73,11 @@ def _init_engine(url: str):
                 logger.error(f"✗ PostgreSQL connection failed: {error_msg}")
             
             if IS_PRODUCTION:
-                logger.error("Production PostgreSQL database connection failed; SQLite fallback is disabled.")
+                logger.error("CRITICAL: Production PostgreSQL database connection failed. Application cannot start.")
+                logger.error(f"DATABASE_URL configured: {bool(DATABASE_URL)}")
+                logger.error(f"Masked DATABASE_URL: {_mask_url(DATABASE_URL)}")
                 raise RuntimeError("Production PostgreSQL database connection failed") from e
-            logger.warning("Using local SQLite only because this is not production.")
+            logger.warning("PostgreSQL connection failed in development. Falling back to SQLite.")
             url = "sqlite:///./ours_ttd.db"
     
     eng = create_engine(url, connect_args={"check_same_thread": False}, pool_pre_ping=True)
@@ -74,7 +88,22 @@ class Base(DeclarativeBase):
     pass
 
 # Initialize engine after Base is defined
-engine = _init_engine(DATABASE_URL)
+if IS_PRODUCTION:
+    if not DATABASE_URL:
+        logger.error("CRITICAL: DATABASE_URL environment variable is required in production.")
+        logger.error("Please set DATABASE_URL in Render environment variables.")
+        raise RuntimeError("DATABASE_URL environment variable is required in production")
+    logger.info(f"Production mode: DATABASE_URL configured: {bool(DATABASE_URL)}")
+    logger.info(f"Masked DATABASE_URL: {_mask_url(DATABASE_URL)}")
+    engine = _init_engine(DATABASE_URL)
+else:
+    # Development: Use DATABASE_URL if provided, otherwise SQLite
+    db_url = DATABASE_URL if DATABASE_URL else "sqlite:///./ours_ttd.db"
+    logger.info(f"Development mode: Using {'DATABASE_URL' if DATABASE_URL else 'SQLite'}")
+    if DATABASE_URL:
+        logger.info(f"Masked DATABASE_URL: {_mask_url(DATABASE_URL)}")
+    engine = _init_engine(db_url)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():

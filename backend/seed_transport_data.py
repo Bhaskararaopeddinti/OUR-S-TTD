@@ -170,6 +170,12 @@ VERIFIED_ROUTES = [
 
 def migrate_sqlite_columns(db):
     """Ensure SQLite schema has all newly defined transport columns."""
+    # PostgreSQL schemas are created by SQLAlchemy metadata on startup; PRAGMA
+    # is SQLite-only and would abort a PostgreSQL transaction.
+    if db.bind.dialect.name != "sqlite":
+        logger.info("Using PostgreSQL - column migration handled by SQLAlchemy metadata")
+        return
+        
     conn = db.connection().connection
     cursor = conn.cursor()
     cursor.execute("PRAGMA table_info(transport_routes)")
@@ -208,6 +214,7 @@ def seed_transport():
     db = SessionLocal()
 
     try:
+        # Only migrate SQLite columns - PostgreSQL uses SQLAlchemy metadata
         migrate_sqlite_columns(db)
         
         # 1. Locations
