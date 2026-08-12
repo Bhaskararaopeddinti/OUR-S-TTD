@@ -117,7 +117,7 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
             latest_flow = (
                 db.query(PilgrimFlowData)
                 .filter(PilgrimFlowData.date == today)
-                .order_by(desc(PilgrimFlowData.start_time))
+                .order_by(desc(PilgrimFlowData.created_at))
                 .first()
             )
             if latest_flow:
@@ -135,6 +135,10 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
                 if latest_flow.estimated_crowd > 0:
                     # Estimate wait time based on crowd size (rough approximation: 1000 people ≈ 15 mins)
                     current_wait_minutes = max(15, int(latest_flow.estimated_crowd / 1000 * 15))
+                
+                # If admin reports festival, increase festival multiplier
+                if latest_flow.festival:
+                    festival_multiplier = max(festival_multiplier, 1.5)
         except Exception as e:
             import logging
             logging.getLogger(__name__).debug("Could not fetch admin queue data: %s", e)
@@ -188,27 +192,41 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
     # Overall crowd multiplier
     crowd_multiplier = time_multiplier * day_multiplier * festival_multiplier
     
-    # Density-based adjustment
+    # Density-based adjustment - use admin queue status if available
     density_multipliers = {
-        "Low": 0.7,
-        "Moderate": 1.0,
-        "High": 1.5,
-        "Very High": 2.0
+        "LOW": 0.7,
+        "MODERATE": 1.0,
+        "HIGH": 1.5,
+        "VERY HIGH": 2.0,
+        "CRITICAL": 2.5
     }
-    density_multiplier = density_multipliers.get(current_density, 1.0)
+    density_multiplier = density_multipliers.get(current_density.upper() if current_density else "MODERATE", 1.0)
     
     # Predicted wait time
     predicted_wait = max(15, int(current_wait_minutes * crowd_multiplier * density_multiplier))
     
-    # Determine crowd level
-    if crowd_multiplier < 0.8:
-        current_crowd_level = "Low"
-    elif crowd_multiplier < 1.2:
-        current_crowd_level = "Moderate"
-    elif crowd_multiplier < 1.6:
-        current_crowd_level = "High"
+    # Determine crowd level - prioritize admin data if available
+    if admin_crowd_data and admin_crowd_data.get('queue_status'):
+        # Use admin's queue status
+        admin_status = admin_crowd_data['queue_status'].upper()
+        status_mapping = {
+            "LOW": "Low",
+            "MODERATE": "Moderate", 
+            "HIGH": "High",
+            "VERY HIGH": "Very High",
+            "CRITICAL": "Very High"
+        }
+        current_crowd_level = status_mapping.get(admin_status, "Moderate")
     else:
-        current_crowd_level = "Very High"
+        # Fall back to calculated crowd level
+        if crowd_multiplier < 0.8:
+            current_crowd_level = "Low"
+        elif crowd_multiplier < 1.2:
+            current_crowd_level = "Moderate"
+        elif crowd_multiplier < 1.6:
+            current_crowd_level = "High"
+        else:
+            current_crowd_level = "Very High"
     
     # Generate crowd trend for next 6 hours
     crowd_trend = []
@@ -260,29 +278,61 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
     # Generate AI advice based on current conditions
     ai_advice = []
     
-    if current_crowd_level == "Low":
-        ai_advice.append("Excellent time to join the queue! Wait times are minimal.")
-    elif current_crowd_level == "Moderate":
-        ai_advice.append("Good time to join. Expect reasonable wait times.")
-    elif current_crowd_level == "High":
-        ai_advice.append("Crowd is high. Consider joining in 2-3 hours or early morning.")
-    else:  # Very High
-        ai_advice.append("Crowd is very high. Best to join after 10 PM or before 5 AM.")
+    # Prioritize admin data for advice
+    if admin_crowd_data:
+        admin_status = admin_crowd_data.get('queue_status', '').upper()
+        admin_crowd = admin_crowd_data.get('estimated_crowd', 0)
+        
+        if admin_status == 'LOW':
+            ai_advice.append("Excellent time to join the queue! Wait times are minimal.")
+        elif admin_status == 'MODERATE':
+            ai_advice.append("Good time to join. Expect reasonable wait times.")
+        elif admin_status == 'HIGH':
+            ai_advice.append("Crowd is high. Consider joining in 2-3 hours or early morning.")
+        elif admin_status in ['VERY HIGH', 'CRITICAL']:
+            ai_advice.append("Crowd is very high. Best to join after 10 PM or before 5 AM.")
+        
+        if admin_crowd > 0:
+            ai_advice.append(f"Current reported crowd: {admin_crowd:,} devotees.")
+        
+        if admin_crowd_data.get('festival'):
+            ai_advice.append("Festival activity reported - expect higher than normal crowd levels.")
+    else:
+        # Fallback to calculated advice
+        if current_crowd_level == "Low":
+            ai_advice.append("Excellent time to join the queue! Wait times are minimal.")
+        elif current_crowd_level == "Moderate":
+            ai_advice.append("Good time to join. Expect reasonable wait times.")
+        elif current_crowd_level == "High":
+            ai_advice.append("Crowd is high. Consider joining in 2-3 hours or early morning.")
+        else:  # Very High
+            ai_advice.append("Crowd is very high. Best to join after 10 PM or before 5 AM.")
     
-    if is_weekend:
-        ai_advice.append("Weekend crowd expected. Plan for longer wait times.")
-    
-    if festival_multiplier > 1.0:
-        ai_advice.append(f"Festival season active. Crowd multiplier: ×{festival_multiplier}")
-    
-    if hour >= 6 and hour <= 10:
-        ai_advice.append("Morning peak hours. Consider joining after 11 AM.")
-    elif hour >= 16 and hour <= 19:
-        ai_advice.append("Evening peak hours. Consider joining after 9 PM.")
+    # Add additional context if no admin data (admin data already provides specific context)
+    if not admin_crowd_data:
+        if is_weekend:
+            ai_advice.append("Weekend crowd expected. Plan for longer wait times.")
+        
+        if festival_multiplier > 1.0:
+            ai_advice.append(f"Festival season active. Crowd multiplier: ×{festival_multiplier}")
+        
+        if hour >= 6 and hour <= 10:
+            ai_advice.append("Morning peak hours. Consider joining after 11 AM.")
+        elif hour >= 16 and hour <= 19:
+            ai_advice.append("Evening peak hours. Consider joining after 9 PM.")
     
     # Festival impacts
     festival_impacts = []
-    if month in [9, 10]:
+    
+    # Check admin data for festival status first
+    if admin_crowd_data and admin_crowd_data.get('festival'):
+        festival_impacts.append({
+            "festival": "Admin Reported Festival",
+            "description": "Festival activity reported by admin - expect higher crowd levels",
+            "multiplier": 1.5  # Moderate multiplier for admin-reported festivals
+        })
+    # Otherwise, check seasonal festivals
+    elif month in [9, 10]:
         festival_impacts.append({
             "festival": "Brahmotsavam",
             "description": "Annual Brahmotsavam festival - expect maximum crowds",

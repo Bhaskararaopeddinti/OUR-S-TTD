@@ -13,14 +13,29 @@ async function loadQueueIntelligence() {
   const adviceContainer = document.getElementById('aiAdvice');
   const festivalContainer = document.getElementById('festivalImpact');
 
+  console.log('loadQueueIntelligence called, containers found:', {
+    status: !!statusContainer,
+    prediction: !!predictionContainer,
+    trend: !!trendContainer,
+    bestTimes: !!bestTimesContainer,
+    advice: !!adviceContainer,
+    festival: !!festivalContainer
+  });
+
   try {
+    console.log('Fetching queue data from API...');
     const data = await API.get('queue');
+    console.log('Queue API response:', data);
     
     // Display current status
     if (statusContainer) {
       // Use admin data if available, otherwise use default queue status
       const adminData = data.ai_prediction?.admin_crowd_data;
       const dataSource = data.ai_prediction?.data_source || 'AI Historical Prediction';
+      const lastUpdated = data.ai_prediction?.prediction_timestamp || new Date().toISOString();
+      
+      // Format timestamp for display
+      const updatedTime = new Date(lastUpdated).toLocaleString();
       
       statusContainer.innerHTML = `
         <div class="stat-item">
@@ -42,6 +57,10 @@ async function loadQueueIntelligence() {
         <div class="stat-item">
           <span class="stat-label">Data Source</span>
           <span class="stat-value" style="font-size: 0.85rem; color: ${adminData ? '#10B981' : 'var(--muted)'};">${adminData ? '📊 Admin Data' : '🤖 AI Prediction'}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Last Updated</span>
+          <span class="stat-value" style="font-size: 0.85rem;">${updatedTime}</span>
         </div>
       `;
       
@@ -184,11 +203,26 @@ async function loadQueueIntelligence() {
     }
 
     // Display festival impact
-    if (festivalContainer && data.ai_prediction?.festival_impacts) {
-      const festivals = data.ai_prediction.festival_impacts;
-      if (festivals.length === 0) {
-        festivalContainer.innerHTML = '<p class="hint">No major festivals currently affecting crowd levels</p>';
-      } else {
+    if (festivalContainer && data.ai_prediction) {
+      const pred = data.ai_prediction;
+      const adminData = pred.admin_crowd_data;
+      const festivals = pred.festival_impacts || [];
+      
+      // Check admin data for festival status
+      if (adminData && adminData.festival) {
+        festivalContainer.innerHTML = `
+          <div class="festival-alerts">
+            <div class="festival-alert">
+              <span class="festival-icon">🎉</span>
+              <div>
+                <strong>Festival Impact Reported</strong>
+                <p>Admin has reported festival activity during this period.</p>
+                <span class="multiplier">Current queue status: ${adminData.queue_status}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (festivals.length > 0) {
         festivalContainer.innerHTML = `
           <div class="festival-alerts">
             ${festivals.map(f => `
@@ -203,6 +237,8 @@ async function loadQueueIntelligence() {
             `).join('')}
           </div>
         `;
+      } else {
+        festivalContainer.innerHTML = '<p class="hint">No festival impact reported in the latest admin data.</p>';
       }
     }
 
