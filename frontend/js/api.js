@@ -6,8 +6,17 @@
 
 const API = (() => {
   const getApiBase = () => {
-    if (typeof window !== 'undefined' && (window.location.protocol === 'file:' || window.location.port === '5500' || window.location.port === '5501')) {
-      return 'http://localhost:8000/api/';
+    if (typeof window !== 'undefined') {
+      // If serving from same origin as backend, use relative path
+      if (window.location.hostname === 'localhost' && window.location.port === '8000') {
+        return '/api/';
+      }
+      // If serving from file system or different ports
+      if (window.location.protocol === 'file:' || window.location.port === '5500' || window.location.port === '5501') {
+        return 'http://localhost:8000/api/';
+      }
+      // Otherwise use relative path
+      return '/api/';
     }
     return '/api/';
   };
