@@ -209,6 +209,10 @@
   transform: translateY(-1px);
 }
 
+.sidebar-auth-btn.logged-in {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+}
+
 .sidebar-theme-btn {
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.25);

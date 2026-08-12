@@ -160,9 +160,15 @@ function resetAuthModalView() {
 }
 
 authBtn?.addEventListener('click', () => {
-  if (authToken) { logout(); return; }
+  if (authToken) { 
+    logout(); 
+    return; 
+  }
+  // Show login dialog for guests
   resetAuthModalView();
-  authDialog.showModal();
+  if (authDialog) {
+    authDialog.showModal();
+  }
 });
 document.getElementById('authClose')?.addEventListener('click', () => authDialog?.close());
 
@@ -359,7 +365,10 @@ async function onAuthSuccess(redirect = false) {
       }
     }
 
-    if (authBtn) authBtn.textContent = 'Logout';
+    if (authBtn) {
+      authBtn.textContent = 'Logout';
+      authBtn.classList.add('logged-in');
+    }
 
     if (redirect) {
       navigate(['admin', 'super_admin'].includes(profile.role) ? 'admin' : 'dashboard');
@@ -392,7 +401,10 @@ function logout() {
   localStorage.removeItem('adminSessionId');
 
   const authBtn = document.getElementById('authBtn');
-  if (authBtn) authBtn.textContent = 'Login';
+  if (authBtn) {
+    authBtn.textContent = 'Login';
+    authBtn.classList.remove('logged-in');
+  }
 
   const adminNavItem = document.querySelector('.admin-only-item');
   if (adminNavItem) adminNavItem.style.display = 'none';
@@ -1271,6 +1283,18 @@ window.fetchAndRenderRoutes = fetchAndRenderRoutes;
 if (authToken) {
   onAuthSuccess(true);
 } else {
+  // Ensure guest state is properly set on page load
+  const authBtn = document.getElementById('authBtn');
+  if (authBtn) {
+    authBtn.textContent = 'Login';
+    authBtn.classList.remove('logged-in');
+  }
+  
+  const userName = document.querySelector('.user-name');
+  const userRole = document.querySelector('.user-role');
+  if (userName) userName.textContent = 'Pilgrim';
+  if (userRole) userRole.textContent = 'Guest';
+  
   navigate('home');
 }
 // Load hero queue stats
