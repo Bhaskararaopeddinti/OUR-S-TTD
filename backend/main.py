@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
-from backend.database import Base, engine, SessionLocal, test_connection
+from backend.database import Base, engine, SessionLocal, test_connection, database_kind
 from backend.models import (
     QueueStatus, Facility, User, NavigationLocation,
     Notification
@@ -110,6 +110,10 @@ NAV_LOCATIONS = [
 
 def migrate_users_columns(db):
     """Ensure newly added User columns exist in SQLite database."""
+    # PostgreSQL schemas are created by SQLAlchemy metadata on startup; PRAGMA
+    # is SQLite-only and would abort a PostgreSQL transaction.
+    if db.bind.dialect.name != "sqlite":
+        return
     try:
         from sqlalchemy import text
         res = db.execute(text("PRAGMA table_info(users)")).fetchall()
@@ -123,6 +127,9 @@ def migrate_users_columns(db):
         if "reset_token_expires" not in cols:
             db.execute(text("ALTER TABLE users ADD COLUMN reset_token_expires DATETIME"))
             logger.info("Migrated SQLite: added reset_token_expires to users table")
+        if "last_login" not in cols:
+            db.execute(text("ALTER TABLE users ADD COLUMN last_login DATETIME"))
+            logger.info("Migrated SQLite: added last_login to users table")
         db.commit()
     except Exception as e:
         logger.warning("Users column migration check: %s", e)
@@ -185,13 +192,78 @@ def seed_db():
                     destination_location="Tirumala",
                     vehicle_type="GOVERNMENT_BUS",
                     operator="APSRTC",
-                    route_name="Tirupati Central Bus Stand → Tirumala Ghat Road",
+                    route_name="Tirupati Central Bus Stand to Tirumala Ghat Road",
                     estimated_duration="45 - 60 mins",
-                    fare="₹65 / person",
+                    fare="Rs.65 / person",
                     operating_hours="24 Hours Active",
                     frequency="Every 2-3 mins",
                     status="Available",
                     source="TTD Official Verified"
+                ),
+                TransportRoute(
+                    source_location="Tirumala",
+                    destination_location="Tirupati Bus Stand",
+                    vehicle_type="GOVERNMENT_BUS",
+                    operator="APSRTC",
+                    route_name="Tirumala to Tirupati Central Bus Stand (Return)",
+                    estimated_duration="45 - 60 mins",
+                    fare="Rs.65 / person",
+                    operating_hours="24 Hours Active",
+                    frequency="Every 2-3 mins",
+                    status="Available",
+                    source="TTD Official Verified"
+                ),
+                TransportRoute(
+                    source_location="Tirupati Railway Station",
+                    destination_location="Tirumala",
+                    vehicle_type="TTD_BUS",
+                    operator="TTD Devasthanams",
+                    route_name="Tirupati Railway Station to Tirumala via Alipiri",
+                    estimated_duration="60 - 75 mins",
+                    fare="FREE",
+                    operating_hours="4:00 AM - 10:00 PM",
+                    frequency="Every 15 mins",
+                    status="Available",
+                    source="100% Free TTD Service"
+                ),
+                TransportRoute(
+                    source_location="Tirumala",
+                    destination_location="Tirupati Railway Station",
+                    vehicle_type="TTD_BUS",
+                    operator="TTD Devasthanams",
+                    route_name="Tirumala to Tirupati Railway Station (Return)",
+                    estimated_duration="60 - 75 mins",
+                    fare="FREE",
+                    operating_hours="4:00 AM - 10:00 PM",
+                    frequency="Every 15 mins",
+                    status="Available",
+                    source="100% Free TTD Service"
+                ),
+                TransportRoute(
+                    source_location="Alipiri Checkpost",
+                    destination_location="Tirumala",
+                    vehicle_type="WALKING",
+                    operator="TTD Footpath Trek",
+                    route_name="Alipiri Footpath (3,550 Steps)",
+                    estimated_duration="3 - 4 Hours",
+                    fare="Free (Traditional Trek)",
+                    operating_hours="24 Hours Active",
+                    frequency="Continuous",
+                    status="Open",
+                    source="TTD Verified Footpath"
+                ),
+                TransportRoute(
+                    source_location="Tirumala",
+                    destination_location="Alipiri Checkpost",
+                    vehicle_type="WALKING",
+                    operator="TTD Footpath Trek",
+                    route_name="Tirumala to Alipiri Footpath (Descent)",
+                    estimated_duration="2 - 3 Hours",
+                    fare="Free (Traditional Trek)",
+                    operating_hours="24 Hours Active",
+                    frequency="Continuous",
+                    status="Open",
+                    source="TTD Verified Footpath"
                 ),
                 TransportRoute(
                     source_location="CRO Tirumala",
@@ -274,8 +346,17 @@ for folder in ["css", "js", "pages", "images", "assets"]:
 async def serve_manifest():
     return FileResponse(frontend_dir / "manifest.json")
 
+@app.get("/api/health", tags=["Health"])
+async def health_check():
+    """Non-sensitive application and database health status."""
+    connected = test_connection()
+    return {
+        "status": "healthy" if connected else "unhealthy",
+        "database": "connected" if connected else "unavailable",
+        "database_type": database_kind(),
+    }
+
 # Serve index.html at root
 @app.get("/")
 async def serve_index():
     return FileResponse(frontend_dir / "index.html")
-

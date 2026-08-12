@@ -7,6 +7,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./ours_ttd.db")
+IS_PRODUCTION = os.getenv("RENDER") == "true" or os.getenv("ENVIRONMENT", "").lower() == "production"
 
 # Render uses postgres://, SQLAlchemy 2.0 requires postgresql://
 if DATABASE_URL.startswith("postgres://"):
@@ -15,6 +16,8 @@ if DATABASE_URL.startswith("postgres://"):
 def _init_engine(url: str):
     if url.startswith("postgresql"):
         try:
+            if "sslmode=" not in url:
+                url += "&sslmode=require" if "?" in url else "?sslmode=require"
             eng = create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=10)
             with eng.connect() as conn:
                 conn.execute(text("SELECT 1"))
@@ -22,6 +25,10 @@ def _init_engine(url: str):
             return eng
         except Exception as e:
             logger.warning("✗ PostgreSQL connection failed (%s). Falling back to local SQLite database.", e)
+            if IS_PRODUCTION:
+                logger.error("PostgreSQL database connection failed; SQLite fallback is disabled in production: %s", e)
+                raise RuntimeError("Production PostgreSQL database connection failed") from e
+            logger.warning("Using local SQLite only because this is not production.")
             url = "sqlite:///./ours_ttd.db"
     
     eng = create_engine(url, connect_args={"check_same_thread": False}, pool_pre_ping=True)
@@ -52,3 +59,6 @@ def test_connection():
         logger.error(f"✗ Database connection failed: {e}")
         return False
 
+def database_kind() -> str:
+    """Safe database type for health checks; never exposes connection details."""
+    return "postgresql" if engine.dialect.name == "postgresql" else "sqlite"

@@ -22,6 +22,7 @@ class User(Base):
     reset_token: Mapped[str | None] = mapped_column(String(100), nullable=True)
     reset_token_expires: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     profile: Mapped["PilgrimProfile"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
     bookings: Mapped[list["Booking"]] = relationship(back_populates="user", cascade="all, delete-orphan")
@@ -308,4 +309,3 @@ class PilgrimFlowData(Base):
     queue_pressure: Mapped[float] = mapped_column(Float, default=0.0)    # 0.0-1.0
     created_by_admin: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-

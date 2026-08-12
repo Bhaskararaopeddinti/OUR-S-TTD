@@ -33,20 +33,70 @@ router = APIRouter(prefix="/api", tags=["Pilgrim services"])
 
 # ──────────────────────── Queue ────────────────────────
 @router.get("/queue")
-def queue():
+def queue(db: Session = Depends(get_db)):
     """Public TTD status with AI-powered predictive intelligence."""
     status = public_status()
     
-    # Add AI predictive intelligence
+    # Add AI predictive intelligence with database access for admin data
     prediction = predict_queue_status(
         current_wait_minutes=status.get("wait_minutes", 120),
-        current_density=status.get("crowd_density", "Moderate")
+        current_density=status.get("crowd_density", "Moderate"),
+        db=db
     )
     
     return {
         **status,
         "ai_prediction": prediction,
         "prediction_disclaimer": "Predictions based on historical patterns and time analysis. Verify with TTD officials for real-time updates."
+    }
+
+
+@router.get("/queue/recommendation")
+def queue_recommendation(db: Session = Depends(get_db)):
+    """Get AI queue recommendation with action guidance."""
+    status = public_status()
+    prediction = predict_queue_status(
+        current_wait_minutes=status.get("wait_minutes", 120),
+        current_density=status.get("crowd_density", "Moderate"),
+        db=db
+    )
+    
+    # Determine action based on crowd level
+    crowd_level = prediction.get("current_crowd_level", "Moderate")
+    if crowd_level == "Low":
+        action = "JOIN NOW"
+        action_color = "green"
+        message = "Good time to join. Queue is currently less crowded."
+    elif crowd_level == "Moderate":
+        action = "CONSIDER JOINING"
+        action_color = "yellow"
+        message = "Moderate crowd detected. You can join now, but waiting may provide a shorter queue."
+    elif crowd_level == "High":
+        action = "WAIT"
+        action_color = "red"
+        message = "High crowd detected. Consider waiting before joining the queue."
+    else:  # Very High
+        action = "AVOID"
+        action_color = "dark_red"
+        message = "Heavy rush detected. Joining now may result in a long wait."
+    
+    # Add best time recommendation
+    best_times = prediction.get("best_times_to_join", [])
+    if best_times:
+        best_time = best_times[0]
+        message += f" Recommended time: {best_time['time']} ({best_time['recommendation']})."
+    
+    return {
+        "queue_status": crowd_level,
+        "action": action,
+        "action_color": action_color,
+        "message": message,
+        "predicted_wait_minutes": prediction.get("predicted_wait_minutes"),
+        "current_crowd": status.get("people_count"),
+        "best_time_today": best_times[0] if best_times else None,
+        "alternative_times": best_times[1:4] if len(best_times) > 1 else [],
+        "admin_data_used": prediction.get("admin_data_used", False),
+        "data_source": prediction.get("data_source", "AI Historical Prediction")
     }
 
 

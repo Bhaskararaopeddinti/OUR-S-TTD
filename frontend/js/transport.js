@@ -70,15 +70,16 @@ function renderNoResults(container, fromLoc, toLoc) {
   container.innerHTML = `
     <div class="dashboard-card" style="text-align:center;padding:2.5rem 2rem;color:var(--muted);">
       <div style="font-size:2.5rem;margin-bottom:1rem;">🚌</div>
-      <h3 style="color:var(--text);margin-bottom:0.5rem;">No direct bus route listed for this route</h3>
-      <p style="margin-bottom:1rem;">No transport route found from <strong>${fromStr}</strong> to <strong>${toStr}</strong>.</p>
+      <h3 style="color:var(--text);margin-bottom:0.5rem;">No configured transport route available</h3>
+      <p style="margin-bottom:1rem;">No transport route found from <strong>${fromStr}</strong> to <strong>${toStr}</strong> in the current dataset.</p>
       <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:1rem;text-align:left;max-width:400px;margin:0 auto 1.25rem;">
-        <p style="font-size:0.9rem;font-weight:600;margin-bottom:0.5rem;">You can try:</p>
+        <p style="font-size:0.9rem;font-weight:600;margin-bottom:0.5rem;">Available TTD transport routes include:</p>
         <ul style="font-size:0.85rem;line-height:2;padding-left:1.2rem;">
-          <li>🔄 <strong>Nearby bus connection</strong> via Tirupati Bus Station</li>
-          <li>🚕 <strong>Taxi / Cab</strong> from local stands</li>
-          <li>🚶 <strong>Walking</strong> (Alipiri or Srivari Mettu footpath)</li>
-          <li>🔍 <strong>Select another nearby pickup point</strong></li>
+          <li>� <strong>Tirupati ↔ Tirumala</strong> (APSRTC & TTD Free Bus)</li>
+          <li>� <strong>Tirupati Railway Station ↔ Tirumala</strong> (TTD Free Bus)</li>
+          <li>🚶 <strong>Alipiri ↔ Tirumala</strong> (Footpath Trek)</li>
+          <li>🚶 <strong>Srivari Mettu ↔ Tirumala</strong> (Traditional Trek)</li>
+          <li>� <strong>Internal Tirumala Shuttle</strong> (Dharma Radham)</li>
         </ul>
       </div>
       <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">

@@ -19,6 +19,17 @@ from backend.schemas import (
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
+@router.get("/users")
+def list_users(admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    """Admin-only list of safe user details; never returns password fields."""
+    users = db.query(User).order_by(desc(User.created_at)).all()
+    return [{
+        "id": user.id, "name": user.name, "email": user.email,
+        "role": user.role, "is_active": user.is_active,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "last_login": user.last_login.isoformat() if user.last_login else None,
+    } for user in users]
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Thresholds for queue pressure calculation

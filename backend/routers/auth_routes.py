@@ -56,6 +56,8 @@ def login(data: LoginIn, db: Session = Depends(get_db)):
     if hasattr(user, 'is_active') and user.is_active is False:
         raise HTTPException(status_code=403, detail="Account is disabled. Please contact TTD support.")
 
+    user.last_login = datetime.utcnow()
+    db.commit()
     token_str = create_token(user.id, user.role)
 
     # Record admin session with server timestamp

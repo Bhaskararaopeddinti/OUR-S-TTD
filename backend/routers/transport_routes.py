@@ -229,6 +229,12 @@ def search_routes(
     db: Session = Depends(get_db)
 ):
     """Search transport routes by origin, destination, or vehicle type with fallback support."""
+    # Normalize location inputs
+    if from_location:
+        from_location = from_location.strip()
+    if to_location:
+        to_location = to_location.strip()
+    
     # Validate locations if provided
     if from_location and not is_location_in_ttd_area(from_location, db):
         return {

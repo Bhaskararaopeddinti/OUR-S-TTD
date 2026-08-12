@@ -10,8 +10,8 @@ from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
-# Candidate models in order of preference
-MODEL_CANDIDATES = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest']
+# Candidate models in order of preference (updated to use current Gemini models)
+MODEL_CANDIDATES = ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-flash-latest']
 
 _genai_client = None
 _genai_legacy_model = None
@@ -28,7 +28,7 @@ def _init_gemini() -> bool:
         logger.warning("GEMINI_API_KEY not configured in environment.")
         return False
 
-    # Try modern google.genai SDK
+    # Try modern google.genai SDK first
     try:
         from google import genai
         client = genai.Client(api_key=api_key)
@@ -38,11 +38,14 @@ def _init_gemini() -> bool:
     except Exception as e:
         logger.debug("google.genai Client init attempt failed: %s", e)
 
-    # Fallback to google.generativeai SDK
+    # Fallback to google.generativeai SDK (legacy)
     try:
         import google.generativeai as legacy_genai
         legacy_genai.configure(api_key=api_key)
-        for model_name in MODEL_CANDIDATES:
+        
+        # Try different model names for legacy SDK
+        legacy_models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro', 'gemini-flash']
+        for model_name in legacy_models:
             try:
                 m = legacy_genai.GenerativeModel(model_name)
                 _genai_legacy_model = m
@@ -168,56 +171,91 @@ def pilgrim_reply(
     """
     logger.info("CHAT REQUEST RECEIVED: language=%s, msg_len=%d", language, len(message))
 
-    if not _init_gemini():
-        logger.error("GEMINI REQUEST FAILED: Gemini API key or client is unavailable.")
-        return {
-            "reply": "The AI assistant is temporarily unavailable. Please try again in a moment.",
-            "language": language,
-            "source": "fallback",
-            "ai_available": False
-        }
+    # Try Gemini first
+    if _init_gemini():
+        logger.info("GEMINI REQUEST STARTED")
 
-    logger.info("GEMINI REQUEST STARTED")
+        db_context = _build_db_context(message, db)
+        lang_instruction = f"\n\nPlease respond in {language}." if language and language != "English" else ""
 
-    db_context = _build_db_context(message, db)
-    lang_instruction = f"\n\nPlease respond in {language}." if language and language != "English" else ""
+        prompt_parts = [SYSTEM_PROMPT]
+        if db_context:
+            prompt_parts.append(db_context)
+        if lang_instruction:
+            prompt_parts.append(lang_instruction)
+        prompt_parts.append(f"\nPilgrim's Question: {message}")
 
-    prompt_parts = [SYSTEM_PROMPT]
-    if db_context:
-        prompt_parts.append(db_context)
-    if lang_instruction:
-        prompt_parts.append(lang_instruction)
-    prompt_parts.append(f"\nPilgrim's Question: {message}")
+        full_prompt = "\n\n".join(prompt_parts)
 
-    full_prompt = "\n\n".join(prompt_parts)
+        try:
+            reply_text = _generate_with_gemini(full_prompt, history)
+            if reply_text:
+                logger.info("GEMINI RESPONSE SUCCESS")
+                return {
+                    "reply": reply_text,
+                    "language": language,
+                    "source": "gemini",
+                    "ai_available": True
+                }
+            else:
+                logger.error("GEMINI REQUEST FAILED: Empty response from model.")
+        except Exception as e:
+            safe_error = str(e).split("key=")[0].split("API_KEY=")[0]
+            logger.error("GEMINI REQUEST FAILED: %s", safe_error)
 
-    try:
-        reply_text = _generate_with_gemini(full_prompt, history)
-        if reply_text:
-            logger.info("GEMINI RESPONSE SUCCESS")
-            return {
-                "reply": reply_text,
-                "language": language,
-                "source": "gemini",
-                "ai_available": True
-            }
-        else:
-            logger.error("GEMINI REQUEST FAILED: Empty response from model.")
-            return {
-                "reply": "The AI assistant is temporarily unavailable. Please try again in a moment.",
-                "language": language,
-                "source": "fallback",
-                "ai_available": False
-            }
-    except Exception as e:
-        safe_error = str(e).split("key=")[0].split("API_KEY=")[0]
-        logger.error("GEMINI REQUEST FAILED: %s", safe_error)
-        return {
-            "reply": "The AI assistant is temporarily unavailable. Please try again in a moment.",
-            "language": language,
-            "source": "fallback",
-            "ai_available": False
-        }
+    # Fallback to rule-based responses if Gemini fails
+    logger.warning("Using fallback response system")
+    fallback_reply = _generate_fallback_response(message, db)
+    
+    return {
+        "reply": fallback_reply,
+        "language": language,
+        "source": "fallback",
+        "ai_available": False
+    }
+
+
+def _generate_fallback_response(message: str, db: Optional[Any] = None) -> str:
+    """Generate a fallback response using rule-based logic when Gemini is unavailable."""
+    msg_lower = message.lower()
+    
+    # Queue-related queries
+    if any(k in msg_lower for k in ("queue", "wait", "crowd", "darshan line", "density", "line", "pilgrim")):
+        try:
+            from datetime import date as dt_date
+            from backend.models import PilgrimFlowData
+            from sqlalchemy import desc
+            if db:
+                today = dt_date.today().strftime("%Y-%m-%d")
+                latest_flow = (
+                    db.query(PilgrimFlowData)
+                    .filter(PilgrimFlowData.date == today)
+                    .order_by(desc(PilgrimFlowData.start_time))
+                    .first()
+                )
+                if latest_flow:
+                    return (
+                        f"Based on admin-entered data, current crowd is approximately {latest_flow.estimated_crowd:,} pilgrims. "
+                        f"Queue status: {latest_flow.queue_status}. "
+                        f"Slot: {latest_flow.start_time}–{latest_flow.end_time}. "
+                        f"{'Festival conditions are active.' if latest_flow.festival else ''} "
+                        f"Please check the AI Queue Intelligence page for detailed predictions and best time recommendations."
+                    )
+        except Exception as e:
+            logger.debug("Could not fetch queue context for fallback: %s", e)
+        
+        return "For current queue status and predictions, please check the AI Queue Intelligence page. It provides real-time crowd analysis and best time recommendations."
+
+    # Transport-related queries
+    if any(k in msg_lower for k in ("bus", "transport", "route", "reach", "tirupati", "tirumala", "fare", "shuttle", "alipiri", "mettu", "tour")):
+        return "For transport information between TTD locations, please use the Transport page. You can search for routes between Tirumala, Tirupati, Alipiri, and other pilgrimage locations."
+
+    # Facility-related queries
+    if any(k in msg_lower for k in ("medical", "hospital", "doctor", "annaprasadam", "food", "eat", "restroom", "toilet", "laddu", "phone", "deposit", "parking")):
+        return "For facility information including medical centers, food services, and amenities, please use the Smart Navigation feature or check the Facilities directory."
+
+    # General guidance
+    return "Namaste! 🙏 I can help you with queue information, transport routes, TTD facilities, and pilgrimage guidance. For detailed information, please use the specific features in the app like AI Queue Intelligence, Smart Navigation, and Transport Search."
 
 
 def _generate_with_gemini(full_prompt: str, history: Optional[List[Dict[str, Any]]] = None) -> Optional[str]:
@@ -247,6 +285,11 @@ def _generate_with_gemini(full_prompt: str, history: Optional[List[Dict[str, Any
                 )
                 if response and hasattr(response, 'text') and response.text:
                     return response.text.strip()
+                elif response and hasattr(response, 'candidates') and response.candidates:
+                    if response.candidates[0].content and hasattr(response.candidates[0].content, 'parts'):
+                        parts = response.candidates[0].content.parts
+                        if parts and hasattr(parts[0], 'text'):
+                            return parts[0].text.strip()
             except Exception as e:
                 logger.debug("Client generate_content with %s failed: %s", model_name, e)
                 continue
@@ -257,6 +300,11 @@ def _generate_with_gemini(full_prompt: str, history: Optional[List[Dict[str, Any
             response = _genai_legacy_model.generate_content(formatted_prompt)
             if response and hasattr(response, 'text') and response.text:
                 return response.text.strip()
+            elif response and hasattr(response, 'candidates') and response.candidates:
+                if response.candidates[0].content and hasattr(response.candidates[0].content, 'parts'):
+                    parts = response.candidates[0].content.parts
+                    if parts and hasattr(parts[0], 'text'):
+                        return parts[0].text.strip()
         except Exception as e:
             logger.debug("Legacy model generate_content failed: %s", e)
 
@@ -272,6 +320,11 @@ def _generate_with_gemini(full_prompt: str, history: Optional[List[Dict[str, Any
                     res = client.models.generate_content(model=model_name, contents=formatted_prompt)
                     if res and hasattr(res, 'text') and res.text:
                         return res.text.strip()
+                    elif res and hasattr(res, 'candidates') and res.candidates:
+                        if res.candidates[0].content and hasattr(res.candidates[0].content, 'parts'):
+                            parts = res.candidates[0].content.parts
+                            if parts and hasattr(parts[0], 'text'):
+                                return parts[0].text.strip()
                 except Exception:
                     continue
         except Exception as e:

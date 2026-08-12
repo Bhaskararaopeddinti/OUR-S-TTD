@@ -6,9 +6,7 @@ services:
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: ours-ttd-db
-          property: connectionString
+        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
@@ -19,8 +17,3 @@ services:
         value: your-google-translate-api-key-here
       - key: GOOGLE_CLOUD_PROJECT_ID
         value: our-ttd-project
-
-databases:
-  - name: ours-ttd-db
-    databaseName: ours_ttd
-    user: ours_ttd_user

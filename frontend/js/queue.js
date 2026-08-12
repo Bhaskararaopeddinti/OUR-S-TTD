@@ -41,19 +41,70 @@ async function loadQueueIntelligence() {
     // Display AI prediction
     if (predictionContainer && data.ai_prediction) {
       const pred = data.ai_prediction;
+      
+      // Determine action based on crowd level
+      let action = 'JOIN NOW';
+      let actionColor = '#10B981'; // Green
+      let actionIcon = '✅';
+      
+      if (pred.current_crowd_level === 'Moderate') {
+        action = 'CONSIDER JOINING';
+        actionColor = '#F59E0B'; // Orange
+        actionIcon = '⚠️';
+      } else if (pred.current_crowd_level === 'High') {
+        action = 'WAIT';
+        actionColor = '#EF4444'; // Red
+        actionIcon = '⏳';
+      } else if (pred.current_crowd_level === 'Very High') {
+        action = 'AVOID';
+        actionColor = '#DC2626'; // Dark Red
+        actionIcon = '🚫';
+      }
+      
+      // Build recommendation message
+      let recommendationMessage = '';
+      if (pred.current_crowd_level === 'Low') {
+        recommendationMessage = 'Good time to join. Queue is currently less crowded.';
+      } else if (pred.current_crowd_level === 'Moderate') {
+        recommendationMessage = 'Moderate crowd detected. You can join now, but waiting may provide a shorter queue.';
+      } else if (pred.current_crowd_level === 'High') {
+        recommendationMessage = 'High crowd detected. Consider waiting before joining the queue.';
+      } else if (pred.current_crowd_level === 'Very High') {
+        recommendationMessage = 'Heavy rush detected. Joining now may result in a long wait.';
+      }
+      
+      // Add best time recommendation if available
+      if (pred.best_times_to_join && pred.best_times_to_join.length > 0) {
+        const bestTime = pred.best_times_to_join[0];
+        recommendationMessage += ` Recommended time: ${bestTime.time} (${bestTime.recommendation}).`;
+      }
+      
       predictionContainer.innerHTML = `
+        <div class="prediction-item">
+          <span class="pred-label">Queue Status</span>
+          <span class="pred-value crowd-${pred.current_crowd_level?.toLowerCase()}">${pred.current_crowd_level}</span>
+        </div>
+        <div class="prediction-item">
+          <span class="pred-label">Action</span>
+          <span class="pred-value" style="color: ${actionColor}; font-weight: bold;">${actionIcon} ${action}</span>
+        </div>
         <div class="prediction-item">
           <span class="pred-label">Predicted Wait Time</span>
           <span class="pred-value">${pred.predicted_wait_minutes} min</span>
         </div>
         <div class="prediction-item">
-          <span class="pred-label">Current Crowd Level</span>
-          <span class="pred-value crowd-${pred.current_crowd_level?.toLowerCase()}">${pred.current_crowd_level}</span>
+          <span class="pred-label">Current Crowd</span>
+          <span class="pred-value">${data.people_count?.toLocaleString() || '—'} devotees</span>
         </div>
-        <div class="prediction-item">
-          <span class="pred-label">Recommendation</span>
-          <span class="pred-value">${pred.low_crowd_recommendation}</span>
+        <div class="prediction-item" style="grid-column: 1/-1; margin-top: 0.5rem;">
+          <span class="pred-label">AI Recommendation</span>
+          <span class="pred-value" style="font-size: 0.95rem; line-height: 1.4;">${recommendationMessage}</span>
         </div>
+        ${pred.admin_data_used ? `
+        <div class="prediction-item" style="grid-column: 1/-1;">
+          <span class="pred-label">Data Source</span>
+          <span class="pred-value" style="font-size: 0.85rem; color: #10B981;">📊 Admin-entered crowd data</span>
+        </div>` : ''}
         <p class="disclaimer">${data.prediction_disclaimer}</p>
       `;
     }

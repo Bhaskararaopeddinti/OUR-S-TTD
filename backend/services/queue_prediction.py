@@ -93,16 +93,51 @@ def check_festival_impact(time_info: Dict) -> List[Dict]:
     return impacts
 
 
-def predict_queue_status(current_wait_minutes: int = None, current_density: str = "Moderate") -> dict:
+def predict_queue_status(current_wait_minutes: int = None, current_density: str = "Moderate", db=None) -> dict:
     """
     Enhanced AI-powered queue prediction with time, day, and festival awareness.
     Returns comprehensive predictive intelligence.
+    Now includes admin-entered pilgrim flow data for better accuracy.
     """
     now = datetime.now()
     hour = now.hour
     day_of_week = now.weekday()
     is_weekend = day_of_week >= 5
     month = now.month
+    
+    # Try to get admin-entered pilgrim flow data first
+    admin_crowd_data = None
+    if db:
+        try:
+            from datetime import date as dt_date
+            from backend.models import PilgrimFlowData
+            from sqlalchemy import desc
+            
+            today = dt_date.today().strftime("%Y-%m-%d")
+            latest_flow = (
+                db.query(PilgrimFlowData)
+                .filter(PilgrimFlowData.date == today)
+                .order_by(desc(PilgrimFlowData.start_time))
+                .first()
+            )
+            if latest_flow:
+                admin_crowd_data = {
+                    "estimated_crowd": latest_flow.estimated_crowd,
+                    "queue_status": latest_flow.queue_status,
+                    "incoming_pilgrims": latest_flow.incoming_pilgrims,
+                    "outgoing_pilgrims": latest_flow.outgoing_pilgrims,
+                    "net_pilgrims": latest_flow.net_pilgrims,
+                    "festival": latest_flow.festival,
+                    "slot": f"{latest_flow.start_time}–{latest_flow.end_time}"
+                }
+                # Override with admin data if available
+                current_density = latest_flow.queue_status
+                if latest_flow.estimated_crowd > 0:
+                    # Estimate wait time based on crowd size (rough approximation: 1000 people ≈ 15 mins)
+                    current_wait_minutes = max(15, int(latest_flow.estimated_crowd / 1000 * 15))
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).debug("Could not fetch admin queue data: %s", e)
     
     # Handle None values for wait time
     if current_wait_minutes is None:
@@ -280,7 +315,10 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
         "ai_advice": ai_advice,
         "festival_impacts": festival_impacts,
         "low_crowd_recommendation": low_crowd_recommendation,
-        "prediction_timestamp": now.isoformat()
+        "prediction_timestamp": now.isoformat(),
+        "admin_data_used": admin_crowd_data is not None,
+        "admin_crowd_data": admin_crowd_data,
+        "data_source": "Admin-entered data" if admin_crowd_data else "AI Historical Prediction"
     }
 
 
