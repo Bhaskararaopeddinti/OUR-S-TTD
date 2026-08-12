@@ -29,6 +29,11 @@ function loadDashboard() {
     setInterval(updateDateTime, 60000); // Update every minute
 }
 
+// Export functions for use in app.js
+window.loadDashboard = loadDashboard;
+window.loadDashboardQueueIntelligence = loadDashboardQueueIntelligence;
+window.loadQueueStatus = loadQueueStatus;
+
 // Load queue intelligence for dashboard cards
 async function loadDashboardQueueIntelligence() {
     try {
@@ -330,21 +335,7 @@ function loadUserProfile() {
     }
 }
 
-// Initialize dashboard when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if we're on the dashboard page
-    if (document.querySelector('.dashboard-page')) {
-        loadDashboard();
-    }
-    
-    // Set up periodic refresh for queue data (every 30 seconds as fallback)
-    setInterval(() => {
-        if (document.querySelector('.dashboard-page')) {
-            loadDashboardQueueIntelligence();
-            loadQueueStatus();
-        }
-    }, 30000);
-});
+
 
 // Export functions for external use
 window.loadDashboard = loadDashboard;

@@ -508,18 +508,34 @@ function renderHome() {
 
 // ── DASHBOARD PAGE ───────────────────────────
 function renderDashboard() {
+  console.log('Rendering dashboard page...');
   fetch('pages/dashboard.html')
-    .then(response => response.text())
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.text();
+    })
     .then(html => {
       document.getElementById('appRoot').innerHTML = html;
-      // Load dashboard data using the function from dashboard.js
-      if (typeof window.loadDashboard === 'function') {
-        window.loadDashboard();
-      }
+      console.log('Dashboard HTML loaded');
+      
+      // Load dashboard data with a small delay to ensure DOM is ready
+      setTimeout(() => {
+        if (typeof window.loadDashboard === 'function') {
+          console.log('Calling loadDashboard...');
+          window.loadDashboard();
+        } else if (typeof loadDashboard === 'function') {
+          console.log('Calling loadDashboard (global)...');
+          loadDashboard();
+        } else {
+          console.error('loadDashboard function not available');
+        }
+      }, 100);
     })
     .catch(error => {
       console.error('Failed to load dashboard page:', error);
-      document.getElementById('appRoot').innerHTML = '<p class="error">Failed to load dashboard page.</p>';
+      document.getElementById('appRoot').innerHTML = '<p class="error">Failed to load dashboard page: ' + error.message + '</p>';
     });
 }
 
@@ -765,17 +781,29 @@ function openFacilityChat(name) {
 function renderQueue() {
   // Load the queue.html page template
   fetch('pages/queue.html')
-    .then(response => response.text())
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.text();
+    })
     .then(html => {
       document.getElementById('appRoot').innerHTML = html;
-      // Load queue intelligence data
-      if (typeof loadQueueIntelligence === 'function') {
-        loadQueueIntelligence();
-      }
+      console.log('Queue page HTML loaded');
+      
+      // Load queue intelligence data with a small delay to ensure DOM is ready
+      setTimeout(() => {
+        if (typeof loadQueueIntelligence === 'function') {
+          console.log('Calling loadQueueIntelligence...');
+          loadQueueIntelligence();
+        } else {
+          console.error('loadQueueIntelligence function not available');
+        }
+      }, 100);
     })
     .catch(error => {
       console.error('Failed to load queue page:', error);
-      document.getElementById('appRoot').innerHTML = '<p class="error">Failed to load queue page.</p>';
+      document.getElementById('appRoot').innerHTML = '<p class="error">Failed to load queue page: ' + error.message + '</p>';
     });
 }
 
