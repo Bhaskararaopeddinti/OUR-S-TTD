@@ -204,15 +204,30 @@ function loadUserProfile() {
     const token = localStorage.getItem('auth_token');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     
+    const loginBtn = document.getElementById('loginBtn');
+    
     if (token && user.name) {
         if (profileName) profileName.textContent = user.name;
         if (profileEmail) profileEmail.textContent = user.email || 'N/A';
         if (profileRole) profileRole.textContent = user.role || 'Pilgrim';
         
-        const loginBtn = document.getElementById('loginBtn');
         if (loginBtn) {
             loginBtn.textContent = 'Logout';
             loginBtn.onclick = logout;
+        }
+    } else {
+        // User is logged out - reset UI to show login option
+        if (profileName) profileName.textContent = 'Guest';
+        if (profileEmail) profileEmail.textContent = 'N/A';
+        if (profileRole) profileRole.textContent = 'Guest';
+        
+        if (loginBtn) {
+            loginBtn.textContent = 'Login';
+            loginBtn.onclick = function() {
+                // Trigger the main auth dialog from app.js
+                const authBtn = document.getElementById('authBtn');
+                if (authBtn) authBtn.click();
+            };
         }
     }
 }
@@ -222,7 +237,10 @@ function logout() {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
     showToast('Logged out successfully', 'success');
-    loadUserProfile();
+    // Reload the page to ensure all UI elements are properly reset
+    setTimeout(() => {
+        location.reload();
+    }, 1000);
 }
 
 // Initialize dashboard when DOM is ready
