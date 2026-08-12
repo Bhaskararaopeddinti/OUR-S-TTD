@@ -107,7 +107,14 @@ async function sendMessage() {
   } catch (err) {
     thinking.remove();
     console.error('Chat error:', err);
-    appendMsg('The AI assistant is temporarily unavailable. Please try again in a moment.', 'bot');
+    
+    // Check if it's an API key configuration issue
+    const errorMsg = err?.message || err?.detail || '';
+    if (errorMsg.includes('API') || errorMsg.includes('key') || errorMsg.includes('configured')) {
+      appendMsg('The AI assistant requires API configuration. Using fallback responses for basic guidance.', 'bot');
+    } else {
+      appendMsg('The AI assistant is temporarily unavailable. Please try again in a moment.', 'bot');
+    }
   } finally {
     isSending = false;
     if (chatSend) chatSend.disabled = false;

@@ -18,6 +18,10 @@ async function loadQueueIntelligence() {
     
     // Display current status
     if (statusContainer) {
+      // Use admin data if available, otherwise use default queue status
+      const adminData = data.ai_prediction?.admin_crowd_data;
+      const dataSource = data.ai_prediction?.data_source || 'AI Historical Prediction';
+      
       statusContainer.innerHTML = `
         <div class="stat-item">
           <span class="stat-label">Location</span>
@@ -29,33 +33,50 @@ async function loadQueueIntelligence() {
         </div>
         <div class="stat-item">
           <span class="stat-label">Crowd Density</span>
-          <span class="stat-value">${data.crowd_density || '—'}</span>
+          <span class="stat-value">${adminData?.queue_status || data.crowd_density || '—'}</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">People in Queue</span>
-          <span class="stat-value">${data.people_count?.toLocaleString() || '—'}</span>
+          <span class="stat-value">${adminData?.estimated_crowd?.toLocaleString() || data.people_count?.toLocaleString() || '—'}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Data Source</span>
+          <span class="stat-value" style="font-size: 0.85rem; color: ${adminData ? '#10B981' : 'var(--muted)'};">${adminData ? '📊 Admin Data' : '🤖 AI Prediction'}</span>
         </div>
       `;
+      
+      // Update source tag
+      const sourceTag = document.getElementById('queueSourceTag');
+      if (sourceTag) {
+        sourceTag.textContent = adminData ? 'Admin-entered crowd data' : 'AI Historical Prediction';
+        sourceTag.style.background = adminData ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)';
+        sourceTag.style.color = adminData ? '#10B981' : 'var(--gold)';
+      }
     }
 
     // Display AI prediction
     if (predictionContainer && data.ai_prediction) {
       const pred = data.ai_prediction;
+      const adminData = pred.admin_crowd_data;
+      
+      // Use admin crowd level if available, otherwise use predicted level
+      const crowdLevel = adminData?.queue_status || pred.current_crowd_level || 'Moderate';
+      const currentCrowd = adminData?.estimated_crowd || data.people_count || 0;
       
       // Determine action based on crowd level
       let action = 'JOIN NOW';
       let actionColor = '#10B981'; // Green
       let actionIcon = '✅';
       
-      if (pred.current_crowd_level === 'Moderate') {
+      if (crowdLevel === 'MODERATE' || crowdLevel === 'Moderate') {
         action = 'CONSIDER JOINING';
         actionColor = '#F59E0B'; // Orange
         actionIcon = '⚠️';
-      } else if (pred.current_crowd_level === 'High') {
+      } else if (crowdLevel === 'HIGH' || crowdLevel === 'High') {
         action = 'WAIT';
         actionColor = '#EF4444'; // Red
         actionIcon = '⏳';
-      } else if (pred.current_crowd_level === 'Very High') {
+      } else if (crowdLevel === 'VERY HIGH' || crowdLevel === 'Very High' || crowdLevel === 'CRITICAL') {
         action = 'AVOID';
         actionColor = '#DC2626'; // Dark Red
         actionIcon = '🚫';
@@ -63,13 +84,14 @@ async function loadQueueIntelligence() {
       
       // Build recommendation message
       let recommendationMessage = '';
-      if (pred.current_crowd_level === 'Low') {
+      const normalizedLevel = crowdLevel.toLowerCase();
+      if (normalizedLevel === 'low') {
         recommendationMessage = 'Good time to join. Queue is currently less crowded.';
-      } else if (pred.current_crowd_level === 'Moderate') {
+      } else if (normalizedLevel === 'moderate') {
         recommendationMessage = 'Moderate crowd detected. You can join now, but waiting may provide a shorter queue.';
-      } else if (pred.current_crowd_level === 'High') {
+      } else if (normalizedLevel === 'high') {
         recommendationMessage = 'High crowd detected. Consider waiting before joining the queue.';
-      } else if (pred.current_crowd_level === 'Very High') {
+      } else if (normalizedLevel === 'very high' || normalizedLevel === 'critical') {
         recommendationMessage = 'Heavy rush detected. Joining now may result in a long wait.';
       }
       
@@ -79,10 +101,15 @@ async function loadQueueIntelligence() {
         recommendationMessage += ` Recommended time: ${bestTime.time} (${bestTime.recommendation}).`;
       }
       
+      // Add admin data info if available
+      if (adminData) {
+        recommendationMessage += ` Based on admin data for slot ${adminData.slot}.`;
+      }
+      
       predictionContainer.innerHTML = `
         <div class="prediction-item">
           <span class="pred-label">Queue Status</span>
-          <span class="pred-value crowd-${pred.current_crowd_level?.toLowerCase()}">${pred.current_crowd_level}</span>
+          <span class="pred-value crowd-${normalizedLevel.replace(' ', '')}">${crowdLevel}</span>
         </div>
         <div class="prediction-item">
           <span class="pred-label">Action</span>
@@ -94,16 +121,16 @@ async function loadQueueIntelligence() {
         </div>
         <div class="prediction-item">
           <span class="pred-label">Current Crowd</span>
-          <span class="pred-value">${data.people_count?.toLocaleString() || '—'} devotees</span>
+          <span class="pred-value">${currentCrowd?.toLocaleString() || '—'} devotees</span>
         </div>
         <div class="prediction-item" style="grid-column: 1/-1; margin-top: 0.5rem;">
           <span class="pred-label">AI Recommendation</span>
           <span class="pred-value" style="font-size: 0.95rem; line-height: 1.4;">${recommendationMessage}</span>
         </div>
-        ${pred.admin_data_used ? `
+        ${adminData ? `
         <div class="prediction-item" style="grid-column: 1/-1;">
           <span class="pred-label">Data Source</span>
-          <span class="pred-value" style="font-size: 0.85rem; color: #10B981;">📊 Admin-entered crowd data</span>
+          <span class="pred-value" style="font-size: 0.85rem; color: #10B981;">📊 Admin-entered crowd data (${adminData.slot})</span>
         </div>` : ''}
         <p class="disclaimer">${data.prediction_disclaimer}</p>
       `;
@@ -117,7 +144,7 @@ async function loadQueueIntelligence() {
           ${trends.map(t => `
             <div class="trend-item">
               <span class="trend-time">${t.time}</span>
-              <span class="trend-level crowd-${t.crowd_level?.toLowerCase()}">${t.crowd_level}</span>
+              <span class="trend-level crowd-${t.crowd_level?.toLowerCase().replace(' ', '')}">${t.crowd_level}</span>
               <span class="trend-factor">×${t.wait_factor}</span>
             </div>
           `).join('')}

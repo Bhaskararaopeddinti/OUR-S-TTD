@@ -24,8 +24,8 @@ def _init_gemini() -> bool:
         return True
 
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    if not api_key:
-        logger.warning("GEMINI_API_KEY not configured in environment.")
+    if not api_key or api_key == "your-gemini-api-key-here":
+        logger.warning("GEMINI_API_KEY not configured or using placeholder. Using fallback responses.")
         return False
 
     # Try modern google.genai SDK first
@@ -207,8 +207,11 @@ def pilgrim_reply(
     logger.warning("Using fallback response system")
     fallback_reply = _generate_fallback_response(message, db)
     
+    # Add a note about fallback mode
+    fallback_note = "\n\n[Note: Using basic guidance mode. For full AI assistance, please configure GEMINI_API_KEY in .env file]"
+    
     return {
-        "reply": fallback_reply,
+        "reply": fallback_reply + fallback_note,
         "language": language,
         "source": "fallback",
         "ai_available": False
@@ -248,14 +251,22 @@ def _generate_fallback_response(message: str, db: Optional[Any] = None) -> str:
 
     # Transport-related queries
     if any(k in msg_lower for k in ("bus", "transport", "route", "reach", "tirupati", "tirumala", "fare", "shuttle", "alipiri", "mettu", "tour")):
-        return "For transport information between TTD locations, please use the Transport page. You can search for routes between Tirumala, Tirupati, Alipiri, and other pilgrimage locations."
+        return "For transport information between TTD locations, please use the Transport page. You can search for routes between Tirumala, Tirupati, Alipiri, and other pilgrimage locations. TTD provides free bus services and APSRTC operates regular routes."
 
     # Facility-related queries
     if any(k in msg_lower for k in ("medical", "hospital", "doctor", "annaprasadam", "food", "eat", "restroom", "toilet", "laddu", "phone", "deposit", "parking")):
-        return "For facility information including medical centers, food services, and amenities, please use the Smart Navigation feature or check the Facilities directory."
+        return "For facility information including medical centers, food services, and amenities, please use the Smart Navigation feature or check the Facilities directory. TTD provides free Annaprasadam, medical assistance, and various facilities for pilgrims."
+
+    # Temple and darshan guidance
+    if any(k in msg_lower for k in ("temple", "darshan", "dress", "clothes", "mobile", "phone", "rules", "guidelines")):
+        return "For temple darshan, traditional dress is recommended (dhoti for men, saree for women). Mobile phones are not allowed in the temple premises and must be deposited at the counters. Free luggage storage is available. Check the Temple Guide for detailed rules."
+
+    # Accommodation
+    if any(k in msg_lower for k in ("accommodation", "room", "stay", "hotel", "lodge", "booking")):
+        return "For accommodation, TTD provides various guest houses and dormitories. Advance booking is recommended through the official TTD website. PAC complexes and other accommodations are available at different rates."
 
     # General guidance
-    return "Namaste! 🙏 I can help you with queue information, transport routes, TTD facilities, and pilgrimage guidance. For detailed information, please use the specific features in the app like AI Queue Intelligence, Smart Navigation, and Transport Search."
+    return "Namaste! 🙏 I can help you with queue information, transport routes, TTD facilities, and pilgrimage guidance. For detailed information, please use the specific features in the app like AI Queue Intelligence, Smart Navigation, and Transport Search. Jai Sri Venkateswara!"
 
 
 def _generate_with_gemini(full_prompt: str, history: Optional[List[Dict[str, Any]]] = None) -> Optional[str]:

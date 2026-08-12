@@ -404,11 +404,12 @@ function logout() {
 
   navigate('home');
 
-  if (authDialog && typeof authDialog.showModal === 'function') {
-    resetAuthModalView();
-    switchAuthTab('pilgrim');
-    authDialog.showModal();
+  // Don't automatically show auth dialog on logout - let user choose when to login
+  if (authDialog && typeof authDialog.close === 'function') {
+    authDialog.close();
   }
+  resetAuthModalView();
+  switchAuthTab('pilgrim');
 }
 
 // ── Admin Auth Form Submit ─────────────────────

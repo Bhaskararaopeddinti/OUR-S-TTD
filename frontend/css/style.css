@@ -946,6 +946,18 @@ html.dark .sos-options button {
   border-radius: var(--radius);
   padding: 1.5rem;
 }
+
+.ai-prediction-card {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(212, 175, 55, 0.08));
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.dark .ai-prediction-card {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(212, 175, 55, 0.12));
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
 .crowd-trend-card, .ai-advice-card, .festival-card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -970,9 +982,11 @@ html.dark .sos-options button {
 }
 .prediction-label { color: var(--muted); font-size: 0.9rem; }
 .prediction-value { font-weight: 600; }
-.crowd-low { color: var(--success); }
-.crowd-moderate { color: var(--warning); }
-.crowd-high { color: var(--danger); }
+.crowd-low { color: var(--success); background: rgba(16, 185, 129, 0.15); padding: 0.25rem 0.5rem; border-radius: 4px; }
+.crowd-moderate { color: var(--warning); background: rgba(245, 158, 11, 0.15); padding: 0.25rem 0.5rem; border-radius: 4px; }
+.crowd-high { color: var(--danger); background: rgba(239, 68, 68, 0.15); padding: 0.25rem 0.5rem; border-radius: 4px; }
+.crowd-veryhigh { color: #DC2626; background: rgba(220, 38, 38, 0.2); padding: 0.25rem 0.5rem; border-radius: 4px; }
+.crowd-critical { color: #7C3AED; background: rgba(124, 58, 237, 0.2); padding: 0.25rem 0.5rem; border-radius: 4px; }
 .trend-chart {
   display: flex;
   gap: 0.5rem;
