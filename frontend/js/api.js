@@ -53,7 +53,7 @@ const API = (() => {
     // Unauthenticated POST (for login/register/forgot-password)
     publicPost: (path, body) => fetch(BASE + clean(path), {
       method: 'POST',
-      headers: headers(false),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     }).then(handle),
 
