@@ -200,7 +200,7 @@ document.getElementById('forgotPasswordBtn')?.addEventListener('click', async ()
     authStatus.textContent = '⏳ Requesting password reset...';
   }
   try {
-    const res = await API.post('auth/forgot-password', { email });
+    const res = await API.publicPost('auth/forgot-password', { email });
     if (authStatus) {
       authStatus.className = 'status success';
       authStatus.textContent = res.message || 'Password reset instructions sent!';
@@ -254,7 +254,7 @@ document.getElementById('submitResetBtn')?.addEventListener('click', async () =>
   }
 
   try {
-    const res = await API.post('auth/reset-password', {
+    const res = await API.publicPost('auth/reset-password', {
       token,
       new_password: newPassword,
       confirm_password: confirmPassword
@@ -315,7 +315,7 @@ authForm?.addEventListener('submit', async e => {
       body.name = nameVal;
     }
     const endpoint = isRegistering ? 'auth/register' : 'auth/login';
-    const data = await API.post(endpoint, body);
+    const data = await API.publicPost(endpoint, body);
     authToken = data.access_token;
     localStorage.setItem('authToken', authToken);
     if (authStatus) {
@@ -442,7 +442,7 @@ adminAuthForm?.addEventListener('submit', async (e) => {
   if (adminStatus) { adminStatus.className = 'status'; adminStatus.textContent = ''; }
 
   try {
-    const data = await API.post('auth/login', { email: adminEmail, password: adminPassword });
+    const data = await API.publicPost('auth/login', { email: adminEmail, password: adminPassword });
 
     // Verify server returned admin role — NEVER trust frontend role check alone
     if (!data.user || !['admin', 'super_admin'].includes(data.user.role)) {
