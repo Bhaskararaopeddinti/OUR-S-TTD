@@ -512,8 +512,9 @@ function renderDashboard() {
     .then(response => response.text())
     .then(html => {
       document.getElementById('appRoot').innerHTML = html;
-      if (typeof loadDashboard === 'function') {
-        loadDashboard();
+      // Load dashboard data using the function from dashboard.js
+      if (typeof window.loadDashboard === 'function') {
+        window.loadDashboard();
       }
     })
     .catch(error => {

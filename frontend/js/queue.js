@@ -238,16 +238,43 @@ async function loadHeroStats() {
   ws.onmessage = e => {
     try {
       const data = JSON.parse(e.data);
+      console.log('WebSocket message received:', data);
+      
       // Refresh queue data on the queue page if open
       if (document.querySelector('.queue-page')) {
         loadQueueIntelligence();
       }
+      
+      // Refresh dashboard queue intelligence if dashboard is open
+      if (document.querySelector('.dashboard-page')) {
+        if (typeof loadDashboardQueueIntelligence === 'function') {
+          loadDashboardQueueIntelligence();
+        }
+        if (typeof loadQueueStatus === 'function') {
+          loadQueueStatus();
+        }
+      }
+      
       // Update hero stats
       loadHeroStats();
-    } catch { /* ignore malformed messages */ }
+      
+      // Show notification for admin updates
+      if (data.type === 'queue_update' && data.data.admin_updated) {
+        if (window.showToast) {
+          window.showToast('Queue data updated by admin', 'info');
+        }
+      }
+    } catch (err) {
+      console.error('Error parsing WebSocket message:', err);
+    }
   };
-  ws.onerror = () => {}; // Silently reconnect
-  ws.onclose = () => { setTimeout(connectWS, 5000); }; // Reconnect after 5s
+  ws.onerror = () => {
+    console.warn('WebSocket connection error, will reconnect...');
+  };
+  ws.onclose = () => {
+    console.log('WebSocket closed, reconnecting in 5s...');
+    setTimeout(connectWS, 5000);
+  };
 })();
 
 // Export functions for app.js

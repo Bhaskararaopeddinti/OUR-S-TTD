@@ -58,7 +58,7 @@ app.add_middleware(
 )
 
 # ── Routers ────────────────────────────────────────────────────────────────
-# API ROUTES FIRST - routers have their own prefixes defined
+# API ROUTES FIRST - routers have their prefixes defined
 app.include_router(auth_routes.router)
 app.include_router(core.router)
 app.include_router(transport_routes.router)
@@ -89,6 +89,9 @@ async def broadcast(payload: dict):
         except Exception:
             dead.add(ws)
     clients.difference_update(dead)
+
+# Inject broadcast function into admin_routes for real-time updates
+admin_routes.set_broadcast_function(broadcast)
 
 # ── Database Seeding ───────────────────────────────────────────────────────
 NAV_LOCATIONS = [

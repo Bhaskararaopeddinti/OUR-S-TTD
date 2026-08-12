@@ -336,7 +336,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.querySelector('.dashboard-page')) {
         loadDashboard();
     }
+    
+    // Set up periodic refresh for queue data (every 30 seconds as fallback)
+    setInterval(() => {
+        if (document.querySelector('.dashboard-page')) {
+            loadDashboardQueueIntelligence();
+            loadQueueStatus();
+        }
+    }, 30000);
 });
+
+// Export functions for external use
+window.loadDashboard = loadDashboard;
+window.loadDashboardQueueIntelligence = loadDashboardQueueIntelligence;
+window.loadQueueStatus = loadQueueStatus;
 
 // Handle sidebar navigation
 document.addEventListener('click', function(e) {

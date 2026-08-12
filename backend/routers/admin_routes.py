@@ -19,6 +19,14 @@ from backend.schemas import (
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
+# Broadcast function - will be set by main.py
+_broadcast = None
+
+def set_broadcast_function(func):
+    """Allow main.py to inject the broadcast function"""
+    global _broadcast
+    _broadcast = func
+
 @router.get("/users")
 def list_users(admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     """Admin-only list of safe user details; never returns password fields."""
@@ -175,6 +183,23 @@ def submit_pilgrim_data(
         )
     db.commit()
     db.refresh(row)
+
+    # Broadcast update to all connected clients via WebSocket
+    if _broadcast:
+        try:
+            _broadcast({
+                "type": "queue_update",
+                "data": {
+                    "admin_updated": True,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "slot": f"{row.start_time}-{row.end_time}",
+                    "estimated_crowd": row.estimated_crowd,
+                    "queue_status": row.queue_status
+                }
+            })
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Failed to broadcast queue update: %s", e)
 
     return PilgrimFlowDataOut(
         id=row.id,
