@@ -200,9 +200,17 @@ function loadUserProfile() {
     const profileEmail = document.getElementById('profileEmail');
     const profileRole = document.getElementById('profileRole');
     
-    // Check if user is logged in
-    const token = localStorage.getItem('auth_token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    // Check if user is logged in using the same token key as app.js
+    const token = localStorage.getItem('authToken');
+    
+    // Get user info from the global authUser state set by app.js
+    // Use a try-catch to safely access the global variable
+    let user = {};
+    try {
+        user = typeof authUser !== 'undefined' ? authUser : {};
+    } catch (e) {
+        user = {};
+    }
     
     const loginBtn = document.getElementById('loginBtn');
     
@@ -213,7 +221,11 @@ function loadUserProfile() {
         
         if (loginBtn) {
             loginBtn.textContent = 'Logout';
-            loginBtn.onclick = logout;
+            // Use the global logout function from app.js
+            loginBtn.onclick = function() {
+                const authBtn = document.getElementById('authBtn');
+                if (authBtn) authBtn.click();
+            };
         }
     } else {
         // User is logged out - reset UI to show login option
@@ -230,17 +242,6 @@ function loadUserProfile() {
             };
         }
     }
-}
-
-// Logout function
-function logout() {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user');
-    showToast('Logged out successfully', 'success');
-    // Reload the page to ensure all UI elements are properly reset
-    setTimeout(() => {
-        location.reload();
-    }, 1000);
 }
 
 // Initialize dashboard when DOM is ready
