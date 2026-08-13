@@ -13,9 +13,13 @@ const chatSend     = document.getElementById('chatSend');
 const chatClear    = document.getElementById('chatClearBtn');
 const voiceBtn     = document.getElementById('voiceInputBtn');
 
-let chatHistory = [];
-let locationsCache = null;
-let isSending = false;
+// Use shared window state to prevent duplicate declaration SyntaxError
+// (chatbot.js and chatbot-page.js are both loaded on the page)
+if (!window._chatHistoryGlobal) window._chatHistoryGlobal = [];
+var chatHistory = window._chatHistoryGlobal;
+
+var locationsCache = null;
+var isSending = false;
 
 // Toggle panel
 chatFab?.addEventListener('click', () => {

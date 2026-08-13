@@ -338,7 +338,7 @@ async def startup():
 
 # ── Static Files (Frontend) ────────────────────────────────────────────────
 frontend_dir = ROOT / "frontend"
-for folder in ["css", "js", "pages", "images", "assets"]:
+for folder in ["css", "js", "pages", "images", "assets", "icons"]:
     folder_path = frontend_dir / folder
     if folder_path.exists():
         app.mount(f"/{folder}", StaticFiles(directory=str(folder_path)), name=folder)
@@ -346,6 +346,28 @@ for folder in ["css", "js", "pages", "images", "assets"]:
 @app.get("/manifest.json")
 async def serve_manifest():
     return FileResponse(frontend_dir / "manifest.json")
+
+@app.get("/favicon.svg", include_in_schema=False)
+async def serve_favicon_svg():
+    """Serve SVG favicon to suppress browser 404."""
+    svg_path = frontend_dir / "favicon.svg"
+    if svg_path.exists():
+        return FileResponse(str(svg_path), media_type="image/svg+xml")
+    from fastapi.responses import Response
+    return Response(status_code=204)
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def serve_favicon_ico():
+    """Serve favicon.ico – fall back to SVG if .ico not present."""
+    ico_path = frontend_dir / "favicon.ico"
+    if ico_path.exists():
+        return FileResponse(str(ico_path), media_type="image/x-icon")
+    # Return the SVG as fallback (browsers accept SVG for modern favicon)
+    svg_path = frontend_dir / "favicon.svg"
+    if svg_path.exists():
+        return FileResponse(str(svg_path), media_type="image/svg+xml")
+    from fastapi.responses import Response
+    return Response(status_code=204)
 
 @app.get("/api/health", tags=["Health"])
 async def health_check():
@@ -361,3 +383,4 @@ async def health_check():
 @app.get("/")
 async def serve_index():
     return FileResponse(frontend_dir / "index.html")
+

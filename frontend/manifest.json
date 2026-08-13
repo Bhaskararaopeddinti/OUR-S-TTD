@@ -11,13 +11,13 @@
   "categories": ["travel", "lifestyle"],
   "icons": [
     {
-      "src": "https://via.placeholder.com/192x192/8b1a14/ffffff?text=%E0%A5%90",
+      "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://via.placeholder.com/512x512/8b1a14/ffffff?text=%E0%A5%90",
+      "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

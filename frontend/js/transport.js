@@ -312,3 +312,11 @@ document.addEventListener('DOMContentLoaded', () => {
     initTransport();
   }
 });
+
+// ── Export to global scope ──────────────────────────────────────────────────
+// Override any placeholder set by app.js with the real implementation
+window._fetchAndRenderRoutesImpl = fetchAndRenderRoutes;
+window._transportReady = true;
+window.fetchAndRenderRoutes = fetchAndRenderRoutes;
+window.initTransport = initTransport;
+

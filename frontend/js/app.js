@@ -1304,7 +1304,15 @@ async function loadAdminData() {
 window.navigate = navigate;
 window.openFacilityChat = openFacilityChat;
 window.openMapsDirections = openMapsDirections;
-window.fetchAndRenderRoutes = fetchAndRenderRoutes;
+// fetchAndRenderRoutes is defined in transport.js which loads after app.js
+// We expose a safe wrapper that delegates to transport.js once loaded
+window.fetchAndRenderRoutes = function(fromLoc, toLoc, mode) {
+  if (typeof fetchAndRenderRoutes === 'function' && window._transportReady) {
+    return window._fetchAndRenderRoutesImpl(fromLoc, toLoc, mode);
+  }
+  // Silently wait — transport.js will override this once loaded
+  console.debug('[app.js] fetchAndRenderRoutes called before transport.js ready, queuing...');
+};
 
 // ── Initial render ─────────────────────────────
 // Verify a restored session with the backend before showing a dashboard.

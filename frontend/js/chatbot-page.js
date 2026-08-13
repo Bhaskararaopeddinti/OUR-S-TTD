@@ -2,10 +2,11 @@
  * chatbot-page.js – AI Assistant page functionality
  * Handles chat interface, quick prompts, and AI integration
  */
-'use strict';
 
-let chatHistory = [];
-let isPageSending = false;
+// Share chat history with chatbot.js via window namespace to prevent duplicate declaration
+if (!window._chatHistoryGlobal) window._chatHistoryGlobal = [];
+var chatHistory = window._chatHistoryGlobal;
+var isPageSending = false;
 
 // Initialize chatbot page
 function initChatbot() {
