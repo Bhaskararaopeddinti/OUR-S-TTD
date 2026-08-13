@@ -1,18 +1,16 @@
-"""
-OURS TTD – FastAPI Application Entry Point
-Handles startup, seeding, CORS, WebSockets, and static file serving.
-"""
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 import json
 import logging
 from pathlib import Path
-from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-# ── Load .env ──────────────────────────────────────────────────────────────
+# ── Ensure .env loaded from project root ─────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
@@ -26,6 +24,7 @@ from backend.routers import auth_routes, core, transport_routes
 from backend.routers.navigation import router as locations_router, navigation_router
 from backend.routers import admin_routes
 from backend.models import TransportRoute
+from backend.services.broadcast import broadcast_manager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -67,31 +66,21 @@ app.include_router(navigation_router)
 app.include_router(admin_routes.router)
 
 # ── WebSocket Hub ──────────────────────────────────────────────────────────
-clients: set[WebSocket] = set()
-
 @app.websocket("/ws/live")
 async def live_ws(ws: WebSocket):
-    await ws.accept()
-    clients.add(ws)
+    await broadcast_manager.connect(ws)
     try:
         while True:
             await ws.receive_text()   # keep-alive
     except WebSocketDisconnect:
-        clients.discard(ws)
+        broadcast_manager.disconnect(ws)
 
 async def broadcast(payload: dict):
     """Broadcast JSON to all connected WebSocket clients."""
-    msg = json.dumps(payload)
-    dead = set()
-    for ws in clients:
-        try:
-            await ws.send_text(msg)
-        except Exception:
-            dead.add(ws)
-    clients.difference_update(dead)
+    await broadcast_manager.broadcast(payload)
 
 # Inject broadcast function into admin_routes for real-time updates
-admin_routes.set_broadcast_function(broadcast)
+admin_routes.set_broadcast_function(broadcast_manager.broadcast_sync)
 
 # ── Database Seeding ───────────────────────────────────────────────────────
 NAV_LOCATIONS = [

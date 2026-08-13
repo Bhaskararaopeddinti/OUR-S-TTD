@@ -1328,3 +1328,61 @@ if (authToken) {
 }
 // Load hero queue stats
 loadHeroStats();
+
+// ── Global Real-Time WebSocket Connection ─────────────────────
+function initWebSocket() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host || 'localhost:8000';
+  try {
+    window.ws = new WebSocket(`${protocol}//${host}/ws/live`);
+
+    window.ws.onopen = () => {
+      console.log('✅ WebSocket Connected to /ws/live');
+    };
+
+    window.ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        console.log('📥 Update received:', msg.type || msg);
+
+        if (msg.type === 'facility_update') {
+          const el = document.getElementById(`facility-${msg.id}`);
+          if (el) {
+            el.textContent = msg.status;
+            el.classList.add('update-animation');
+          }
+          if (window.showToast) {
+            window.showToast(`Facility #${msg.id} updated to ${msg.status}`, 'info');
+          }
+        } else if (msg.type === 'queue_update') {
+          if (typeof loadQueueIntelligence === 'function') loadQueueIntelligence();
+          if (typeof loadDashboardQueueIntelligence === 'function') loadDashboardQueueIntelligence();
+          if (typeof loadQueueStatus === 'function') loadQueueStatus();
+          if (typeof loadHeroStats === 'function') loadHeroStats();
+          if (window.showToast) {
+            window.showToast('📥 Live queue update received from Admin', 'info');
+          }
+        }
+      } catch (err) {
+        console.error('Error handling WebSocket message:', err);
+      }
+    };
+
+    window.ws.onerror = (err) => {
+      console.warn('WebSocket connection error, retrying...');
+    };
+
+    window.ws.onclose = () => {
+      console.log('WebSocket connection closed, reconnecting in 5s...');
+      setTimeout(initWebSocket, 5000);
+    };
+  } catch (e) {
+    console.error('Failed to initialize WebSocket:', e);
+  }
+}
+
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  initWebSocket();
+} else {
+  document.addEventListener('DOMContentLoaded', initWebSocket);
+}

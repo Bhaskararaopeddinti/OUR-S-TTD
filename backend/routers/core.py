@@ -15,7 +15,7 @@ from backend.schemas import (
     ChatIn, SOSIn, FeedbackIn, TranslateIn, NearbyFacilitiesIn,
     BookingIn, BookingUpdate, LostFoundIn, LostFoundUpdate,
     HealthReminderIn, HealthReminderUpdate, NotificationMarkRead,
-    ProfileUpdate
+    ProfileUpdate, FacilityUpdate
 )
 from backend.services.ai_service import pilgrim_reply
 from backend.services.queue_prediction import predict, predict_queue_status
@@ -108,6 +108,47 @@ def facilities(kind: str | None = None):
     return {
         "verification": "Project-supplied facility information — verify operational details with TTD before travel.",
         "facilities": rows
+    }
+
+
+@router.put("/admin/facilities/{id}")
+@router.put("/facilities/{id}")
+async def update_facility(id: int, facility: FacilityUpdate, db: Session = Depends(get_db)):
+    """Update facility status and broadcast real-time update to all connected WebSocket clients."""
+    db_facility = db.query(Facility).filter(Facility.id == id).first()
+    if db_facility:
+        if facility.status is not None:
+            db_facility.status = facility.status
+        if facility.available is not None:
+            db_facility.available = facility.available
+        if facility.wait_minutes is not None:
+            db_facility.wait_minutes = facility.wait_minutes
+        db.commit()
+        db.refresh(db_facility)
+        status_val = db_facility.status
+    else:
+        # Fallback for in-memory facilities list
+        target = next((f for f in FACILITIES if f.get("id") == id), None)
+        if target:
+            if facility.status is not None:
+                target["status"] = facility.status
+            if facility.available is not None:
+                target["available"] = facility.available
+            status_val = facility.status or "Operational"
+        else:
+            status_val = facility.status or "Updated"
+
+    from backend.services.broadcast import broadcast_manager
+    await broadcast_manager.broadcast({
+        "type": "facility_update",
+        "id": id,
+        "status": status_val
+    })
+
+    return {
+        "id": id,
+        "status": status_val,
+        "message": "Facility status updated and broadcasted successfully"
     }
 
 

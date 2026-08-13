@@ -1532,3 +1532,30 @@ html.dark .sos-options button {
 .loading { color: var(--muted); font-style: italic; }
 .hint { color: var(--muted); font-size: 0.85rem; }
 .empty-state { color: var(--muted); font-style: italic; padding: 1rem; text-align: center; }
+
+/* ── Real-Time WebSocket Visual Feedback ── */
+.update-animation {
+  animation: pulse-update 0.6s ease-in-out;
+  background-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+@keyframes pulse-update {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.75; transform: scale(1.02); }
+}
+
+.real-time-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10B981;
+  animation: blink-indicator 1.5s infinite;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+@keyframes blink-indicator {
+  0%, 50%, 100% { opacity: 1; }
+  25%, 75% { opacity: 0.3; }
+}

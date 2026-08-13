@@ -15,8 +15,10 @@ services:
       - key: CORS_ORIGINS
         value: https://ours-ttd.onrender.com
       - key: GEMINI_API_KEY
-        value: your-gemini-api-key-here
+        sync: false
+        description: "Gemini API Key for AI Assistant (Get from Google AI Studio)"
       - key: GOOGLE_TRANSLATE_API_KEY
-        value: your-google-translate-api-key-here
+        sync: false
+        description: "Google Translate API Key (Optional)"
       - key: GOOGLE_CLOUD_PROJECT_ID
         value: our-ttd-project

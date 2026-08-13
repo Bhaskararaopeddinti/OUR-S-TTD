@@ -97,7 +97,7 @@ async function sendMessage() {
 
     thinking.remove();
     
-    const reply = data.reply || data.message || 'I could not generate a reply.';
+    const reply = data.reply || data.response || data.message || 'I could not generate a reply.';
     appendMsg(reply, 'bot');
     speakReply(reply, lang);
 

@@ -142,7 +142,7 @@ async function getAIResponse(message) {
     // Remove typing indicator
     typingDiv.remove();
     
-    const reply = data.reply || data.message || 'I apologize, but I could not process your request.';
+    const reply = data.reply || data.response || data.message || 'I apologize, but I could not process your request.';
     addMessage(reply, 'bot');
 
     // Save turn to history

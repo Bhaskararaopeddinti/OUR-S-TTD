@@ -53,6 +53,13 @@ class ProfileUpdate(BaseModel):
     wheelchair_required: Optional[bool] = None
 
 
+# ──── Facilities ────
+class FacilityUpdate(BaseModel):
+    status: Optional[str] = "Operational"
+    available: Optional[bool] = True
+    wait_minutes: Optional[int] = 0
+
+
 # ──── Chat ────
 class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=2000)

@@ -185,21 +185,26 @@ def submit_pilgrim_data(
     db.refresh(row)
 
     # Broadcast update to all connected clients via WebSocket
+    from backend.services.broadcast import broadcast_manager
+    broadcast_payload = {
+        "type": "queue_update",
+        "data": {
+            "admin_updated": True,
+            "timestamp": datetime.utcnow().isoformat(),
+            "slot": f"{row.start_time}-{row.end_time}",
+            "estimated_crowd": row.estimated_crowd,
+            "queue_status": row.queue_status
+        }
+    }
     if _broadcast:
         try:
-            _broadcast({
-                "type": "queue_update",
-                "data": {
-                    "admin_updated": True,
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "slot": f"{row.start_time}-{row.end_time}",
-                    "estimated_crowd": row.estimated_crowd,
-                    "queue_status": row.queue_status
-                }
-            })
+            _broadcast(broadcast_payload)
         except Exception as e:
             import logging
-            logging.getLogger(__name__).warning("Failed to broadcast queue update: %s", e)
+            logging.getLogger(__name__).warning("Failed to broadcast queue update via _broadcast: %s", e)
+            broadcast_manager.broadcast_sync(broadcast_payload)
+    else:
+        broadcast_manager.broadcast_sync(broadcast_payload)
 
     return PilgrimFlowDataOut(
         id=row.id,
