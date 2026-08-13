@@ -1339,6 +1339,9 @@ loadHeroStats();
 
 // ── Global Real-Time WebSocket Connection ─────────────────────
 function initWebSocket() {
+  if (window.ws && (window.ws.readyState === WebSocket.OPEN || window.ws.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.host || 'localhost:8000';
   try {

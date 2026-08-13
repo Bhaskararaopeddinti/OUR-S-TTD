@@ -25,8 +25,11 @@ function loadDashboard() {
     // Load user profile
     loadUserProfile();
     
-    // Set up refresh interval
-    setInterval(updateDateTime, 60000); // Update every minute
+    // Set up refresh interval (clear existing to prevent duplicate timers)
+    if (window._dashboardDateTimeInterval) {
+        clearInterval(window._dashboardDateTimeInterval);
+    }
+    window._dashboardDateTimeInterval = setInterval(updateDateTime, 60000); // Update every minute
 }
 
 // Export functions for use in app.js
@@ -341,16 +344,6 @@ function loadUserProfile() {
 window.loadDashboard = loadDashboard;
 window.loadDashboardQueueIntelligence = loadDashboardQueueIntelligence;
 window.loadQueueStatus = loadQueueStatus;
-
-// Handle sidebar navigation
-document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('nav-item')) {
-        const page = e.target.dataset.page;
-        if (page) {
-            navigate(page);
-        }
-    }
-});
 
 // Handle sidebar toggle
 const sidebarToggle = document.getElementById('sidebarToggle');
