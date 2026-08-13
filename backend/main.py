@@ -379,8 +379,10 @@ async def health_check():
         "database_type": database_kind(),
     }
 
-# Serve index.html at root
-@app.get("/")
+# Serve index.html at root and /index.html
+@app.get("/", include_in_schema=False)
+@app.get("/index.html", include_in_schema=False)
 async def serve_index():
     return FileResponse(frontend_dir / "index.html")
+
 

@@ -1,11 +1,11 @@
 /**
  * sw.js – OURS TTD Service Worker (PWA)
- * Offline-first strategy for static assets, network-first for API calls.
- * Uses safe individual resource caching to prevent install failures.
+ * Resilient static asset caching, offline fallback for navigation,
+ * and live network pass-through for API and WebSocket endpoints.
  */
 'use strict';
 
-const CACHE_NAME = 'ours-ttd-v4';
+const CACHE_NAME = 'ours-ttd-v5';
 
 const STATIC_ASSETS = [
   '/',
@@ -47,56 +47,72 @@ const STATIC_ASSETS = [
   '/pages/admin.html',
 ];
 
+// Install Event: Safely cache static assets individually without crashing
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(async cache => {
-        for (const url of STATIC_ASSETS) {
-          try {
-            await cache.add(url);
-          } catch (err) {
-            console.warn('[SW] Could not cache static asset:', url, err);
+    caches.open(CACHE_NAME).then(async cache => {
+      for (const asset of STATIC_ASSETS) {
+        try {
+          const response = await fetch(asset);
+          if (response.ok) {
+            await cache.put(asset, response);
+            console.log('[SW] Cached:', asset);
+          } else {
+            console.warn('[SW] Skipped (non-200):', asset, response.status);
           }
+        } catch (error) {
+          console.warn('[SW] Could not cache:', asset, error);
         }
-      })
-      .then(() => self.skipWaiting())
+      }
+      return self.skipWaiting();
+    })
   );
 });
 
+// Activate Event: Clean up old OURS TTD caches and claim clients
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
         keys
           .filter(k => k.startsWith('ours-ttd-') && k !== CACHE_NAME)
-          .map(k => caches.delete(k))
+          .map(k => {
+            console.log('[SW] Deleting obsolete cache:', k);
+            return caches.delete(k);
+          })
       )
     ).then(() => self.clients.claim())
   );
 });
 
+// Fetch Event: Bypass SW for API & WebSocket; Cache-first with network fallback for static assets
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Skip non-GET requests and API/WebSocket routes (network-only or network-first)
+  // Exclude non-GET, API routes (/api/*), and WebSockets (/ws/*) from cache
   if (event.request.method !== 'GET' || url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws/')) {
-    event.respondWith(
-      fetch(event.request).catch(() => new Response(
-        JSON.stringify({ error: 'You appear to be offline. Please reconnect.' }),
-        { headers: { 'Content-Type': 'application/json' } }
-      ))
-    );
-    return;
+    return; // Allow browser default network request
   }
 
-  // Cache-first strategy with network fallback for static assets
+  // Cache-first strategy with network fallback
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request).then(res => {
-      if (res.ok && res.type === 'basic') {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+    caches.match(event.request).then(cachedResponse => {
+      if (cachedResponse) {
+        return cachedResponse;
       }
-      return res;
-    }))
+      return fetch(event.request).then(networkResponse => {
+        if (networkResponse && networkResponse.ok && networkResponse.type === 'basic') {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        }
+        return networkResponse;
+      }).catch(err => {
+        // If navigation request fails offline, serve cached /index.html
+        if (event.request.mode === 'navigate') {
+          return caches.match('/index.html') || caches.match('/');
+        }
+        throw err;
+      });
+    })
   );
 });

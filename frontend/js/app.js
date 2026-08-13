@@ -790,16 +790,17 @@ function renderQueue() {
     .then(html => {
       document.getElementById('appRoot').innerHTML = html;
       console.log('Queue page HTML loaded');
-      
-      // Load queue intelligence data with a small delay to ensure DOM is ready
-      setTimeout(() => {
-        if (typeof loadQueueIntelligence === 'function') {
-          console.log('Calling loadQueueIntelligence...');
+
+      const triggerQueueLoad = () => {
+        if (typeof window.loadQueueIntelligence === 'function') {
+          window.loadQueueIntelligence();
+        } else if (typeof loadQueueIntelligence === 'function') {
           loadQueueIntelligence();
-        } else {
-          console.error('loadQueueIntelligence function not available');
         }
-      }, 100);
+      };
+
+      triggerQueueLoad();
+      setTimeout(triggerQueueLoad, 100);
     })
     .catch(error => {
       console.error('Failed to load queue page:', error);
