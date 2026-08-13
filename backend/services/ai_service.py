@@ -4,13 +4,20 @@ Gemini-powered pilgrim assistant with TTD-specific knowledge.
 Communicates directly with Google Gemini API using supported models (gemini-3.6-flash, gemini-3.5-flash).
 Provides explicit status and source tracking without silently swallowing failures.
 """
+from dotenv import load_dotenv
 import os
 import logging
+from pathlib import Path
 from typing import Optional, List, Dict, Any
+
+# Guarantee .env is loaded from project root regardless of CWD
+ROOT = Path(__file__).resolve().parent.parent.parent
+load_dotenv(ROOT / ".env")
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Candidate models in order of preference (updated to use current Gemini models)
+# Candidate models in order of preference
 MODEL_CANDIDATES = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
 
 _genai_client = None
@@ -22,6 +29,10 @@ def _init_gemini() -> bool:
     global _genai_client, _genai_legacy_model
     if _genai_client is not None or _genai_legacy_model is not None:
         return True
+
+    # Re-trigger load_dotenv in case environment was updated at runtime
+    load_dotenv(ROOT / ".env")
+    load_dotenv()
 
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key or api_key == "your-gemini-api-key-here":
@@ -221,6 +232,37 @@ def pilgrim_reply(
 def _generate_fallback_response(message: str, db: Optional[Any] = None) -> str:
     """Generate a fallback response using rule-based logic when Gemini is unavailable."""
     msg_lower = message.lower()
+
+    # Famous places / attractions in Tirumala / TTD
+    if any(k in msg_lower for k in ("famous", "place", "sightseeing", "attraction", "visit", "spot")):
+        return (
+            "🛕 **Famous Sacred Places in Tirumala & Tirupati:**\n\n"
+            "1. **Sri Venkateswara Swamy Temple** – The main ancient shrine atop Tirumala hills.\n"
+            "2. **Sri Padmavathi Ammavari Temple (Tiruchanur)** – Divine temple of Goddess Padmavathi.\n"
+            "3. **Silathoranam** – Natural geological rock arch formed millions of years ago.\n"
+            "4. **Sri Bedi Anjaneyaswami Temple** – Temple of Lord Hanuman located opposite Srivari Temple.\n"
+            "5. **Akasa Ganga & Papavanasam** – Sacred waterfalls and bathing ghats on Tirumala hills.\n"
+            "6. **Japali Teertham** – Peaceful Hanuman shrine situated amidst dense forest.\n"
+            "7. **Kapila Theertham** – Ancient Shiva temple at the foot of Tirumala hills in Tirupati."
+        )
+
+    # Food & Annaprasadam queries
+    if any(k in msg_lower for k in ("food", "annaprasadam", "eat", "meal", "breakfast", "dinner", "lunch")):
+        return (
+            "🍚 **TTD Annaprasadam & Food Services:**\n\n"
+            "• **Matrusri Tarigonda Vengamamba Annaprasada Complex (MTVAC)**: Serves free, hygienic, delicious vegetarian meals to all pilgrims continuously from 9:00 AM to 11:00 PM.\n"
+            "• **Queue Complex Refreshments**: Free milk, buttermilk, tea, and warm prasadam are distributed continuously to pilgrims waiting in VQC compartments.\n"
+            "• **TTD Canteens**: Subsidized quality food is available at Rambagicha, PAC complexes, and bus stand canteens."
+        )
+
+    # About TTD / Tirumala overview
+    if any(k in msg_lower for k in ("about ttd", "what is ttd", "history", "tirumala")):
+        return (
+            "🛕 **About TTD (Tirumala Tirupati Devasthanams):**\n\n"
+            "Tirumala Tirupati Devasthanams (TTD) manages the world-famous Sri Venkateswara Swamy Temple located atop the Seshachalam Hills in Tirumala, Andhra Pradesh.\n\n"
+            "• **Lord Sri Venkateswara (Balaji)**: Revered as Kaliyuga Vaikuntam.\n"
+            "• **Pilgrim Amenities**: TTD provides free Annaprasadam (food), free medical care, subsidized accommodation, and free local transport (Dharma Ratham) for millions of devotees worldwide."
+        )
     
     # Queue-related queries
     if any(k in msg_lower for k in ("queue", "wait", "crowd", "darshan line", "density", "line", "pilgrim")):
@@ -250,11 +292,11 @@ def _generate_fallback_response(message: str, db: Optional[Any] = None) -> str:
         return "For current queue status and predictions, please check the AI Queue Intelligence page. It provides real-time crowd analysis and best time recommendations."
 
     # Transport-related queries
-    if any(k in msg_lower for k in ("bus", "transport", "route", "reach", "tirupati", "tirumala", "fare", "shuttle", "alipiri", "mettu", "tour")):
+    if any(k in msg_lower for k in ("bus", "transport", "route", "reach", "tirupati", "fare", "shuttle", "alipiri", "mettu", "tour")):
         return "For transport information between TTD locations, please use the Transport page. You can search for routes between Tirumala, Tirupati, Alipiri, and other pilgrimage locations. TTD provides free bus services and APSRTC operates regular routes."
 
     # Facility-related queries
-    if any(k in msg_lower for k in ("medical", "hospital", "doctor", "annaprasadam", "food", "eat", "restroom", "toilet", "laddu", "phone", "deposit", "parking")):
+    if any(k in msg_lower for k in ("medical", "hospital", "doctor", "restroom", "toilet", "laddu", "phone", "deposit", "parking")):
         return "For facility information including medical centers, food services, and amenities, please use the Smart Navigation feature or check the Facilities directory. TTD provides free Annaprasadam, medical assistance, and various facilities for pilgrims."
 
     # Temple and darshan guidance
