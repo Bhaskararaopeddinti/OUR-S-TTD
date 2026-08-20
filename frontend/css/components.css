@@ -169,6 +169,7 @@ html.dark .pill.pending { background: hsl(40,30%,20%);  color: hsl(40,80%,72%); 
 /* ── Toast notifications ── */
 #toastContainer {
   position: fixed;
+  /* Sit above the mobile-nav (60px) */
   bottom: 5.5rem;
   left: 50%;
   transform: translateX(-50%);
@@ -216,18 +217,36 @@ html.dark .pill.pending { background: hsl(40,30%,20%);  color: hsl(40,80%,72%); 
 }
 
 /* ── Accessibility panel (floating) ── */
+.a11y-toggle {
+  position: fixed;
+  /* Desktop: clear 280px sidebar + some margin */
+  bottom: 1.5rem;
+  left: calc(280px + 7rem);
+  z-index: 200;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.65rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: background var(--transition);
+}
+.a11y-toggle:hover { background: var(--surface); }
+
 #a11yPanel {
   position: fixed;
-  bottom: 5.5rem;
-  left: 1.5rem;
+  /* Popup appears above toggle, clearing sidebar */
+  bottom: 4rem;
+  left: calc(280px + 7rem);
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 1rem;
   box-shadow: var(--shadow-lg);
-  z-index: 150;
+  z-index: 200;
   display: none;
-  width: 200px;
+  width: 210px;
 }
 #a11yPanel.open { display: block; }
 #a11yPanel h4 { font-size: 0.85rem; margin-bottom: 0.5rem; }
@@ -240,4 +259,37 @@ html.dark .pill.pending { background: hsl(40,30%,20%);  color: hsl(40,80%,72%); 
   background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+#a11yPanel button:hover { background: var(--bg); }
+
+/* Mobile: move accessibility toggle above mobile-nav */
+@media (max-width: 768px) {
+  .a11y-toggle {
+    bottom: 4.5rem;
+    left: 1rem;
+  }
+  #a11yPanel {
+    bottom: 8rem;
+    left: 1rem;
+  }
+}
+
+/* Desktop: SOS fab mobile adjustment */
+@media (max-width: 768px) {
+  .sos-fab {
+    /* On mobile, sidebar is hidden: sit above mobile-nav */
+    left: 1rem;
+    bottom: 4.5rem;
+  }
+  .chatbot-fab {
+    right: 1rem;
+    bottom: 4.5rem;
+  }
+  .chatbot-panel {
+    right: 1rem;
+    bottom: 8rem;
+  }
 }

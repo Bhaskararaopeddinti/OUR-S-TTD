@@ -227,13 +227,20 @@
   background: rgba(255, 255, 255, 0.28);
 }
 
-/* ── Main Content Area ────────────────────────────────────────────────────────── */
-.main-content {
+/* ── Main Wrapper (holds main-content + footer, pushed right of sidebar) ──────── */
+.main-wrapper {
   margin-left: 280px;
   flex: 1;
-  padding: 2rem;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
-  overflow-y: auto;
+}
+
+/* ── Main Content Area ────────────────────────────────────────────────────────── */
+.main-content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: visible;
 }
 
 /* ── Responsive Design ─────────────────────────────────────────────────────────── */
@@ -243,11 +250,11 @@
   .sidebar {
     width: 240px;
   }
-  
-  .main-content {
+
+  .main-wrapper {
     margin-left: 240px;
   }
-  
+
   .nav-text {
     font-size: 0.9rem;
   }
@@ -259,18 +266,23 @@
     transform: translateX(-100%);
     width: 280px;
   }
-  
+
   .sidebar.open {
     transform: translateX(0);
   }
-  
+
   .sidebar-toggle {
     display: block;
   }
-  
-  .main-content {
+
+  .main-wrapper {
     margin-left: 0;
+  }
+
+  .main-content {
     padding: 1rem;
+    /* Add bottom clearance for fixed mobile-nav bar (~60px) */
+    padding-bottom: 5.5rem;
   }
   
   /* Mobile bottom navigation */
@@ -317,10 +329,6 @@
   
   .mobile-nav-icon {
     font-size: 1.5rem;
-  }
-  
-  .main-content {
-    padding-bottom: 80px;
   }
 }
 
@@ -1361,4 +1369,171 @@
     top: auto;
     bottom: 1rem;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PAGE-SPECIFIC GRID LAYOUTS
+   These page grids were missing, causing cards to stack without proper layout
+════════════════════════════════════════════════════════════════════════ */
+
+/* Food, Medical, Accommodation, Emergency, Chatbot – single column with auto-fit */
+.food-grid,
+.medical-grid,
+.accommodation-grid,
+.emergency-grid,
+.chatbot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+/* Full-width items inside page grids */
+.food-grid > [style*="grid-column: 1/-1"],
+.medical-grid > [style*="grid-column: 1/-1"],
+.accommodation-grid > [style*="grid-column: 1/-1"],
+.emergency-grid > [style*="grid-column: 1/-1"],
+.chatbot-grid > [style*="grid-column: 1/-1"] {
+  grid-column: 1 / -1;
+}
+
+/* Collapse page grids on mobile */
+@media (max-width: 768px) {
+  .food-grid,
+  .medical-grid,
+  .accommodation-grid,
+  .emergency-grid,
+  .chatbot-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── List Item Flex Layouts (food-location-item, medical-facility-item, etc.) ── */
+.food-location-item,
+.medical-facility-item,
+.accommodation-item,
+.emergency-contact,
+.facility-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.food-location-item > .food-icon,
+.medical-facility-item > .medical-icon,
+.accommodation-item > .accommodation-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  width: 2.5rem;
+  text-align: center;
+}
+
+.food-location-item > .food-info,
+.medical-facility-item > .medical-info,
+.accommodation-item > .accommodation-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.food-location-item > .food-distance,
+.medical-facility-item > .medical-distance,
+.accommodation-item > .accommodation-distance {
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.food-name, .medical-name, .accommodation-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.food-address, .medical-address, .accommodation-address {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.food-timing, .medical-timing, .accommodation-type {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.medical-services-preview {
+  font-size: 0.75rem;
+  color: var(--primary-light);
+}
+
+.accommodation-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 99px;
+}
+.status-available { background: rgba(16,185,129,0.12); color: #10B981; }
+.status-limited   { background: rgba(245,158,11,0.12);  color: #F59E0B; }
+.status-full      { background: rgba(239,68,68,0.12);   color: #EF4444; }
+
+/* Emergency contact row */
+.emergency-contact > .contact-icon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  width: 2.5rem;
+  text-align: center;
+}
+.emergency-contact > .contact-details {
+  flex: 1;
+  min-width: 0;
+}
+.contact-name   { font-weight: 600; font-size: 0.9rem; }
+.contact-number { font-size: 0.82rem; color: var(--muted); }
+
+/* Facility row (emergency nearest) */
+.facility-item > .facility-icon   { font-size: 1.4rem; flex-shrink: 0; width: 2rem; text-align: center; }
+.facility-item > .facility-name   { flex: 1; font-size: 0.9rem; font-weight: 500; }
+.facility-item > .facility-distance{ flex-shrink: 0; font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+
+@media (max-width: 480px) {
+  .food-location-item,
+  .medical-facility-item,
+  .accommodation-item,
+  .emergency-contact,
+  .facility-item {
+    flex-wrap: wrap;
+  }
+  .food-location-item > button,
+  .medical-facility-item > button,
+  .accommodation-item > button,
+  .emergency-contact > button,
+  .facility-item > button {
+    width: 100%;
+    margin-top: 0.4rem;
+  }
+}
+
+/* ── Destination suggestions (should overlay, not push layout) ─────────────────── */
+.destination-input-wrapper {
+  position: relative;
+}
+.suggestions-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 500;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
 }

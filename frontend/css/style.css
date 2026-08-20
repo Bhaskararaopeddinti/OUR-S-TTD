@@ -530,8 +530,9 @@ tr:hover td { background: var(--surface); }
 /* ── SOS Button (floating) ── */
 .sos-fab {
   position: fixed;
+  /* On desktop: clear the 280px fixed sidebar on the left */
   bottom: 1.5rem;
-  left: 1.5rem;
+  left: calc(280px + 1.5rem);
   padding: 0.65rem 1.4rem;
   background: var(--danger);
   color: #fff;
@@ -823,7 +824,10 @@ html.dark .sos-options button {
   color: rgba(255,255,255,0.9);
   padding: 2rem 1.5rem;
   border-top: 1px solid rgba(255,255,255,0.1);
+  /* margin-top: auto pushes footer to bottom of flex column wrapper */
   margin-top: auto;
+  /* Never overflow beyond the main-wrapper bounds */
+  width: 100%;
 }
 
 .footer-content {
@@ -1500,12 +1504,7 @@ html.dark .sos-options button {
   background: transparent !important;
 }
 
-/* Navigation Page Grid */
-.navigation-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-}
+/* ── Navigation Page Grid (mobile responsive) ── */
 @media (max-width: 768px) {
   .navigation-grid {
     grid-template-columns: 1fr;
