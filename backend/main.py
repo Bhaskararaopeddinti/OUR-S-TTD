@@ -371,12 +371,14 @@ async def serve_favicon_ico():
 
 @app.get("/api/health", tags=["Health"])
 async def health_check():
-    """Non-sensitive application and database health status."""
+    """Non-sensitive application, database, and AI health status."""
     connected = test_connection()
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
     return {
         "status": "healthy" if connected else "unhealthy",
         "database": "connected" if connected else "unavailable",
         "database_type": database_kind(),
+        "gemini_configured": bool(gemini_key and gemini_key != "your-gemini-api-key-here"),
     }
 
 # Serve index.html at root and /index.html

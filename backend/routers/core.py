@@ -199,6 +199,7 @@ def facility_directions(
 # ──────────────────────── AI Chat ────────────────────────
 @router.post("/chat")
 @router.post("/ai/chat")
+@router.post("/assistant/chat")
 def chat(data: ChatIn, db: Session = Depends(get_db)):
     """AI-powered pilgrim assistant powered by Gemini API."""
     user_query = data.get_query()
