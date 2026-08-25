@@ -2,7 +2,7 @@
 <section class="chatbot-page">
   <div class="dashboard-header">
     <h1>🤖 AI Assistant</h1>
-    <p class="dashboard-subtitle">Your smart pilgrim guide - ask anything about Tirumala</p>
+    <p class="dashboard-subtitle">Your versatile intelligent assistant – ask any question on any topic!</p>
   </div>
 
   <div class="chatbot-grid">
@@ -23,33 +23,32 @@
         <div class="message bot-message">
           <div class="message-avatar">🤖</div>
           <div class="message-content">
-            <p>Namaste! 🙏 I'm your AI pilgrim companion for Tirumala. I can help you with:</p>
+            <p>Namaste! 🙏 I'm your AI Smart Assistant. I can answer <strong>any question</strong> you have, including:</p>
             <ul class="help-list">
-              <li>🗺️ Navigation and directions</li>
-              <li>⏳ Queue status and wait times</li>
-              <li>🍚 Food locations and Annaprasadam</li>
-              <li>🏥 Medical assistance</li>
-              <li>🏨 Accommodation options</li>
-              <li>🛕 Temple information</li>
-              <li>🚨 Emergency contacts</li>
+              <li>🌍 General knowledge, science, history, geography, and facts</li>
+              <li>⏳ Live Darshan queue status & best times to visit</li>
+              <li>🚌 Bus routes, timetables, and transit directions</li>
+              <li>🛕 Temple guide, sacred places, and spiritual history</li>
+              <li>🍚 Free Annaprasadam, food, and dining timings</li>
+              <li>🏨 Free PAC accommodation and guest houses</li>
+              <li>🏥 Medical aid, first aid dispensaries, and emergency SOS</li>
             </ul>
-            <p>How can I help you today?</p>
+            <p>Type any question below and I will provide an instant, point-wise answer!</p>
           </div>
         </div>
       </div>
       
       <div class="chat-input-area">
         <div class="quick-prompts">
-          <button class="quick-prompt" onclick="sendQuickPrompt('Where is the nearest food?')">🍚 Nearest food</button>
           <button class="quick-prompt" onclick="sendQuickPrompt('What is the queue status?')">⏳ Queue status</button>
-          <button class="quick-prompt" onclick="sendQuickPrompt('Where can I get medical help?')">🏥 Medical help</button>
-          <button class="quick-prompt" onclick="sendQuickPrompt('How do I get to the temple?')">🛕 Temple</button>
-          <button class="quick-prompt" onclick="sendQuickPrompt('How can I go from Tirupati to Tirumala by bus?')">🚌 Bus to Tirumala</button>
-          <button class="quick-prompt" onclick="sendQuickPrompt('How can I reach Padmavathi Temple from Tirupati?')">🛕 Padmavathi Temple</button>
-          <button class="quick-prompt" onclick="sendQuickPrompt('What transport options are available from Tirupati Railway Station to Tirumala?')">🚉 From Railway Station</button>
+          <button class="quick-prompt" onclick="sendQuickPrompt('How do I travel from Tirupati to Tirumala?')">🚌 Bus to Tirumala</button>
+          <button class="quick-prompt" onclick="sendQuickPrompt('What is the history of Tirumala Temple?')">🛕 Temple History</button>
+          <button class="quick-prompt" onclick="sendQuickPrompt('Where is free Annaprasadam served?')">🍚 Free Food</button>
+          <button class="quick-prompt" onclick="sendQuickPrompt('Explain how solar eclipse occurs')">☀️ Solar Eclipse</button>
+          <button class="quick-prompt" onclick="sendQuickPrompt('What are the health benefits of walking?')">🚶 Health Benefits</button>
         </div>
         <div class="input-wrapper" style="display:flex;gap:0.5rem;align-items:center;">
-          <input type="text" id="chatInput" placeholder="Ask about buses, queue, food, temple..." style="flex:1;" />
+          <input type="text" id="chatInput" placeholder="Ask any question (science, history, queue, temple, facts, etc.)..." style="flex:1;" />
           <button id="sendBtn" class="send-btn btn-primary" style="padding:0.6rem 1.1rem;font-size:0.9rem;font-weight:700;min-width:70px;border-radius:8px;white-space:nowrap;" title="Send message (or press Enter)">Send ➤</button>
           <button id="voiceBtn" class="voice-btn" title="Voice input">🎤</button>
         </div>

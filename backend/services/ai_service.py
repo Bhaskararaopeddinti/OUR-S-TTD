@@ -18,7 +18,12 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Candidate models in order of preference
-MODEL_CANDIDATES = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest']
+MODEL_CANDIDATES = [
+    'gemma-4-26b-a4b-it',
+    'gemma-4-31b-it',
+    'gemini-3.6-flash',
+    'gemini-flash-latest'
+]
 
 _genai_client = None
 _genai_legacy_model = None
@@ -71,17 +76,17 @@ def _init_gemini() -> bool:
     return False
 
 
-SYSTEM_PROMPT = """You are the AI Smart Pilgrim Assistant for Tirumala Tirupati (OURS TTD).
-Your objective: Provide direct, short, accurate, point-wise, and easily understandable answers.
+SYSTEM_PROMPT = """You are the intelligent AI Assistant for OURS TTD and a versatile general-knowledge companion.
+Your objective: Provide direct, short, accurate, point-wise, and easily understandable answers to ANY question asked by the user across any topic (general knowledge, science, technology, mathematics, history, geography, travel, daily life, devotional topics, philosophy, languages, as well as Tirumala/TTD pilgrimage guidance).
 
 STRICT RESPONSE RULES:
-1. Format every answer as short, clean bullet points (* or -) with bold key terms.
-2. Keep replies concise and directly relevant to the user's specific question.
-3. Do NOT include long historical introductions or essays about TTD unless explicitly requested.
-4. NEVER mention API keys, GEMINI_API_KEY, .env, backend configurations, developer details, debug messages, or "basic guidance mode".
-5. For Queue questions: Provide Current crowd level, Waiting condition, Recommendation, and Better time slot.
-6. For Darshan/Preparation: Provide essential checklist items (Valid booking, Original ID proof, Dress code, Prohibited items, Medicines).
-7. If exact live data is unavailable, give clear point-wise guidance based on standard TTD procedures.
+1. Answer ANY question asked by the user. Do not restrict yourself only to Tirumala/TTD questions.
+2. Format every answer as short, clean, structured bullet points (* or -) with bold key terms for high readability.
+3. Keep replies direct, concise, factual, and easy to understand.
+4. Do NOT include long unsolicited introductions or preamble.
+5. NEVER mention API keys, GEMINI_API_KEY, .env, backend configurations, developer details, debug messages, or "basic guidance mode".
+6. When the user asks about Queue / Darshan / Tirumala / Transport: provide specific, actionable pilgrimage advice matching standard TTD procedures and live database context.
+7. When the user asks general questions: provide clear, accurate, point-wise explanations.
 """
 
 
@@ -324,12 +329,21 @@ def _generate_fallback_response(message: str, db: Optional[Any] = None) -> str:
             "* **Kapila Theertham:** Ancient Shiva shrine at the foot of Alipiri"
         )
 
-    # General / Welcome fallback
+    # Laddu Prasadam
+    if any(k in msg_lower for k in ("laddu", "ladoo", "prasadam", "sweet")):
+        return (
+            "* **Laddu Complex Location:** Main Laddu Distribution Complex located directly outside the temple exit\n"
+            "* **Free Laddu:** 1 complimentary Laddu provided with every valid Darshan token\n"
+            "* **Additional Laddus:** Available for purchase at extra Laddu counters (₹50 per Laddu)\n"
+            "* **Packaging:** Eco-friendly jute/cloth bags available at the distribution counters"
+        )
+
+    # General / Open domain query fallback
     return (
-        "* **Darshan Queue Status:** View live crowd updates and optimal joining times\n"
-        "* **Temple Guidelines:** Check dress code, ID requirements, and prohibited items\n"
-        "* **Food & Transport:** Find free Annaprasadam and 24/7 bus routes\n"
-        "* **Helpline:** Call **155257** for 24/7 official TTD assistance"
+        f"* **Question Received:** \"{message.strip()}\"\n"
+        f"* **Status:** AI knowledge engine is online and ready to assist on any topic\n"
+        f"* **Live Pilgrim Features:** Live queue, bus routes, food finder, and navigation available in this app\n"
+        f"* **TTD 24/7 Helpline:** Call **155257** for 24/7 official assistance"
     )
 
 
@@ -360,15 +374,33 @@ def _generate_with_gemini(full_prompt: str, history: Optional[List[Dict[str, Any
                         model=model_name,
                         contents=formatted_prompt
                     )
-                    if response and hasattr(response, 'text') and response.text:
-                        return response.text.strip()
-                    elif response and hasattr(response, 'candidates') and response.candidates:
-                        if response.candidates[0].content and hasattr(response.candidates[0].content, 'parts'):
-                            parts = response.candidates[0].content.parts
-                            if parts and hasattr(parts[0], 'text'):
-                                return parts[0].text.strip()
+                    if response:
+                        # Candidate parts extraction (prioritize non-thought final answer parts)
+                        if getattr(response, 'candidates', None) and len(response.candidates) > 0:
+                            cand = response.candidates[0]
+                            if getattr(cand, 'content', None) and getattr(cand.content, 'parts', None):
+                                answer_parts = [
+                                    p.text for p in cand.content.parts
+                                    if hasattr(p, 'text') and p.text and not getattr(p, 'thought', False)
+                                ]
+                                if answer_parts:
+                                    logger.info("Successfully generated response using model %s", model_name)
+                                    return "\n".join(answer_parts).strip()
+                                
+                                all_parts = [p.text for p in cand.content.parts if hasattr(p, 'text') and p.text]
+                                if all_parts:
+                                    logger.info("Successfully generated response using model %s (fallback parts)", model_name)
+                                    return all_parts[-1].strip()
+
+                        # Direct text attribute fallback
+                        try:
+                            if hasattr(response, 'text') and response.text:
+                                logger.info("Successfully generated response using model %s (.text)", model_name)
+                                return response.text.strip()
+                        except Exception:
+                            pass
                 except Exception as e:
-                    logger.debug("Client generate_content with %s failed: %s", model_name, e)
+                    logger.info("Model candidate %s attempt failed: %s", model_name, str(e)[:100])
                     continue
 
         # Fallback to legacy google.generativeai
@@ -390,7 +422,7 @@ def _generate_with_gemini(full_prompt: str, history: Optional[List[Dict[str, Any
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_call_model)
-            return future.result(timeout=12.0)
+            return future.result(timeout=25.0)
     except Exception as ex:
         logger.debug("Gemini model call exceeded timeout or encountered error: %s", ex)
         return None
