@@ -103,7 +103,7 @@ async function sendMessage() {
 
     thinking.remove();
     
-    const reply = data.reply || data.response || data.message || "Sorry, I couldn't process that request. Please try again.";
+    const reply = data.answer || data.reply || data.response || data.message || "Sorry, I couldn't process that request. Please try again.";
     appendMsg(reply, 'bot');
     speakReply(reply, lang);
 
