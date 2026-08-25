@@ -47,7 +47,14 @@ async def redirect_api_docs():
     return RedirectResponse(url="/docs")
 
 # ── CORS ───────────────────────────────────────────────────────────────────
-cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
+cors_raw = os.getenv("CORS_ORIGINS", "*").strip()
+if not cors_raw or cors_raw == "*":
+    cors_origins = ["*"]
+else:
+    cors_origins = [o.strip() for o in cors_raw.split(",") if o.strip()]
+    if "*" not in cors_origins:
+        cors_origins.extend(["http://localhost:8000", "http://127.0.0.1:8000", "http://localhost:3000", "http://localhost:5500", "http://127.0.0.1:5500"])
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -332,8 +339,12 @@ async def startup():
     except Exception as e:
         logger.warning("Bus route seeding skipped: %s", e)
 
-    logger.info("OURS TTD API started. Gemini key: %s",
-                "configured" if os.getenv("GEMINI_API_KEY") else "not set (keyword fallback)")
+    from backend.services.ai_service import get_gemini_api_key
+    gemini_key_present = bool(get_gemini_api_key())
+    configured_model = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+    logger.info("GEMINI_API_KEY configured: %s", gemini_key_present)
+    logger.info("GEMINI_MODEL configured: %s", configured_model)
+    logger.info("OURS TTD API started successfully.")
 
 
 # ── Static Files (Frontend) ────────────────────────────────────────────────
@@ -373,12 +384,14 @@ async def serve_favicon_ico():
 async def health_check():
     """Non-sensitive application, database, and AI health status."""
     connected = test_connection()
-    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    from backend.services.ai_service import get_gemini_api_key
+    gemini_key_present = bool(get_gemini_api_key())
     return {
         "status": "healthy" if connected else "unhealthy",
         "database": "connected" if connected else "unavailable",
         "database_type": database_kind(),
-        "gemini_configured": bool(gemini_key and gemini_key != "your-gemini-api-key-here"),
+        "gemini_configured": gemini_key_present,
+        "gemini_model": os.getenv("GEMINI_MODEL", "gemini-flash-latest")
     }
 
 # Serve index.html at root and /index.html
