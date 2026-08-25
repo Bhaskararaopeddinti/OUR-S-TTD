@@ -53,57 +53,63 @@ async function loadLocations() {
 }
 
 function getChatEndpoint() {
-  if (typeof API !== 'undefined' && API.post) {
-    return '/api/chat';
+  if (typeof window !== 'undefined' && window.location) {
+    const { hostname, port, protocol } = window.location;
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || protocol === 'file:') {
+      if (port === '8000') {
+        return '/api/ai/chat';
+      }
+      return 'http://127.0.0.1:8000/api/ai/chat';
+    }
+    return '/api/ai/chat';
   }
-  if (window.location.origin && window.location.origin.startsWith('http') && !['5500', '5501'].includes(window.location.port)) {
-    return window.location.origin + '/api/chat';
-  }
-  return 'http://localhost:8000/api/chat';
+  return '/api/ai/chat';
 }
 
 // Send message
-async function sendMessage() {
-  if (!chatInput || isSending) return;
-  const text = chatInput.value.trim();
+async function sendWidgetMessage() {
+  const inputEl = document.getElementById('chatInput');
+  if (!inputEl || isSending) return;
+  const text = inputEl.value.trim();
   if (!text) return;
 
   isSending = true;
-  if (chatSend) chatSend.disabled = true;
+  const sendBtnEl = document.getElementById('chatSend') || document.getElementById('sendBtn');
+  if (sendBtnEl) sendBtnEl.disabled = true;
 
   appendMsg(text, 'user');
-  chatInput.value = '';
+  inputEl.value = '';
   const thinking = appendMsg('Thinking…', 'bot thinking');
 
-  const lang = document.getElementById('language')?.value || 'English';
+  const lang = document.getElementById('language')?.value || document.getElementById('chatLanguage')?.value || 'English';
 
   try {
-    let data;
-    if (typeof API !== 'undefined' && API.post) {
-      data = await API.post('chat', {
+    const apiUrl = getChatEndpoint();
+    console.log("Widget AI question:", text);
+    console.log("Widget API URL:", apiUrl);
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         message: text,
         language: lang,
         history: chatHistory
-      });
-    } else {
-      const response = await fetch(getChatEndpoint(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          language: lang,
-          history: chatHistory
-        })
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      data = await response.json();
+      })
+    });
+    
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Widget AI HTTP Error:", response.status, errText);
+      throw new Error(`HTTP ${response.status}: ${errText}`);
     }
+
+    const data = await response.json();
+    console.log("Widget AI response:", data);
 
     thinking.remove();
     
-    const reply = data.answer || data.reply || data.response || data.message || "Sorry, I couldn't process that request. Please try again.";
+    const reply = data.answer || data.reply || data.response || data.message || "• AI service is temporarily unavailable.\n• Please try again shortly.";
     appendMsg(reply, 'bot');
     speakReply(reply, lang);
 
@@ -113,16 +119,16 @@ async function sendMessage() {
   } catch (err) {
     thinking.remove();
     console.error('Chat error:', err);
-    appendMsg("Sorry, I couldn't process that request. Please try again.", 'bot');
+    appendMsg("• AI service is temporarily unavailable.\n• Please try again shortly.", 'bot');
   } finally {
     isSending = false;
-    if (chatSend) chatSend.disabled = false;
-    chatInput.focus();
+    if (sendBtnEl) sendBtnEl.disabled = false;
+    inputEl.focus();
   }
 }
 
-chatSend?.addEventListener('click', sendMessage);
-chatInput?.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(); });
+chatSend?.addEventListener('click', sendWidgetMessage);
+chatInput?.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) sendWidgetMessage(); });
 
 function formatChatText(text) {
   if (!text) return '';

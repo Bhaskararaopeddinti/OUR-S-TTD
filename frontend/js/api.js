@@ -6,13 +6,19 @@
 
 const API = (() => {
   const getApiBase = () => {
-    if (typeof window !== 'undefined') {
-      // If deployed on Render or accessed via web server with /api, use relative path
-      if (window.location.origin && window.location.origin.startsWith('http') && !['5500', '5501'].includes(window.location.port)) {
-        return '/api/';
+    if (typeof window !== 'undefined' && window.location) {
+      const { hostname, port, protocol } = window.location;
+      // If running locally (localhost or 127.0.0.1)
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || protocol === 'file:') {
+        // If frontend is being served by FastAPI directly on port 8000
+        if (port === '8000') {
+          return '/api/';
+        }
+        // If frontend is opened via Live Server (5500, 5501, 5502, 3000, 5173, etc.) or file://
+        return 'http://127.0.0.1:8000/api/';
       }
-      // If serving from Live Server (port 5500/5501) or file://
-      return 'http://localhost:8000/api/';
+      // In production (Render, custom domain, etc.)
+      return '/api/';
     }
     return '/api/';
   };

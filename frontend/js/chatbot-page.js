@@ -109,13 +109,17 @@ function addMessage(content, type) {
 }
 
 function getApiEndpoint() {
-  if (typeof API !== 'undefined' && API.post) {
-    return '/api/chat';
+  if (typeof window !== 'undefined' && window.location) {
+    const { hostname, port, protocol } = window.location;
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || protocol === 'file:') {
+      if (port === '8000') {
+        return '/api/ai/chat';
+      }
+      return 'http://127.0.0.1:8000/api/ai/chat';
+    }
+    return '/api/ai/chat';
   }
-  if (window.location.origin && window.location.origin.startsWith('http') && !['5500', '5501'].includes(window.location.port)) {
-    return window.location.origin + '/api/chat';
-  }
-  return 'http://localhost:8000/api/chat';
+  return '/api/ai/chat';
 }
 
 // Get AI response
@@ -138,37 +142,42 @@ async function getAIResponse(message) {
   chatMessages?.appendChild(typingDiv);
   if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
   
+  const apiUrl = getApiEndpoint();
+  console.log("AI question:", message);
+  console.log("AI API URL:", apiUrl);
+
   try {
     const languageCode = document.getElementById('chatLanguage')?.value || 'en';
     const language = LANGUAGE_LABELS[languageCode] || 'English';
 
+    const payload = {
+      message: message,
+      language: language,
+      history: chatHistory
+    };
+
     let data;
-    if (typeof API !== 'undefined' && API.post) {
-      data = await API.post('chat', {
-        message: message,
-        language: language,
-        history: chatHistory
-      });
-    } else {
-      const response = await fetch(getApiEndpoint(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: message,
-          language: language,
-          history: chatHistory
-        })
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      data = await response.json();
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    console.log("AI response status:", response.status);
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("AI HTTP Error:", response.status, errText);
+      throw new Error(`HTTP ${response.status}: ${errText}`);
     }
+
+    data = await response.json();
+    console.log("AI response:", data);
     
     // Remove typing indicator
     typingDiv.remove();
     
-    const reply = data.answer || data.reply || data.response || data.message || "Sorry, I couldn't process that request. Please try again.";
+    const reply = data.answer || data.reply || data.response || data.message || "• AI service is temporarily unavailable.\n• Please try again shortly.";
     addMessage(reply, 'bot');
 
     // Save turn to history
@@ -177,13 +186,20 @@ async function getAIResponse(message) {
     
   } catch (error) {
     typingDiv.remove();
-    addMessage("Sorry, I couldn't process that request. Please try again.", 'bot');
     console.error('AI chat error:', error);
+    addMessage("• AI service is temporarily unavailable.\n• Please try again shortly.", 'bot');
   } finally {
     isPageSending = false;
     if (sendBtn) sendBtn.disabled = false;
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) chatInput.focus();
   }
 }
+
+window.sendMessage = sendMessage;
+window.sendQuickPrompt = sendQuickPrompt;
+window.clearChat = clearChat;
+window.initChatbot = initChatbot;
 
 // Start voice input
 function startVoiceInput() {
