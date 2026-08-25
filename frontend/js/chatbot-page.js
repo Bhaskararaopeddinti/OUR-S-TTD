@@ -64,6 +64,28 @@ function sendQuickPrompt(prompt) {
   }
 }
 
+function formatChatText(text) {
+  if (!text) return '';
+  let safe = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  
+  safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  const lines = safe.split('\n');
+  const formattedLines = lines.map(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('* ') || trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
+      const itemContent = trimmed.substring(2);
+      return `<div class="chat-bullet-item" style="display:flex; align-items:flex-start; gap:0.45rem; margin:0.3rem 0;"><span style="color:var(--gold, #F59E0B); font-size:1.1rem; line-height:1.2;">•</span><span>${itemContent}</span></div>`;
+    }
+    return line ? `<p style="margin:0.25rem 0;">${line}</p>` : '<div style="height:0.35rem;"></div>';
+  });
+
+  return formattedLines.join('');
+}
+
 // Add message to chat
 function addMessage(content, type) {
   const chatMessages = document.getElementById('chatMessages');
@@ -73,11 +95,12 @@ function addMessage(content, type) {
   messageDiv.className = `message ${type}-message`;
   
   const avatar = type === 'user' ? '👤' : '🤖';
+  const bodyHtml = type === 'bot' ? formatChatText(content) : `<p>${content}</p>`;
   
   messageDiv.innerHTML = `
     <div class="message-avatar">${avatar}</div>
     <div class="message-content">
-      <p>${content}</p>
+      ${bodyHtml}
     </div>
   `;
   
@@ -143,7 +166,7 @@ async function getAIResponse(message) {
     // Remove typing indicator
     typingDiv.remove();
     
-    const reply = data.reply || data.response || data.message || 'I apologize, but I could not process your request.';
+    const reply = data.reply || data.response || data.message || "Sorry, I couldn't process that request. Please try again.";
     addMessage(reply, 'bot');
 
     // Save turn to history
@@ -152,7 +175,7 @@ async function getAIResponse(message) {
     
   } catch (error) {
     typingDiv.remove();
-    addMessage('The AI assistant is temporarily unavailable. Please try again in a moment.', 'bot');
+    addMessage("Sorry, I couldn't process that request. Please try again.", 'bot');
     console.error('AI chat error:', error);
   } finally {
     isPageSending = false;

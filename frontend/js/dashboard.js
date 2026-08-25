@@ -41,6 +41,8 @@ window.loadQueueStatus = loadQueueStatus;
 async function loadDashboardQueueIntelligence() {
     try {
         const data = await API.get('queue');
+        const aiPred = data.ai_prediction || {};
+        const adminData = aiPred.admin_crowd_data;
         
         // Update current queue status card
         const queueStatus = document.getElementById('intelQueueStatus');
@@ -52,24 +54,21 @@ async function loadDashboardQueueIntelligence() {
         const dataSource = document.getElementById('queueDataSource');
         
         if (queueStatus) {
-            const adminData = data.ai_prediction?.admin_crowd_data;
-            queueStatus.textContent = adminData?.queue_status || data.crowd_density || '—';
+            queueStatus.textContent = aiPred.queue_status_badge || (adminData?.queue_status ? `🔴 ${adminData.queue_status}` : '🟡 MODERATE');
         }
         
         if (crowd) {
-            const adminData = data.ai_prediction?.admin_crowd_data;
-            const count = adminData?.estimated_crowd || data.people_count || 0;
-            crowd.textContent = count.toLocaleString();
+            const count = aiPred.estimated_crowd ?? adminData?.estimated_crowd ?? data.people_count ?? 0;
+            crowd.textContent = Number(count).toLocaleString();
         }
         
         if (trend) {
-            const adminData = data.ai_prediction?.admin_crowd_data;
-            const net = adminData?.net_pilgrims || 0;
-            if (net > 100) {
-                trend.textContent = '↑ INCREASING';
+            const trendLabel = aiPred.crowd_trend || 'Stable';
+            if (trendLabel === 'Increasing') {
+                trend.textContent = '↗ INCREASING';
                 trend.style.color = '#EF4444';
-            } else if (net < -100) {
-                trend.textContent = '↓ DECREASING';
+            } else if (trendLabel === 'Decreasing') {
+                trend.textContent = '↘ DECREASING';
                 trend.style.color = '#10B981';
             } else {
                 trend.textContent = '→ STABLE';
@@ -78,68 +77,37 @@ async function loadDashboardQueueIntelligence() {
         }
         
         if (festival) {
-            const adminData = data.ai_prediction?.admin_crowd_data;
-            festival.textContent = adminData?.festival ? 'YES' : 'NO';
+            const isFest = Boolean(aiPred.festival_impact_summary?.is_active || adminData?.festival);
+            festival.textContent = isFest ? 'YES' : 'NO';
+            festival.style.color = isFest ? '#FBBF24' : '#94A3B8';
         }
         
         if (prediction) {
-            const adminData = data.ai_prediction?.admin_crowd_data;
-            const crowdLevel = adminData?.queue_status || data.ai_prediction?.current_crowd_level || 'Moderate';
-            prediction.textContent = `Current: ${crowdLevel}. Predicted wait: ${data.ai_prediction?.predicted_wait_minutes || 0} min.`;
+            const predObj = aiPred.ai_prediction_summary || {};
+            const expCrowd = predObj.expected_crowd || aiPred.current_crowd_level?.toUpperCase() || 'MODERATE';
+            const waitMin = aiPred.predicted_wait_minutes || 60;
+            const pts = predObj.points || [];
+            prediction.innerHTML = `<strong>Expected Crowd: ${expCrowd}</strong> (Wait: ~${waitMin} min)<br>${pts[0] || 'Queue wait times remain normal.'}`;
         }
         
         if (recommendation) {
-            const bestTimes = data.ai_prediction?.best_times_to_join || [];
-            if (bestTimes.length > 0) {
-                recommendation.textContent = `Best time: ${bestTimes[0].time} (${bestTimes[0].recommendation})`;
+            const bestTimeObj = aiPred.best_time_to_join;
+            if (bestTimeObj && bestTimeObj.has_data && bestTimeObj.time_window) {
+                recommendation.textContent = `⭐ Best Time to Join: ${bestTimeObj.time_window}`;
+                recommendation.style.color = '#34D399';
+            } else {
+                recommendation.textContent = '⭐ Best Time: Check Darshan Queue page for live guidance.';
             }
         }
         
         if (dataSource) {
-            const adminData = data.ai_prediction?.admin_crowd_data;
-            dataSource.textContent = adminData ? 'Live admin data' : 'AI Historical Prediction';
+            const isLive = Boolean(aiPred.admin_data_used);
+            dataSource.textContent = isLive ? '🟢 Live Admin Data' : '🤖 AI Calculated';
+            dataSource.style.color = isLive ? '#10B981' : 'var(--gold)';
         }
         
     } catch (error) {
         console.error('Failed to load dashboard queue intelligence:', error);
-    }
-}
-
-// Pilgrims receive only the public, backend-generated queue analysis.
-async function loadQueueIntelligence() {
-    try {
-        const data = await API.get('queue');
-        const setText = (id, value) => {
-            const element = document.getElementById(id);
-            if (element) element.textContent = value;
-        };
-        
-        const adminData = data.ai_prediction?.admin_crowd_data;
-        const dataSource = adminData ? 'Live admin data' : 'AI prediction';
-        
-        setText('queueDataSource', dataSource);
-        setText('intelQueueStatus', adminData?.queue_status || data.ai_prediction?.current_crowd_level || 'N/A');
-        setText('intelCrowd', Number(adminData?.estimated_crowd || data.people_count || 0).toLocaleString());
-        
-        // Calculate trend from admin data
-        const net = adminData?.net_pilgrims || 0;
-        let trend = 'STABLE';
-        if (net > 100) trend = 'INCREASING';
-        else if (net < -100) trend = 'DECREASING';
-        setText('intelTrend', trend);
-        
-        setText('intelFestival', adminData?.festival ? 'YES' : 'NO');
-        setText('intelPrediction', data.ai_prediction?.predicted_wait_minutes ? `${data.ai_prediction.predicted_wait_minutes} min wait` : 'Queue prediction unavailable.');
-        
-        // Get best time recommendation
-        const bestTimes = data.ai_prediction?.best_times_to_join || [];
-        const recommendation = bestTimes.length > 0 ? `${bestTimes[0].time} (${bestTimes[0].recommendation})` : 'Please follow TTD instructions.';
-        setText('intelRecommendation', recommendation);
-        
-    } catch (error) {
-        console.error('Failed to load queue intelligence:', error);
-        const prediction = document.getElementById('intelPrediction');
-        if (prediction) prediction.textContent = 'Queue intelligence is temporarily unavailable.';
     }
 }
 

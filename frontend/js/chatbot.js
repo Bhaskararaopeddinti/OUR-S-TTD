@@ -101,7 +101,7 @@ async function sendMessage() {
 
     thinking.remove();
     
-    const reply = data.reply || data.response || data.message || 'I could not generate a reply.';
+    const reply = data.reply || data.response || data.message || "Sorry, I couldn't process that request. Please try again.";
     appendMsg(reply, 'bot');
     speakReply(reply, lang);
 
@@ -111,14 +111,7 @@ async function sendMessage() {
   } catch (err) {
     thinking.remove();
     console.error('Chat error:', err);
-    
-    // Check if it's an API key configuration issue
-    const errorMsg = err?.message || err?.detail || '';
-    if (errorMsg.includes('API') || errorMsg.includes('key') || errorMsg.includes('configured')) {
-      appendMsg('The AI assistant requires API configuration. Using fallback responses for basic guidance.', 'bot');
-    } else {
-      appendMsg('The AI assistant is temporarily unavailable. Please try again in a moment.', 'bot');
-    }
+    appendMsg("Sorry, I couldn't process that request. Please try again.", 'bot');
   } finally {
     isSending = false;
     if (chatSend) chatSend.disabled = false;
@@ -129,10 +122,41 @@ async function sendMessage() {
 chatSend?.addEventListener('click', sendMessage);
 chatInput?.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(); });
 
+function formatChatText(text) {
+  if (!text) return '';
+  // Convert escaped tags to safe text first
+  let safe = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  
+  // Format bold **text**
+  safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Format list items starting with * or -
+  const lines = safe.split('\n');
+  const formattedLines = lines.map(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('* ') || trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
+      const itemContent = trimmed.substring(2);
+      return `<div class="chat-bullet-item" style="display:flex; align-items:flex-start; gap:0.4rem; margin:0.25rem 0;"><span style="color:var(--gold, #F59E0B); font-size:1.1rem; line-height:1.2;">•</span><span>${itemContent}</span></div>`;
+    }
+    return line ? `<p style="margin:0.2rem 0;">${line}</p>` : '<div style="height:0.3rem;"></div>';
+  });
+
+  return formattedLines.join('');
+}
+
 function appendMsg(text, className) {
   const div = document.createElement('div');
   div.className = `msg ${className}`;
-  div.textContent = text;
+  if (className.includes('thinking')) {
+    div.textContent = text;
+  } else if (className.includes('bot')) {
+    div.innerHTML = formatChatText(text);
+  } else {
+    div.textContent = text;
+  }
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
   return div;

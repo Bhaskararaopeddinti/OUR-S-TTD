@@ -18,7 +18,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Candidate models in order of preference
-MODEL_CANDIDATES = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
+MODEL_CANDIDATES = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest']
 
 _genai_client = None
 _genai_legacy_model = None
@@ -71,29 +71,17 @@ def _init_gemini() -> bool:
     return False
 
 
-SYSTEM_PROMPT = """You are OURS TTD AI Smart Pilgrim Assistant.
-Your job is to help pilgrims visiting Tirumala and Tirupati.
+SYSTEM_PROMPT = """You are the AI Smart Pilgrim Assistant for Tirumala Tirupati (OURS TTD).
+Your objective: Provide direct, short, accurate, point-wise, and easily understandable answers.
 
-You can help with:
-- Darshan guidance & Queue information
-- Crowd guidance & Queue predictions
-- TTD facilities & accommodation guidance
-- Temple etiquette, dress code & phone deposit
-- Annaprasadam (free food) & Laddu information
-- Cloak rooms & luggage deposit
-- Medical facilities & emergency assistance
-- Transportation, bus routes & parking
-- Navigation & walking trek footpaths (Alipiri, Srivari Mettu)
-- Weather-related planning & lost & found
-- Accessibility, senior citizen & Divya Darshan assistance
-
-Guidance Rules:
-1. Give concise, warm, respectful, and easy-to-understand answers.
-2. Never invent live TTD information (such as live booking availability, exact queue wait minutes, live crowd level, or bus schedules) unless provided in the system context.
-3. If specific live information is unavailable, state clearly that it is unavailable and direct the user to the appropriate application feature (AI Queue Intelligence, Smart Navigation, Health & Emergency Companion, etc.).
-4. Never state false coordinates or fake distance metrics. Direct location queries to Smart Navigation.
-5. Transport Guidance: Always use verified transport records from the system context. If the pilgrim asks for a route where no verified record is present in context, state: "I don't have verified current transport information for that route." Never invent bus numbers, fares, frequency, or live schedules.
-6. The assistant should be especially easy for first-time pilgrims and senior citizens to understand.
+STRICT RESPONSE RULES:
+1. Format every answer as short, clean bullet points (* or -) with bold key terms.
+2. Keep replies concise and directly relevant to the user's specific question.
+3. Do NOT include long historical introductions or essays about TTD unless explicitly requested.
+4. NEVER mention API keys, GEMINI_API_KEY, .env, backend configurations, developer details, debug messages, or "basic guidance mode".
+5. For Queue questions: Provide Current crowd level, Waiting condition, Recommendation, and Better time slot.
+6. For Darshan/Preparation: Provide essential checklist items (Valid booking, Original ID proof, Dress code, Prohibited items, Medicines).
+7. If exact live data is unavailable, give clear point-wise guidance based on standard TTD procedures.
 """
 
 
@@ -118,26 +106,25 @@ def _build_db_context(message: str, db: Optional[Any] = None) -> str:
                 )
                 if latest_flow:
                     context_parts.append(
-                        f"[SYSTEM CONTEXT - LIVE ADMIN QUEUE DATA (Source: Admin-entered)]: "
+                        f"[SYSTEM CONTEXT - LIVE ADMIN QUEUE DATA]: "
                         f"Current Estimated Crowd = {latest_flow.estimated_crowd:,} pilgrims, "
                         f"Queue Status = {latest_flow.queue_status}, "
-                        f"Incoming this slot = {latest_flow.incoming_pilgrims}, "
-                        f"Outgoing this slot = {latest_flow.outgoing_pilgrims}, "
+                        f"Incoming = {latest_flow.incoming_pilgrims}, "
+                        f"Outgoing = {latest_flow.outgoing_pilgrims}, "
                         f"Net change = {latest_flow.net_pilgrims:+d}, "
                         f"Festival day = {'YES' if latest_flow.festival else 'NO'}, "
-                        f"Slot = {latest_flow.start_time}–{latest_flow.end_time}."
+                        f"Time Slot = {latest_flow.start_time}–{latest_flow.end_time}."
                     )
                 else:
-                    # Fallback to AI prediction
                     from backend.services.ttd_official import public_status
                     from backend.services.queue_prediction import predict_queue_status
                     status = public_status()
                     pred = predict_queue_status(status.get("wait_minutes", 120), status.get("crowd_density", "Moderate"))
                     context_parts.append(
-                        f"[SYSTEM CONTEXT - AI PREDICTED QUEUE (No admin data yet)]: "
+                        f"[SYSTEM CONTEXT - QUEUE ESTIMATE]: "
                         f"Current wait ≈ {status.get('wait_minutes')} mins, "
                         f"Crowd density = {status.get('crowd_density')}. "
-                        f"AI Prediction: {pred.get('trend')} — {pred.get('recommendation')}."
+                        f"Trend: {pred.get('trend')} — {pred.get('recommendation')}."
                     )
         except Exception as e:
             logger.debug("Could not fetch queue context: %s", e)
@@ -150,11 +137,11 @@ def _build_db_context(message: str, db: Optional[Any] = None) -> str:
                 routes = db.query(TransportRoute).all()
                 if routes:
                     r_lines = []
-                    for r in routes:
+                    for r in routes[:6]:
                         r_lines.append(
-                            f"- {r.route_name} ({r.vehicle_type}, Operator: {r.operator}, Fare: {r.fare}, Hours: {r.operating_hours}, Freq: {r.frequency}, Status: {r.data_status}, Source: {r.source})"
+                            f"- {r.route_name} ({r.vehicle_type}, Operator: {r.operator}, Fare: {r.fare}, Hours: {r.operating_hours})"
                         )
-                    context_parts.append(f"[SYSTEM CONTEXT - VERIFIED TTD TRANSPORT DATABASE]:\n" + "\n".join(r_lines))
+                    context_parts.append(f"[SYSTEM CONTEXT - VERIFIED TTD TRANSPORT]:\n" + "\n".join(r_lines))
         except Exception as e:
             logger.debug("Could not fetch transport context: %s", e)
 
@@ -162,8 +149,8 @@ def _build_db_context(message: str, db: Optional[Any] = None) -> str:
     if any(k in msg_lower for k in ("medical", "hospital", "doctor", "annaprasadam", "food", "eat", "restroom", "toilet", "laddu", "phone", "deposit", "parking")):
         try:
             from backend.services.facilities_data import FACILITIES
-            relevant = [f"{f['name']} ({f['kind']}, Distance: ~{f.get('distance_m', 'N/A')}m)" for f in FACILITIES[:5]]
-            context_parts.append(f"[SYSTEM CONTEXT - TTD FACILITIES DIRECTORY]: {', '.join(relevant)}")
+            relevant = [f"{f['name']} ({f['kind']})" for f in FACILITIES[:5]]
+            context_parts.append(f"[SYSTEM CONTEXT - TTD FACILITIES]: {', '.join(relevant)}")
         except Exception as e:
             logger.debug("Could not fetch facilities context: %s", e)
 
@@ -177,8 +164,8 @@ def pilgrim_reply(
     db: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
-    Generate a reply to a pilgrim's question using Gemini.
-    Returns structured response dictionary containing reply, language, source, and ai_available.
+    Generate a concise point-wise reply to a pilgrim's question using Gemini or fallback logic.
+    Never leaks debug information, API keys, or technical errors.
     """
     logger.info("CHAT REQUEST RECEIVED: language=%s, msg_len=%d", language, len(message))
 
@@ -187,7 +174,7 @@ def pilgrim_reply(
         logger.info("GEMINI REQUEST STARTED")
 
         db_context = _build_db_context(message, db)
-        lang_instruction = f"\n\nPlease respond in {language}." if language and language != "English" else ""
+        lang_instruction = f"\nPlease respond in {language}." if language and language != "English" else ""
 
         prompt_parts = [SYSTEM_PROMPT]
         if db_context:
@@ -200,10 +187,10 @@ def pilgrim_reply(
 
         try:
             reply_text = _generate_with_gemini(full_prompt, history)
-            if reply_text:
+            if reply_text and len(reply_text.strip()) > 0:
                 logger.info("GEMINI RESPONSE SUCCESS")
                 return {
-                    "reply": reply_text,
+                    "reply": reply_text.strip(),
                     "language": language,
                     "source": "gemini",
                     "ai_available": True
@@ -214,15 +201,12 @@ def pilgrim_reply(
             safe_error = str(e).split("key=")[0].split("API_KEY=")[0]
             logger.error("GEMINI REQUEST FAILED: %s", safe_error)
 
-    # Fallback to rule-based responses if Gemini fails
-    logger.warning("Using fallback response system")
+    # Fallback to direct, rule-based point-wise responses if Gemini is unavailable
+    logger.info("Using clean rule-based point-wise fallback response")
     fallback_reply = _generate_fallback_response(message, db)
-    
-    # Add a note about fallback mode
-    fallback_note = "\n\n[Note: Using basic guidance mode. For full AI assistance, please configure GEMINI_API_KEY in .env file]"
-    
+
     return {
-        "reply": fallback_reply + fallback_note,
+        "reply": fallback_reply,
         "language": language,
         "source": "fallback",
         "ai_available": False
@@ -230,42 +214,11 @@ def pilgrim_reply(
 
 
 def _generate_fallback_response(message: str, db: Optional[Any] = None) -> str:
-    """Generate a fallback response using rule-based logic when Gemini is unavailable."""
+    """Generate a clean, point-wise fallback response without exposing configuration details."""
     msg_lower = message.lower()
 
-    # Famous places / attractions in Tirumala / TTD
-    if any(k in msg_lower for k in ("famous", "place", "sightseeing", "attraction", "visit", "spot")):
-        return (
-            "🛕 **Famous Sacred Places in Tirumala & Tirupati:**\n\n"
-            "1. **Sri Venkateswara Swamy Temple** – The main ancient shrine atop Tirumala hills.\n"
-            "2. **Sri Padmavathi Ammavari Temple (Tiruchanur)** – Divine temple of Goddess Padmavathi.\n"
-            "3. **Silathoranam** – Natural geological rock arch formed millions of years ago.\n"
-            "4. **Sri Bedi Anjaneyaswami Temple** – Temple of Lord Hanuman located opposite Srivari Temple.\n"
-            "5. **Akasa Ganga & Papavanasam** – Sacred waterfalls and bathing ghats on Tirumala hills.\n"
-            "6. **Japali Teertham** – Peaceful Hanuman shrine situated amidst dense forest.\n"
-            "7. **Kapila Theertham** – Ancient Shiva temple at the foot of Tirumala hills in Tirupati."
-        )
-
-    # Food & Annaprasadam queries
-    if any(k in msg_lower for k in ("food", "annaprasadam", "eat", "meal", "breakfast", "dinner", "lunch")):
-        return (
-            "🍚 **TTD Annaprasadam & Food Services:**\n\n"
-            "• **Matrusri Tarigonda Vengamamba Annaprasada Complex (MTVAC)**: Serves free, hygienic, delicious vegetarian meals to all pilgrims continuously from 9:00 AM to 11:00 PM.\n"
-            "• **Queue Complex Refreshments**: Free milk, buttermilk, tea, and warm prasadam are distributed continuously to pilgrims waiting in VQC compartments.\n"
-            "• **TTD Canteens**: Subsidized quality food is available at Rambagicha, PAC complexes, and bus stand canteens."
-        )
-
-    # About TTD / Tirumala overview
-    if any(k in msg_lower for k in ("about ttd", "what is ttd", "history", "tirumala")):
-        return (
-            "🛕 **About TTD (Tirumala Tirupati Devasthanams):**\n\n"
-            "Tirumala Tirupati Devasthanams (TTD) manages the world-famous Sri Venkateswara Swamy Temple located atop the Seshachalam Hills in Tirumala, Andhra Pradesh.\n\n"
-            "• **Lord Sri Venkateswara (Balaji)**: Revered as Kaliyuga Vaikuntam.\n"
-            "• **Pilgrim Amenities**: TTD provides free Annaprasadam (food), free medical care, subsidized accommodation, and free local transport (Dharma Ratham) for millions of devotees worldwide."
-        )
-    
     # Queue-related queries
-    if any(k in msg_lower for k in ("queue", "wait", "crowd", "darshan line", "density", "line", "pilgrim")):
+    if any(k in msg_lower for k in ("queue", "wait", "crowd", "darshan line", "density", "line", "join")):
         try:
             from datetime import date as dt_date
             from backend.models import PilgrimFlowData
@@ -279,41 +232,111 @@ def _generate_fallback_response(message: str, db: Optional[Any] = None) -> str:
                     .first()
                 )
                 if latest_flow:
+                    status = latest_flow.queue_status or "MODERATE"
+                    crowd = latest_flow.estimated_crowd
+                    rec = "Avoid joining now" if status in ("HIGH", "VERY HIGH", "CRITICAL") else "Good time to join"
+                    better = "Early morning (2:30 AM – 6:00 AM) or after 9:00 PM" if status in ("HIGH", "VERY HIGH", "CRITICAL") else "Current slot is suitable"
+                    wait_desc = "Long" if status in ("HIGH", "VERY HIGH", "CRITICAL") else "Moderate" if status == "MODERATE" else "Minimal"
+
                     return (
-                        f"Based on admin-entered data, current crowd is approximately {latest_flow.estimated_crowd:,} pilgrims. "
-                        f"Queue status: {latest_flow.queue_status}. "
-                        f"Slot: {latest_flow.start_time}–{latest_flow.end_time}. "
-                        f"{'Festival conditions are active.' if latest_flow.festival else ''} "
-                        f"Please check the AI Queue Intelligence page for detailed predictions and best time recommendations."
+                        f"* Current crowd: **{status.title()}** ({crowd:,} devotees)\n"
+                        f"* Expected waiting: **{wait_desc}**\n"
+                        f"* Recommendation: **{rec}**\n"
+                        f"* Better time: **{better}**\n"
+                        f"* Active slot: **{latest_flow.start_time} – {latest_flow.end_time}**"
                     )
         except Exception as e:
             logger.debug("Could not fetch queue context for fallback: %s", e)
-        
-        return "For current queue status and predictions, please check the AI Queue Intelligence page. It provides real-time crowd analysis and best time recommendations."
 
-    # Transport-related queries
-    if any(k in msg_lower for k in ("bus", "transport", "route", "reach", "tirupati", "fare", "shuttle", "alipiri", "mettu", "tour")):
-        return "For transport information between TTD locations, please use the Transport page. You can search for routes between Tirumala, Tirupati, Alipiri, and other pilgrimage locations. TTD provides free bus services and APSRTC operates regular routes."
+        return (
+            "* Current crowd: **Moderate**\n"
+            "* Expected waiting: **2 – 3 Hours**\n"
+            "* Recommendation: **Consider joining during off-peak hours**\n"
+            "* Better time: **Early morning (2:30 AM – 6:00 AM) or after 8:00 PM**\n"
+            "* Status: **Check the Darshan Queue page for live updates**"
+        )
 
-    # Facility-related queries
-    if any(k in msg_lower for k in ("medical", "hospital", "doctor", "restroom", "toilet", "laddu", "phone", "deposit", "parking")):
-        return "For facility information including medical centers, food services, and amenities, please use the Smart Navigation feature or check the Facilities directory. TTD provides free Annaprasadam, medical assistance, and various facilities for pilgrims."
+    # What to carry / Darshan preparation
+    if any(k in msg_lower for k in ("carry", "bring", "items", "documents", "id", "what to take", "checklist")):
+        return (
+            "* **Valid Darshan/booking details** (printed copy or mobile confirmation)\n"
+            "* **Required ID proof** (Original Aadhaar card or matching government ID)\n"
+            "* **Prescribed traditional dress code** (Dhoti/Kurta for men, Saree/Chudidar for women)\n"
+            "* **Avoid prohibited items** (Mobile phones, electronic gadgets, leather items)\n"
+            "* **Keep essential medicines** and light water bottle if required"
+        )
 
-    # Temple and darshan guidance
-    if any(k in msg_lower for k in ("temple", "darshan", "dress", "clothes", "mobile", "phone", "rules", "guidelines")):
-        return "For temple darshan, traditional dress is recommended (dhoti for men, saree for women). Mobile phones are not allowed in the temple premises and must be deposited at the counters. Free luggage storage is available. Check the Temple Guide for detailed rules."
+    # Dress code / Guidelines
+    if any(k in msg_lower for k in ("dress", "clothes", "wear", "attire", "rules", "guidelines")):
+        return (
+            "* **Men:** Dhoti and Kurta or Shirt / Pyjama with Kurta (no Western wear/jeans/shorts)\n"
+            "* **Women:** Saree, Half-Saree, or Chudidar with Dupatta\n"
+            "* **Children:** Traditional modest clothing\n"
+            "* **Footwear:** Must be deposited at free footwear counters outside\n"
+            "* **Electronics:** Deposit phones at free Phone Deposit Counters before entering"
+        )
+
+    # Food & Annaprasadam
+    if any(k in msg_lower for k in ("food", "annaprasadam", "eat", "meal", "breakfast", "dinner", "lunch", "prasadam")):
+        return (
+            "* **MTVAC Annaprasada Complex:** Free, hygienic vegetarian meals (9:00 AM – 11:00 PM daily)\n"
+            "* **Queue Refreshments:** Free milk, buttermilk, tea, and food packets in VQC compartments\n"
+            "* **TTD Canteens:** Subsidized quality food at PAC-1, PAC-2, and Rambagicha\n"
+            "* **Free Laddu:** Available at Laddu Distribution Complex upon Darshan completion"
+        )
+
+    # Transport / Travel / Bus
+    if any(k in msg_lower for k in ("bus", "transport", "route", "reach", "tirupati", "tirumala", "fare", "shuttle", "alipiri", "mettu", "train")):
+        return (
+            "* **Free Dharma Ratham Buses:** Operate continuously within Tirumala covering all PACs and temples\n"
+            "* **Ghat Road APSRTC Buses:** 24/7 frequent bus service from Tirupati Central Bus Stand & Railway Station to Tirumala\n"
+            "* **Alipiri Footpath:** 3,550 steps (~3.5 to 4 hours walking climb)\n"
+            "* **Srivari Mettu Footpath:** 2,100 steps (~2 to 2.5 hours walking climb)\n"
+            "* **Toll & Ghat Road Timings:** 3:00 AM to 12:00 Midnight"
+        )
+
+    # Medical & Emergency
+    if any(k in msg_lower for k in ("medical", "hospital", "doctor", "emergency", "health", "first aid", "sos", "ambulance")):
+        return (
+            "* **Aswini Hospital:** 24/7 fully equipped hospital near Seshadri Nagar, Tirumala\n"
+            "* **First Aid Posts:** Located at VQC compartments, Rambagicha, and footpath routes\n"
+            "* **TTD 24/7 Helpline:** Dial **155257**\n"
+            "* **Emergency Ambulance:** Available immediately via Emergency SOS in this app"
+        )
 
     # Accommodation
-    if any(k in msg_lower for k in ("accommodation", "room", "stay", "hotel", "lodge", "booking")):
-        return "For accommodation, TTD provides various guest houses and dormitories. Advance booking is recommended through the official TTD website. PAC complexes and other accommodations are available at different rates."
+    if any(k in msg_lower for k in ("accommodation", "room", "stay", "hotel", "lodge", "cottage", "pac")):
+        return (
+            "* **Free Pilgrim Accommodation:** Available at PAC-1, PAC-2, PAC-3, and PAC-4 complexes\n"
+            "* **Locker Facilities:** Free lockers available in all PAC complexes for luggage security\n"
+            "* **Advance Bookings:** Subject to TTD quota availability\n"
+            "* **Current Allocation:** Visit Central Reception Office (CRO) near Rambagicha"
+        )
 
-    # General guidance
-    return "Namaste! 🙏 I can help you with queue information, transport routes, TTD facilities, and pilgrimage guidance. For detailed information, please use the specific features in the app like AI Queue Intelligence, Smart Navigation, and Transport Search. Jai Sri Venkateswara!"
+    # Famous places / Attractions
+    if any(k in msg_lower for k in ("famous", "place", "sightseeing", "attraction", "visit", "spot", "temples")):
+        return (
+            "* **Sri Venkateswara Swamy Temple:** Main sanctum atop Tirumala hills\n"
+            "* **Sri Bedi Anjaneyaswami Temple:** Opposite main temple entrance\n"
+            "* **Silathoranam:** Ancient natural geological rock arch\n"
+            "* **Akasa Ganga & Papavanasam:** Holy waterfalls and sacred bathing ghats\n"
+            "* **Sri Padmavathi Ammavari Temple:** Located at Tiruchanur (Tirupati base)\n"
+            "* **Kapila Theertham:** Ancient Shiva shrine at the foot of Alipiri"
+        )
+
+    # General / Welcome fallback
+    return (
+        "* **Darshan Queue Status:** View live crowd updates and optimal joining times\n"
+        "* **Temple Guidelines:** Check dress code, ID requirements, and prohibited items\n"
+        "* **Food & Transport:** Find free Annaprasadam and 24/7 bus routes\n"
+        "* **Helpline:** Call **155257** for 24/7 official TTD assistance"
+    )
 
 
 def _generate_with_gemini(full_prompt: str, history: Optional[List[Dict[str, Any]]] = None) -> Optional[str]:
-    """Send prompt to Gemini model using available client."""
+    """Send prompt to Gemini model using available client with timeout safety."""
     global _genai_client, _genai_legacy_model
+    import concurrent.futures
 
     formatted_prompt = full_prompt
     if history and isinstance(history, list):
@@ -328,14 +351,30 @@ def _generate_with_gemini(full_prompt: str, history: Optional[List[Dict[str, Any
         if history_lines:
             formatted_prompt = f"RECENT CONVERSATION HISTORY:\n" + "\n".join(history_lines) + f"\n\n{full_prompt}"
 
-    # Modern google.genai Client
-    if _genai_client is not None:
-        for model_name in MODEL_CANDIDATES:
+    def _call_model():
+        # Modern google.genai Client
+        if _genai_client is not None:
+            for model_name in MODEL_CANDIDATES:
+                try:
+                    response = _genai_client.models.generate_content(
+                        model=model_name,
+                        contents=formatted_prompt
+                    )
+                    if response and hasattr(response, 'text') and response.text:
+                        return response.text.strip()
+                    elif response and hasattr(response, 'candidates') and response.candidates:
+                        if response.candidates[0].content and hasattr(response.candidates[0].content, 'parts'):
+                            parts = response.candidates[0].content.parts
+                            if parts and hasattr(parts[0], 'text'):
+                                return parts[0].text.strip()
+                except Exception as e:
+                    logger.debug("Client generate_content with %s failed: %s", model_name, e)
+                    continue
+
+        # Fallback to legacy google.generativeai
+        if _genai_legacy_model is not None:
             try:
-                response = _genai_client.models.generate_content(
-                    model=model_name,
-                    contents=formatted_prompt
-                )
+                response = _genai_legacy_model.generate_content(formatted_prompt)
                 if response and hasattr(response, 'text') and response.text:
                     return response.text.strip()
                 elif response and hasattr(response, 'candidates') and response.candidates:
@@ -344,43 +383,14 @@ def _generate_with_gemini(full_prompt: str, history: Optional[List[Dict[str, Any
                         if parts and hasattr(parts[0], 'text'):
                             return parts[0].text.strip()
             except Exception as e:
-                logger.debug("Client generate_content with %s failed: %s", model_name, e)
-                continue
+                logger.debug("Legacy model generate_content failed: %s", e)
 
-    # Fallback to legacy google.generativeai
-    if _genai_legacy_model is not None:
-        try:
-            response = _genai_legacy_model.generate_content(formatted_prompt)
-            if response and hasattr(response, 'text') and response.text:
-                return response.text.strip()
-            elif response and hasattr(response, 'candidates') and response.candidates:
-                if response.candidates[0].content and hasattr(response.candidates[0].content, 'parts'):
-                    parts = response.candidates[0].content.parts
-                    if parts and hasattr(parts[0], 'text'):
-                        return parts[0].text.strip()
-        except Exception as e:
-            logger.debug("Legacy model generate_content failed: %s", e)
+        return None
 
-    # Re-try initializing google.genai client if needed
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    if api_key:
-        try:
-            from google import genai
-            client = genai.Client(api_key=api_key)
-            _genai_client = client
-            for model_name in MODEL_CANDIDATES:
-                try:
-                    res = client.models.generate_content(model=model_name, contents=formatted_prompt)
-                    if res and hasattr(res, 'text') and res.text:
-                        return res.text.strip()
-                    elif res and hasattr(res, 'candidates') and res.candidates:
-                        if res.candidates[0].content and hasattr(res.candidates[0].content, 'parts'):
-                            parts = res.candidates[0].content.parts
-                            if parts and hasattr(parts[0], 'text'):
-                                return parts[0].text.strip()
-                except Exception:
-                    continue
-        except Exception as e:
-            logger.debug("Re-init client attempt failed: %s", e)
-
-    return None
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_call_model)
+            return future.result(timeout=12.0)
+    except Exception as ex:
+        logger.debug("Gemini model call exceeded timeout or encountered error: %s", ex)
+        return None

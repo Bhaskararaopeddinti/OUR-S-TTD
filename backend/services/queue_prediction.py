@@ -93,282 +93,302 @@ def check_festival_impact(time_info: Dict) -> List[Dict]:
     return impacts
 
 
+def _format_slot_time(start_str: str, end_str: str) -> str:
+    """Format '18:00' and '20:00' into '6:00 PM – 8:00 PM'."""
+    def _to_12h(t_str: str) -> str:
+        try:
+            parts = t_str.strip().split(":")
+            h = int(parts[0]) % 24
+            m = int(parts[1]) if len(parts) > 1 else 0
+            suffix = "AM" if h < 12 else "PM"
+            h_12 = h % 12
+            if h_12 == 0:
+                h_12 = 12
+            return f"{h_12}:{m:02d} {suffix}" if m != 0 else f"{h_12}:00 {suffix}"
+        except Exception:
+            return t_str
+
+    return f"{_to_12h(start_str)} – {_to_12h(end_str)}"
+
+
+def _get_status_level_and_emoji(crowd: int, festival: bool = False) -> tuple[str, str, str]:
+    """Return (status_level, status_with_emoji, badge_class)."""
+    adjusted = crowd * (1.2 if festival else 1.0)
+    if adjusted < 2000:
+        return "Low", "🟢 LOW", "low"
+    elif adjusted < 5000:
+        return "Moderate", "🟡 MODERATE", "moderate"
+    elif adjusted < 9000:
+        return "High", "🔴 HIGH", "high"
+    else:
+        return "Very High", "🟣 VERY HIGH", "very-high"
+
+
 def predict_queue_status(current_wait_minutes: int = None, current_density: str = "Moderate", db=None) -> dict:
     """
-    Enhanced AI-powered queue prediction with time, day, and festival awareness.
-    Returns comprehensive predictive intelligence.
-    Now includes admin-entered pilgrim flow data for better accuracy.
+    Enhanced AI-powered queue prediction with time, day, and admin pilgrim flow data.
+    Returns comprehensive predictive intelligence matching exact OURS TTD specifications.
     """
     now = datetime.now()
     hour = now.hour
     day_of_week = now.weekday()
     is_weekend = day_of_week >= 5
     month = now.month
-    
-    # Try to get admin-entered pilgrim flow data first
+
     admin_crowd_data = None
+    all_today_slots = []
+    has_reliable_data = False
+
     if db:
         try:
             from datetime import date as dt_date
             from backend.models import PilgrimFlowData
             from sqlalchemy import desc
-            
-            today = dt_date.today().strftime("%Y-%m-%d")
-            latest_flow = (
+
+            today_str = dt_date.today().strftime("%Y-%m-%d")
+            # Query all slots for today (or fallback to latest recorded date)
+            all_today_slots = (
                 db.query(PilgrimFlowData)
-                .filter(PilgrimFlowData.date == today)
-                .order_by(desc(PilgrimFlowData.created_at))
-                .first()
+                .filter(PilgrimFlowData.date == today_str)
+                .order_by(PilgrimFlowData.start_time)
+                .all()
             )
-            if latest_flow:
+
+            # If no data for today, look for most recent date with entries
+            if not all_today_slots:
+                latest_entry = db.query(PilgrimFlowData).order_by(desc(PilgrimFlowData.date), desc(PilgrimFlowData.start_time)).first()
+                if latest_entry:
+                    all_today_slots = (
+                        db.query(PilgrimFlowData)
+                        .filter(PilgrimFlowData.date == latest_entry.date)
+                        .order_by(PilgrimFlowData.start_time)
+                        .all()
+                    )
+
+            if all_today_slots:
+                has_reliable_data = True
+                latest_flow = all_today_slots[-1]
                 admin_crowd_data = {
                     "estimated_crowd": latest_flow.estimated_crowd,
                     "queue_status": latest_flow.queue_status,
                     "incoming_pilgrims": latest_flow.incoming_pilgrims,
                     "outgoing_pilgrims": latest_flow.outgoing_pilgrims,
                     "net_pilgrims": latest_flow.net_pilgrims,
-                    "festival": latest_flow.festival,
-                    "slot": f"{latest_flow.start_time}–{latest_flow.end_time}"
+                    "festival": bool(latest_flow.festival),
+                    "slot": _format_slot_time(latest_flow.start_time, latest_flow.end_time),
+                    "raw_start": latest_flow.start_time,
+                    "raw_end": latest_flow.end_time,
+                    "date": latest_flow.date,
+                    "total_slots_recorded": len(all_today_slots)
                 }
-                # Override with admin data if available
-                current_density = latest_flow.queue_status
-                if latest_flow.estimated_crowd > 0:
-                    # Estimate wait time based on crowd size (rough approximation: 1000 people ≈ 15 mins)
-                    current_wait_minutes = max(15, int(latest_flow.estimated_crowd / 1000 * 15))
-                
-                # If admin reports festival, increase festival multiplier
-                if latest_flow.festival:
-                    festival_multiplier = max(festival_multiplier, 1.5)
         except Exception as e:
             import logging
             logging.getLogger(__name__).debug("Could not fetch admin queue data: %s", e)
-    
-    # Handle None values for wait time
-    if current_wait_minutes is None:
-        current_wait_minutes = 120  # Default to 2 hours if not available
-    
-    # Base crowd multiplier based on time of day
-    time_multipliers = {
-        0: 0.4,   # 12 AM - 1 AM (very low)
-        1: 0.3,   # 1 AM - 2 AM (very low)
-        2: 0.5,   # 2 AM - 3 AM (low - temple opening time)
-        3: 0.6,   # 3 AM - 4 AM (low)
-        4: 0.7,   # 4 AM - 5 AM (moderate)
-        5: 0.9,   # 5 AM - 6 AM (moderate)
-        6: 1.2,   # 6 AM - 7 AM (high)
-        7: 1.4,   # 7 AM - 8 AM (high)
-        8: 1.6,   # 8 AM - 9 AM (very high)
-        9: 1.5,   # 9 AM - 10 AM (high)
-        10: 1.4,  # 10 AM - 11 AM (high)
-        11: 1.3,  # 11 AM - 12 PM (moderate-high)
-        12: 1.2,  # 12 PM - 1 PM (moderate)
-        13: 1.1,  # 1 PM - 2 PM (moderate)
-        14: 1.0,  # 2 PM - 3 PM (moderate)
-        15: 1.1,  # 3 PM - 4 PM (moderate)
-        16: 1.3,  # 4 PM - 5 PM (high)
-        17: 1.5,  # 5 PM - 6 PM (very high)
-        18: 1.6,  # 6 PM - 7 PM (very high)
-        19: 1.4,  # 7 PM - 8 PM (high)
-        20: 1.2,  # 8 PM - 9 PM (moderate)
-        21: 1.0,  # 9 PM - 10 PM (moderate)
-        22: 0.8,  # 10 PM - 11 PM (low-moderate)
-        23: 0.6,  # 11 PM - 12 AM (low)
-    }
-    
-    time_multiplier = time_multipliers.get(hour, 1.0)
-    
-    # Day of week multiplier
-    day_multiplier = 1.3 if is_weekend else 1.0
-    
-    # Festival multiplier based on month
-    festival_multipliers = {
-        1: 1.5,   # January - Vaikunta Ekadasi, New Year
-        2: 1.3,   # February - Rathasapthami
-        9: 1.8,   # September - Brahmotsavam
-        10: 1.8,  # October - Brahmotsavam
-    }
-    festival_multiplier = festival_multipliers.get(month, 1.0)
-    
-    # Overall crowd multiplier
-    crowd_multiplier = time_multiplier * day_multiplier * festival_multiplier
-    
-    # Density-based adjustment - use admin queue status if available
-    density_multipliers = {
-        "LOW": 0.7,
-        "MODERATE": 1.0,
-        "HIGH": 1.5,
-        "VERY HIGH": 2.0,
-        "CRITICAL": 2.5
-    }
-    density_multiplier = density_multipliers.get(current_density.upper() if current_density else "MODERATE", 1.0)
-    
-    # Predicted wait time
-    predicted_wait = max(15, int(current_wait_minutes * crowd_multiplier * density_multiplier))
-    
-    # Determine crowd level - prioritize admin data if available
-    if admin_crowd_data and admin_crowd_data.get('queue_status'):
-        # Use admin's queue status
-        admin_status = admin_crowd_data['queue_status'].upper()
-        status_mapping = {
-            "LOW": "Low",
-            "MODERATE": "Moderate", 
-            "HIGH": "High",
-            "VERY HIGH": "Very High",
-            "CRITICAL": "Very High"
-        }
-        current_crowd_level = status_mapping.get(admin_status, "Moderate")
-    else:
-        # Fall back to calculated crowd level
-        if crowd_multiplier < 0.8:
-            current_crowd_level = "Low"
-        elif crowd_multiplier < 1.2:
-            current_crowd_level = "Moderate"
-        elif crowd_multiplier < 1.6:
-            current_crowd_level = "High"
-        else:
-            current_crowd_level = "Very High"
-    
-    # Generate crowd trend for next 6 hours
-    crowd_trend = []
-    for i in range(1, 7):
-        future_hour = (hour + i) % 24
-        future_multiplier = time_multipliers.get(future_hour, 1.0) * day_multiplier * festival_multiplier
-        future_density = density_multipliers.get(current_density, 1.0)
-        future_wait = max(15, int(current_wait_minutes * future_multiplier * future_density))
-        
-        if future_multiplier < 0.8:
-            future_crowd = "Low"
-        elif future_multiplier < 1.2:
-            future_crowd = "Moderate"
-        elif future_multiplier < 1.6:
-            future_crowd = "High"
-        else:
-            future_crowd = "Very High"
-        
-        crowd_trend.append({
-            "time": f"{future_hour}:00",
-            "crowd_level": future_crowd,
-            "wait_factor": round(future_multiplier, 2),
-            "predicted_wait_minutes": future_wait
-        })
-    
-    # Find best times to join queue in next 24 hours
-    best_times = []
-    for h in range(24):
-        future_hour = (hour + h) % 24
-        future_multiplier = time_multipliers.get(future_hour, 1.0) * day_multiplier * festival_multiplier
-        
-        if future_multiplier < 0.9:  # Low crowd threshold
-            recommendation = "Excellent time to join"
-        elif future_multiplier < 1.1:
-            recommendation = "Good time to join"
-        else:
-            continue  # Skip high crowd times
-        
-        best_times.append({
-            "time": f"{future_hour}:00",
-            "recommendation": recommendation,
-            "wait_factor": round(future_multiplier, 2)
-        })
-    
-    # Sort by wait factor and take top 5
-    best_times.sort(key=lambda x: x["wait_factor"])
-    best_times = best_times[:5]
-    
-    # Generate AI advice based on current conditions
-    ai_advice = []
-    
-    # Prioritize admin data for advice
+
+    # 1. CURRENT QUEUE STATUS CALCULATION
+    current_crowd = 0
+    incoming_count = 0
+    outgoing_count = 0
+    raw_status = "MODERATE"
+    is_festival = False
+    current_time_period = _format_slot_time(f"{(hour//2)*2:02d}:00", f"{(hour//2)*2+2:02d}:00")
+
     if admin_crowd_data:
-        admin_status = admin_crowd_data.get('queue_status', '').upper()
-        admin_crowd = admin_crowd_data.get('estimated_crowd', 0)
-        
-        if admin_status == 'LOW':
-            ai_advice.append("Excellent time to join the queue! Wait times are minimal.")
-        elif admin_status == 'MODERATE':
-            ai_advice.append("Good time to join. Expect reasonable wait times.")
-        elif admin_status == 'HIGH':
-            ai_advice.append("Crowd is high. Consider joining in 2-3 hours or early morning.")
-        elif admin_status in ['VERY HIGH', 'CRITICAL']:
-            ai_advice.append("Crowd is very high. Best to join after 10 PM or before 5 AM.")
-        
-        if admin_crowd > 0:
-            ai_advice.append(f"Current reported crowd: {admin_crowd:,} devotees.")
-        
-        if admin_crowd_data.get('festival'):
-            ai_advice.append("Festival activity reported - expect higher than normal crowd levels.")
+        current_crowd = admin_crowd_data["estimated_crowd"]
+        incoming_count = admin_crowd_data["incoming_pilgrims"]
+        outgoing_count = admin_crowd_data["outgoing_pilgrims"]
+        raw_status = admin_crowd_data["queue_status"] or "MODERATE"
+        is_festival = admin_crowd_data["festival"]
+        current_time_period = admin_crowd_data["slot"]
     else:
-        # Fallback to calculated advice
-        if current_crowd_level == "Low":
-            ai_advice.append("Excellent time to join the queue! Wait times are minimal.")
-        elif current_crowd_level == "Moderate":
-            ai_advice.append("Good time to join. Expect reasonable wait times.")
-        elif current_crowd_level == "High":
-            ai_advice.append("Crowd is high. Consider joining in 2-3 hours or early morning.")
-        else:  # Very High
-            ai_advice.append("Crowd is very high. Best to join after 10 PM or before 5 AM.")
-    
-    # Add additional context if no admin data (admin data already provides specific context)
-    if not admin_crowd_data:
-        if is_weekend:
-            ai_advice.append("Weekend crowd expected. Plan for longer wait times.")
-        
-        if festival_multiplier > 1.0:
-            ai_advice.append(f"Festival season active. Crowd multiplier: ×{festival_multiplier}")
-        
-        if hour >= 6 and hour <= 10:
-            ai_advice.append("Morning peak hours. Consider joining after 11 AM.")
-        elif hour >= 16 and hour <= 19:
-            ai_advice.append("Evening peak hours. Consider joining after 9 PM.")
-    
-    # Festival impacts
-    festival_impacts = []
-    
-    # Check admin data for festival status first
-    if admin_crowd_data and admin_crowd_data.get('festival'):
-        festival_impacts.append({
-            "festival": "Admin Reported Festival",
-            "description": "Festival activity reported by admin - expect higher crowd levels",
-            "multiplier": 1.5  # Moderate multiplier for admin-reported festivals
-        })
-    # Otherwise, check seasonal festivals
-    elif month in [9, 10]:
-        festival_impacts.append({
-            "festival": "Brahmotsavam",
-            "description": "Annual Brahmotsavam festival - expect maximum crowds",
-            "multiplier": festival_multiplier
-        })
-    elif month == 1:
-        festival_impacts.append({
-            "festival": "Vaikunta Ekadasi",
-            "description": "Vaikunta Ekadasi - special darshan with high attendance",
-            "multiplier": festival_multiplier
-        })
-    elif month == 2:
-        festival_impacts.append({
-            "festival": "Rathasapthami",
-            "description": "Rathasapthami festival - chariot procession on Mada Streets",
-            "multiplier": festival_multiplier
-        })
-    
-    # Low crowd recommendation
-    if best_times:
-        low_crowd_recommendation = f"Best time to join: {best_times[0]['time']} ({best_times[0]['recommendation']})"
+        # Base estimate when no admin data exists
+        current_crowd = 3200
+        incoming_count = 1200
+        outgoing_count = 950
+
+    # Status level, emoji, and waiting condition
+    status_level, status_badge, badge_class = _get_status_level_and_emoji(current_crowd, is_festival)
+    if admin_crowd_data and admin_crowd_data.get("queue_status"):
+        norm_qs = admin_crowd_data["queue_status"].upper()
+        if norm_qs in ("LOW", "🟢 LOW"):
+            status_level, status_badge, badge_class = "Low", "🟢 LOW", "low"
+        elif norm_qs in ("MODERATE", "🟡 MODERATE"):
+            status_level, status_badge, badge_class = "Moderate", "🟡 MODERATE", "moderate"
+        elif norm_qs in ("HIGH", "🔴 HIGH"):
+            status_level, status_badge, badge_class = "High", "🔴 HIGH", "high"
+        elif norm_qs in ("VERY HIGH", "CRITICAL", "🟣 VERY HIGH"):
+            status_level, status_badge, badge_class = "Very High", "🟣 VERY HIGH", "very-high"
+
+    # Waiting condition string
+    if status_level == "Low":
+        waiting_condition = "Minimal (under 1 hr)"
+        predicted_wait = max(15, int(current_crowd / 100))
+    elif status_level == "Moderate":
+        waiting_condition = "Moderate (2–3 hrs)"
+        predicted_wait = max(60, int(current_crowd / 60))
+    elif status_level == "High":
+        waiting_condition = "Long (4–6 hrs)"
+        predicted_wait = max(180, int(current_crowd / 40))
     else:
-        low_crowd_recommendation = "No optimal low-crowd times in the next 24 hours. Consider early morning (2-5 AM)."
-    
+        waiting_condition = "Very Long (8+ hrs)"
+        predicted_wait = max(360, int(current_crowd / 30))
+
+    # Trend string
+    net_diff = incoming_count - outgoing_count
+    if net_diff > 250:
+        crowd_trend_label = "Increasing"
+    elif net_diff < -200:
+        crowd_trend_label = "Decreasing"
+    else:
+        crowd_trend_label = "Stable"
+
+    # 2. CROWD TREND — NEXT 6 HOURS (3 consecutive 2-hour slots)
+    crowd_trend_6h = []
+    current_sim_crowd = current_crowd
+    base_hour = hour
+
+    for i in range(1, 4):
+        slot_start_h = (base_hour + (i - 1) * 2) % 24
+        slot_end_h = (slot_start_h + 2) % 24
+        slot_label = _format_slot_time(f"{slot_start_h:02d}:00", f"{slot_end_h:02d}:00")
+
+        # Time of day factors
+        if 2 <= slot_start_h < 6:
+            rate_factor = -0.15  # Early morning clearing
+        elif 6 <= slot_start_h < 12:
+            rate_factor = 0.20   # Morning rush
+        elif 12 <= slot_start_h < 16:
+            rate_factor = -0.05  # Afternoon lull
+        elif 16 <= slot_start_h < 21:
+            rate_factor = 0.18   # Evening peak
+        else:
+            rate_factor = -0.25  # Night clearing
+
+        if is_festival:
+            rate_factor += 0.12
+
+        projected_crowd = max(400, int(current_sim_crowd * (1 + rate_factor)))
+        current_sim_crowd = projected_crowd
+
+        s_level, s_badge, s_class = _get_status_level_and_emoji(projected_crowd, is_festival)
+        proj_wait = max(15, int(projected_crowd / 45))
+
+        crowd_trend_6h.append({
+            "time": slot_label,
+            "expected_crowd": projected_crowd,
+            "status": s_badge,
+            "status_level": s_level,
+            "predicted_wait_minutes": proj_wait
+        })
+
+    # 3. BEST TIME TO JOIN QUEUE ANALYSIS
+    best_time_data = None
+    if has_reliable_data and all_today_slots:
+        # Find the slot with minimum estimated crowd / maximum net outflow
+        best_slot = min(all_today_slots, key=lambda s: s.estimated_crowd)
+        best_time_data = {
+            "has_data": True,
+            "time_window": _format_slot_time(best_slot.start_time, best_slot.end_time),
+            "reasons": [
+                "Lower expected crowd",
+                "More outgoing devotees",
+                "Better incoming/outgoing balance"
+            ]
+        }
+    elif crowd_trend_6h:
+        # Pick lowest slot from 6h projection
+        lowest_proj = min(crowd_trend_6h, key=lambda x: x["expected_crowd"])
+        best_time_data = {
+            "has_data": True,
+            "time_window": lowest_proj["time"],
+            "reasons": [
+                "Lower expected crowd",
+                "More outgoing devotees",
+                "Better incoming/outgoing balance"
+            ]
+        }
+    else:
+        best_time_data = {
+            "has_data": False,
+            "time_window": None,
+            "message": "Not enough data to determine the best time."
+        }
+
+    # 4. AI-GENERATED QUEUE ADVICE
+    ai_advice = [
+        "Avoid the queue during peak crowd periods.",
+        "Consider joining during the lower-crowd time slot.",
+        "Keep water and essential items with you.",
+        "Follow TTD queue instructions.",
+        "Check the latest queue status before joining."
+    ]
+
+    # 5. AI PREDICTION
+    next_trend_str = "increase" if crowd_trend_label == "Increasing" else "remain stable" if crowd_trend_label == "Stable" else "decrease"
+    ai_prediction = {
+        "expected_crowd": status_level.upper(),
+        "status_badge": status_badge,
+        "points": [
+            f"Crowd is expected to {next_trend_str} during the next time slot.",
+            "Queue waiting time may increase." if crowd_trend_label == "Increasing" else "Queue waiting time expected to remain manageable.",
+            "Recommended action: Consider joining during the next low-crowd period." if status_level in ("High", "Very High") else "Recommended action: Good window to enter queue."
+        ]
+    }
+
+    # 6. FESTIVAL IMPACT
+    if is_festival:
+        festival_impact = {
+            "is_active": True,
+            "title": "Festival: YES",
+            "points": [
+                "Expected crowd impact: High",
+                "Queue demand: Increased",
+                "Recommendation: Plan Darshan earlier."
+            ]
+        }
+    else:
+        festival_impact = {
+            "is_active": False,
+            "title": "Festival Impact: Normal",
+            "points": [
+                "Standard devotee inflow rate",
+                "Normal compartment clearance cycles"
+            ]
+        }
+
     return {
+        # Master Prompt Section 5: Current Queue Status
+        "current_crowd_level": status_level,
+        "queue_status": status_level.upper(),
+        "queue_status_badge": status_badge,
+        "waiting_condition": waiting_condition,
+        "incoming_devotees": incoming_count,
+        "outgoing_devotees": outgoing_count,
+        "current_time_period": current_time_period,
+        "crowd_trend": crowd_trend_label,
+        "estimated_crowd": current_crowd,
         "predicted_wait_minutes": predicted_wait,
-        "current_crowd_level": current_crowd_level,
-        "crowd_trend_next_6_hours": crowd_trend,
-        "best_times_to_join": best_times,
+
+        # Master Prompt Section 6: Next 6 Hours Crowd Trend
+        "crowd_trend_next_6_hours": crowd_trend_6h,
+
+        # Master Prompt Section 7: Best Time to Join
+        "best_time_to_join": best_time_data,
+
+        # Master Prompt Section 8: AI-Generated Advice
         "ai_advice": ai_advice,
-        "festival_impacts": festival_impacts,
-        "low_crowd_recommendation": low_crowd_recommendation,
-        "prediction_timestamp": now.isoformat(),
-        "admin_data_used": admin_crowd_data is not None,
+
+        # Master Prompt Section 9: AI Prediction
+        "ai_prediction_summary": ai_prediction,
+
+        # Master Prompt Section 10: Festival Impact
+        "festival_impact_summary": festival_impact,
+
+        # Source Tracking
+        "admin_data_used": has_reliable_data,
         "admin_crowd_data": admin_crowd_data,
-        "data_source": "Admin-entered data" if admin_crowd_data else "AI Historical Prediction"
+        "data_source": "Live Admin Data" if has_reliable_data else "AI Estimated Data",
+        "prediction_timestamp": now.isoformat()
     }
 
 

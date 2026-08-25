@@ -43,3 +43,13 @@ node_modules/
 
 # Docker
 *.tar
+
+# Test outputs & temporary files
+tests/__pycache__/
+tests/*.log
+tests/output/
+*.tmp
+
+# OS artifacts
+Thumbs.db
+.DS_Store

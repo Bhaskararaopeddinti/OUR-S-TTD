@@ -200,23 +200,31 @@ def facility_directions(
 @router.post("/chat")
 def chat(data: ChatIn, db: Session = Depends(get_db)):
     """AI-powered pilgrim assistant powered by Gemini API."""
-    res = pilgrim_reply(
-        message=data.message,
-        language=data.language,
-        history=data.history,
-        db=db
-    )
-    reply_text = res.get("reply", "")
-
-    # Save conversation to history (anonymous if no auth)
     try:
-        db.add(ChatHistory(role="user", message=data.message, language=data.language))
-        db.add(ChatHistory(role="assistant", message=reply_text, language=data.language))
-        db.commit()
-    except Exception:
-        db.rollback()
+        res = pilgrim_reply(
+            message=data.message,
+            language=data.language,
+            history=data.history,
+            db=db
+        )
+        reply_text = res.get("reply", "")
 
-    return res
+        # Save conversation to history (anonymous if no auth)
+        try:
+            db.add(ChatHistory(role="user", message=data.message, language=data.language))
+            db.add(ChatHistory(role="assistant", message=reply_text, language=data.language))
+            db.commit()
+        except Exception:
+            db.rollback()
+
+        return res
+    except Exception:
+        return {
+            "reply": "Sorry, I couldn't process that request. Please try again.",
+            "language": data.language,
+            "source": "fallback",
+            "ai_available": False
+        }
 
 
 # ──────────────────────── SOS ────────────────────────
