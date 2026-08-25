@@ -136,15 +136,25 @@ def _build_db_context(message: str, db: Optional[Any] = None) -> str:
                     )
                 else:
                     from backend.services.ttd_official import public_status
-                    from backend.services.queue_prediction import predict_queue_status
                     status = public_status()
-                    pred = predict_queue_status(status.get("wait_minutes", 120), status.get("crowd_density", "Moderate"))
-                    context_parts.append(
-                        f"[SYSTEM CONTEXT - QUEUE ESTIMATE]: "
-                        f"Current wait ≈ {status.get('wait_minutes')} mins, "
-                        f"Crowd density = {status.get('crowd_density')}. "
-                        f"Trend: {pred.get('trend')} — {pred.get('recommendation')}."
-                    )
+                    wait_val = status.get('wait_minutes')
+                    crowd_val = status.get('crowd_density', 'Moderate')
+                    if wait_val is not None:
+                        from backend.services.queue_prediction import predict_queue_status
+                        pred = predict_queue_status(wait_val, crowd_val)
+                        context_parts.append(
+                            f"[SYSTEM CONTEXT - QUEUE ESTIMATE]: "
+                            f"Current wait ≈ {wait_val} mins, "
+                            f"Crowd density = {crowd_val}. "
+                            f"Trend: {pred.get('trend')} — {pred.get('recommendation')}."
+                        )
+                    else:
+                        context_parts.append(
+                            f"[SYSTEM CONTEXT - LIVE QUEUE STATUS]: "
+                            f"TTD has not published exact live numeric queue wait minutes for this hour. "
+                            f"Inform pilgrim that live wait times are currently unlisted in the public feed, "
+                            f"and provide general darshan guidance."
+                        )
         except Exception as e:
             logger.debug("Could not fetch queue context: %s", e)
 
