@@ -168,7 +168,7 @@ async function getAIResponse(message) {
     // Remove typing indicator
     typingDiv.remove();
     
-    const reply = data.reply || data.response || data.message || "Sorry, I couldn't process that request. Please try again.";
+    const reply = data.answer || data.reply || data.response || data.message || "Sorry, I couldn't process that request. Please try again.";
     addMessage(reply, 'bot');
 
     // Save turn to history

@@ -198,11 +198,23 @@ def facility_directions(
 
 # ──────────────────────── AI Chat ────────────────────────
 @router.post("/chat")
+@router.post("/ai/chat")
 def chat(data: ChatIn, db: Session = Depends(get_db)):
     """AI-powered pilgrim assistant powered by Gemini API."""
+    user_query = data.get_query()
+    if not user_query:
+        return {
+            "success": False,
+            "answer": "Please ask a question.",
+            "reply": "Please ask a question.",
+            "language": data.language,
+            "source": "fallback",
+            "ai_available": False
+        }
+
     try:
         res = pilgrim_reply(
-            message=data.message,
+            message=user_query,
             language=data.language,
             history=data.history,
             db=db
@@ -211,18 +223,29 @@ def chat(data: ChatIn, db: Session = Depends(get_db)):
 
         # Save conversation to history (anonymous if no auth)
         try:
-            db.add(ChatHistory(role="user", message=data.message, language=data.language))
+            db.add(ChatHistory(role="user", message=user_query, language=data.language))
             db.add(ChatHistory(role="assistant", message=reply_text, language=data.language))
             db.commit()
         except Exception:
             db.rollback()
 
-        return res
-    except Exception:
+        is_success = res.get("ai_available", True) and res.get("source") != "error"
         return {
-            "reply": "Sorry, I couldn't process that request. Please try again.",
+            "success": is_success,
+            "answer": reply_text,
+            "reply": reply_text,
             "language": data.language,
-            "source": "fallback",
+            "source": res.get("source", "gemini"),
+            "ai_available": res.get("ai_available", True)
+        }
+    except Exception as e:
+        err_msg = "Sorry, I couldn't process that request. Please try again."
+        return {
+            "success": False,
+            "answer": err_msg,
+            "reply": err_msg,
+            "language": data.language,
+            "source": "error",
             "ai_available": False
         }
 

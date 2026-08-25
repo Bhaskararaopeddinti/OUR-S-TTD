@@ -62,10 +62,14 @@ class FacilityUpdate(BaseModel):
 
 # ──── Chat ────
 class ChatIn(BaseModel):
-    message: str = Field(min_length=1, max_length=2000)
+    message: Optional[str] = None
+    question: Optional[str] = None
     language: str = "English"
     conversation_id: Optional[str] = None
     history: Optional[list[dict]] = None
+
+    def get_query(self) -> str:
+        return (self.question or self.message or "").strip()
 
 
 # ──── Emergency ────

@@ -45,8 +45,11 @@ def _init_gemini() -> bool:
     load_dotenv()
 
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    if not api_key or api_key == "your-gemini-api-key-here":
-        logger.warning("GEMINI_API_KEY not configured or using placeholder. Using fallback responses.")
+    key_configured = bool(api_key and api_key != "your-gemini-api-key-here")
+    logger.info("Gemini API key configured: %s", "true" if key_configured else "false")
+
+    if not key_configured:
+        logger.warning("GEMINI_API_KEY is missing or unconfigured in environment.")
         return False
 
     # Try modern google.genai SDK first
@@ -184,11 +187,11 @@ def pilgrim_reply(
     No static/hardcoded answers. If Gemini fails, show a user-friendly error.
     Never leaks debug information, API keys, or technical errors.
     """
-    logger.info("CHAT REQUEST RECEIVED: language=%s, msg_len=%d", language, len(message))
+    logger.info("AI request received: '%s' (language=%s)", message[:80], language)
 
     # Always try Gemini — this is the ONLY answer source
     if _init_gemini():
-        logger.info("GEMINI REQUEST STARTED")
+        logger.info("Gemini request started")
 
         db_context = _build_db_context(message, db)
         lang_instruction = f"\nPlease respond in {language}." if language and language != "English" else ""
@@ -205,7 +208,8 @@ def pilgrim_reply(
         try:
             reply_text = _generate_with_gemini(full_prompt, history)
             if reply_text and len(reply_text.strip()) > 0:
-                logger.info("GEMINI RESPONSE SUCCESS")
+                logger.info("Gemini response received")
+                logger.info("AI response generated successfully")
                 return {
                     "reply": reply_text.strip(),
                     "language": language,
@@ -213,10 +217,10 @@ def pilgrim_reply(
                     "ai_available": True
                 }
             else:
-                logger.error("GEMINI REQUEST FAILED: Empty response from model.")
+                logger.error("Gemini request failed: Empty response from model.")
         except Exception as e:
             safe_error = str(e).split("key=")[0].split("API_KEY=")[0]
-            logger.error("GEMINI REQUEST FAILED: %s", safe_error)
+            logger.error("Gemini request failed: %s", safe_error)
 
     # If Gemini is unavailable or failed — show clean error, NOT static answers
     logger.info("Gemini unavailable, returning user-friendly error")
