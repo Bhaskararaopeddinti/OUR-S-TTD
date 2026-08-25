@@ -3,7 +3,7 @@
   <div class="dashboard-header" style="margin-bottom: 1rem;">
     <h1>🤖 AI Assistant</h1>
     <p class="dashboard-subtitle" style="color: var(--gold, #F59E0B); font-weight: 600;">
-      ✨ Open-Domain AI — Ask ANY question on any topic (Science, History, Coding, Daily Life, Devotion & Tirumala Pilgrimage)
+      ✨ TTD Smart Pilgrim & Open-Domain AI — Instant Point-Wise Answers (Tirumala Darshan, Queue, Travel & General Knowledge)
     </p>
   </div>
 
@@ -19,7 +19,7 @@
             <div class="chat-name" style="font-weight: 700; font-size: 1rem; color: #fff;">TTD AI Assistant</div>
             <div class="chat-status" style="font-size: 0.75rem; color: #10B981; display: flex; align-items: center; gap: 0.3rem;">
               <span style="display: inline-block; width: 7px; height: 7px; background: #10B981; border-radius: 50%;"></span>
-              Online • Ready for ANY Question
+              Online • Ready for Any Question
             </div>
           </div>
         </div>
@@ -49,31 +49,43 @@
       
       <!-- Messages Stream -->
       <div class="chat-messages" id="chatMessages" style="flex: 1; padding: 1.2rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; background: rgba(10, 15, 30, 0.6);">
-        <div class="message bot-message" style="display: flex; gap: 0.75rem; max-width: 85%;">
+        <div class="message bot-message" style="display: flex; gap: 0.75rem; max-width: 88%;">
           <div class="message-avatar" style="font-size: 1.3rem;">🤖</div>
-          <div class="message-content" style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.08); padding: 0.9rem 1.1rem; border-radius: 12px; font-size: 0.92rem; line-height: 1.5; color: #f1f5f9;">
-            <p style="margin: 0 0 0.5rem 0; font-weight: 600;">Namaste! 🙏 I'm your versatile AI Assistant.</p>
-            <p style="margin: 0 0 0.5rem 0; color: #cbd5e1;">You can ask me <strong>ANY question on any subject</strong>. For example:</p>
-            <ul style="margin: 0.3rem 0; padding-left: 1.2rem; color: #e2e8f0; font-size: 0.88rem;">
-              <li>🔬 <strong>General Knowledge & Science:</strong> <em>"How does photosynthesis work?"</em> or <em>"Why is the sky blue?"</em></li>
-              <li>💻 <strong>Technology & Math:</strong> <em>"Explain async vs sync"</em> or <em>"What is Python used for?"</em></li>
-              <li>🍲 <strong>Daily Life & Recipes:</strong> <em>"How do I make ginger tea?"</em> or <em>"Health benefits of walking"</em></li>
-              <li>⏳ <strong>Darshan & Queue:</strong> <em>"What is the live queue crowd status?"</em> or <em>"Best time to visit"</em></li>
-              <li>🚌 <strong>Travel & Transport:</strong> <em>"How do I travel from Tirupati to Tirumala?"</em></li>
-              <li>🛕 <strong>Temple & Facilities:</strong> <em>"Where is free Annaprasadam served?"</em> or <em>"Dress code guidelines"</em></li>
-            </ul>
-            <p style="margin: 0.5rem 0 0 0; font-weight: 500; color: var(--gold, #F59E0B);">Type any question below to get an instant point-wise answer!</p>
+          <div class="message-content" style="background: #1E293B; border: 1px solid rgba(245, 158, 11, 0.35); padding: 0.95rem 1.2rem; border-radius: 14px; font-size: 0.95rem; line-height: 1.6; color: #F8FAFC; border-bottom-left-radius: 3px;">
+            <p style="margin: 0 0 0.5rem 0; font-weight: 700; color: #FBBF24;">Namaste! 🙏 Welcome to TTD AI Assistant.</p>
+            <p style="margin: 0 0 0.5rem 0; color: #E2E8F0;">I provide detailed <strong>point-wise answers</strong> for any question. Click on common questions below or type anything:</p>
+            <div style="display: flex; flex-direction: column; gap: 0.35rem; margin: 0.5rem 0;">
+              <div class="chat-bullet-item"><span>•</span><span><strong>Darshan & Sevas:</strong> Sarva Darshan (Free), Special Entry (₹300), Divya Darshan</span></div>
+              <div class="chat-bullet-item"><span>•</span><span><strong>Live Queue:</strong> Real-time crowd condition, wait times, and recommended slots</span></div>
+              <div class="chat-bullet-item"><span>•</span><span><strong>Pilgrim Amenities:</strong> Free Annaprasadam, PAC accommodation, Laddu prasadam</span></div>
+              <div class="chat-bullet-item"><span>•</span><span><strong>Transit & Rules:</strong> 24/7 Ghat buses, trekking footpaths, and mandatory dress code</span></div>
+            </div>
+            <p style="margin: 0.5rem 0 0 0; font-weight: 600; color: #F59E0B;">Choose a quick question below or type your message!</p>
           </div>
         </div>
       </div>
       
-      <!-- Input Area -->
-      <div class="chat-input-area" style="padding: 1rem 1.2rem; background: rgba(15, 23, 42, 0.95); border-top: 1px solid rgba(255,255,255,0.08);">
+      <!-- Input Area with Predefined Quick Questions -->
+      <div class="chat-input-area" style="padding: 0.8rem 1.2rem; background: rgba(15, 23, 42, 0.95); border-top: 1px solid rgba(255,255,255,0.08);">
+        
+        <!-- Predefined Quick Questions Bar -->
+        <div class="quick-prompts" style="display: flex; gap: 0.45rem; overflow-x: auto; padding-bottom: 0.55rem; margin-bottom: 0.45rem; scrollbar-width: thin;">
+          <button class="quick-prompt-btn" onclick="sendQuickPrompt('Tell me about Darshan types and booking')" style="background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(245, 158, 11, 0.4); color: #FBBF24; padding: 0.35rem 0.75rem; border-radius: 16px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; cursor: pointer;">🙏 Darshan Types</button>
+          <button class="quick-prompt-btn" onclick="sendQuickPrompt('What is the current queue status and crowd?')" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #E2E8F0; padding: 0.35rem 0.75rem; border-radius: 16px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; cursor: pointer;">⏳ Queue Status</button>
+          <button class="quick-prompt-btn" onclick="sendQuickPrompt('What are the temple opening and closing timings?')" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #E2E8F0; padding: 0.35rem 0.75rem; border-radius: 16px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; cursor: pointer;">⏰ Temple Timings</button>
+          <button class="quick-prompt-btn" onclick="sendQuickPrompt('How do I travel from Tirupati to Tirumala by bus?')" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #E2E8F0; padding: 0.35rem 0.75rem; border-radius: 16px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; cursor: pointer;">🚌 Bus to Tirumala</button>
+          <button class="quick-prompt-btn" onclick="sendQuickPrompt('Where is free Annaprasadam served and timings?')" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #E2E8F0; padding: 0.35rem 0.75rem; border-radius: 16px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; cursor: pointer;">🍚 Free Food</button>
+          <button class="quick-prompt-btn" onclick="sendQuickPrompt('Where can I get free PAC accommodation in Tirumala?')" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #E2E8F0; padding: 0.35rem 0.75rem; border-radius: 16px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; cursor: pointer;">🏨 Free Stay</button>
+          <button class="quick-prompt-btn" onclick="sendQuickPrompt('What is the mandatory dress code for Darshan?')" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #E2E8F0; padding: 0.35rem 0.75rem; border-radius: 16px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; cursor: pointer;">🥻 Dress Code</button>
+          <button class="quick-prompt-btn" onclick="sendQuickPrompt('Where is the Laddu distribution counter located?')" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #E2E8F0; padding: 0.35rem 0.75rem; border-radius: 16px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; cursor: pointer;">🍬 Laddu Counter</button>
+          <button class="quick-prompt-btn" onclick="sendQuickPrompt('Tell me about TTD and Sri Venkateswara Swamy Temple')" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #E2E8F0; padding: 0.35rem 0.75rem; border-radius: 16px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; cursor: pointer;">🛕 About TTD</button>
+        </div>
+
         <div class="input-wrapper" style="display: flex; gap: 0.6rem; align-items: center;">
           <input 
             type="text" 
             id="chatInput" 
-            placeholder="Type any question here (science, coding, history, queue, travel, etc.)..." 
+            placeholder="Type any question (e.g., 'dharshan', 'queue status', 'dress code', or any general topic)..." 
             style="flex: 1; padding: 0.8rem 1.1rem; background: rgba(30, 41, 59, 0.9); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; color: #fff; font-size: 0.95rem; outline: none;" 
             autocomplete="off"
           />
@@ -94,9 +106,9 @@
             🎤
           </button>
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; font-size: 0.75rem; color: #94a3b8;">
-          <span>💡 Press <kbd style="background: rgba(255,255,255,0.1); padding: 0.1rem 0.35rem; border-radius: 4px; color: #cbd5e1;">Enter</kbd> to send • No topic restrictions</span>
-          <span style="color: var(--gold, #F59E0B);">Point-wise & Instant AI Answers</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.4rem; font-size: 0.75rem; color: #94a3b8;">
+          <span>💡 Press <kbd style="background: rgba(255,255,255,0.1); padding: 0.1rem 0.35rem; border-radius: 4px; color: #cbd5e1;">Enter</kbd> to send</span>
+          <span style="color: var(--gold, #F59E0B); font-weight: 600;">Point-Wise Detailed Answers</span>
         </div>
       </div>
 

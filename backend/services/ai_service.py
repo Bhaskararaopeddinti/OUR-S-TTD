@@ -264,6 +264,26 @@ def _generate_fallback_response(message: str, db: Optional[Any] = None) -> str:
             "* Status: **Check the Darshan Queue page for live updates**"
         )
 
+    # Darshan / Dharshan / Dharsan Overview & Types
+    if any(k in msg_lower for k in ("darshan", "dharshan", "dharsan", "darsan", "sarva darshan", "special entry", "divya darshan", "vip darshan", "tokens", "slot")):
+        return (
+            "* **Sarva Darshan (Free Queue):** General queue open to all pilgrims without prior booking via Vaikuntam Queue Complex (VQC) compartments with free meals, milk, and water.\n"
+            "* **Special Entry Darshan (₹300):** Paid quota tickets booked online in advance on the official TTD website for faster dedicated entry.\n"
+            "* **Slotted Sarva Darshan (SSD Tokens):** Free offline time-slotted tokens issued at Tirupati counters (Srinivasam, Vishnu Nivasam, Bhudevi Complex) for specific entry times.\n"
+            "* **Divya Darshan (Footpath Walkers):** Designated tokens for pilgrims trekking via Alipiri Mettu (3,550 steps) or Srivari Mettu (2,100 steps) walking routes.\n"
+            "* **Essential Requirements:** Devotees must carry their original Aadhaar/Government ID card and strictly follow the traditional dress code."
+        )
+
+    # Temple Timings & Schedule
+    if any(k in msg_lower for k in ("timing", "timings", "schedule", "opening", "closing", "suprabhatam", "hours")):
+        return (
+            "* **Suprabhatam Seva:** Morning awakening ritual starts between 3:00 AM – 3:30 AM daily.\n"
+            "* **General Sarva Darshan:** Begins from 6:00 AM – 7:00 AM and operates until 11:00 PM.\n"
+            "* **Special Entry Darshan (₹300):** Available in designated slots between 9:00 AM – 6:00 PM.\n"
+            "* **Ekantha Seva:** Night closing ritual performed at approximately 11:30 PM.\n"
+            "* **Queue Status:** Waiting times fluctuate dynamically based on pilgrim density; check the live Queue tab for live predictions."
+        )
+
     # What to carry / Darshan preparation
     if any(k in msg_lower for k in ("carry", "bring", "items", "documents", "id", "what to take", "checklist")):
         return (
