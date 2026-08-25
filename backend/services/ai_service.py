@@ -17,12 +17,14 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Candidate models in order of preference
+# Candidate models in order of preference (prioritize fast, non-thinking flash models)
 MODEL_CANDIDATES = [
-    'gemma-4-26b-a4b-it',
-    'gemma-4-31b-it',
+    'gemini-3.1-flash-lite-preview',
+    'gemini-3.1-pro-preview',
     'gemini-3.6-flash',
-    'gemini-flash-latest'
+    'gemini-flash-latest',
+    'gemma-4-26b-a4b-it',
+    'gemma-4-31b-it'
 ]
 
 _genai_client = None
@@ -76,17 +78,18 @@ def _init_gemini() -> bool:
     return False
 
 
-SYSTEM_PROMPT = """You are the intelligent AI Assistant for OURS TTD and a versatile general-knowledge companion.
-Your objective: Provide direct, short, accurate, point-wise, and easily understandable answers to ANY question asked by the user across any topic (general knowledge, science, technology, mathematics, history, geography, travel, daily life, devotional topics, philosophy, languages, as well as Tirumala/TTD pilgrimage guidance).
+SYSTEM_PROMPT = """You are the intelligent AI Assistant for OURS TTD and a versatile expert companion.
+Your objective: Provide highly accurate, detailed, and directly relevant answers to the user's specific question.
 
 STRICT RESPONSE RULES:
-1. Answer ANY question asked by the user. Do not restrict yourself only to Tirumala/TTD questions.
-2. Format every answer as short, clean, structured bullet points (* or -) with bold key terms for high readability.
-3. Keep replies direct, concise, factual, and easy to understand.
-4. Do NOT include long unsolicited introductions or preamble.
-5. NEVER mention API keys, GEMINI_API_KEY, .env, backend configurations, developer details, debug messages, or "basic guidance mode".
-6. When the user asks about Queue / Darshan / Tirumala / Transport: provide specific, actionable pilgrimage advice matching standard TTD procedures and live database context.
-7. When the user asks general questions: provide clear, accurate, point-wise explanations.
+1. Always answer specifically, accurately, and thoroughly to what the user asked. Never give generic boilerplate.
+2. Format your response STRICTLY as 4 to 5 rich, informative bullet points (* with bold key terms).
+3. Each bullet point should be detailed and substantive (1 to 2 clear sentences per point) providing complete, accurate, and easily understandable information.
+4. If the user asks about "TTD" or "Tirumala" or general temple info: provide a comprehensive 5-bullet breakdown covering the institution, deity, Darshan systems, free Annaprasadam/Laddu, and pilgrim welfare.
+5. If the user asks about Queue / Darshan / Transport / Facilities: provide specific, actionable details matching standard TTD procedures and live database context.
+6. If the user asks general knowledge, science, coding, history, or daily life questions: provide a fact-filled, accurate 4-to-5-bullet breakdown.
+7. NEVER include conversational filler ("Sure, here is..."), preambles, or postambles. Start directly with the first bullet point.
+8. NEVER mention API keys, GEMINI_API_KEY, .env, backend configurations, developer details, or debug messages.
 """
 
 
@@ -329,21 +332,33 @@ def _generate_fallback_response(message: str, db: Optional[Any] = None) -> str:
             "* **Kapila Theertham:** Ancient Shiva shrine at the foot of Alipiri"
         )
 
+    # TTD General Overview / About TTD
+    if any(k in msg_lower for k in ("ttd", "tirumala", "tirupati", "temple", "balaji", "venkateswara", "devasthanam")):
+        return (
+            "* **What is TTD:** Tirumala Tirupati Devasthanams (TTD) is the autonomous administrative board that oversees the sacred Sri Venkateswara Swamy Temple atop Tirumala Hills.\n"
+            "* **Sacred Deity:** The temple is dedicated to Lord Venkateswara (also revered as Balaji or Srinivasa), one of the world's most visited Hindu pilgrimage centers.\n"
+            "* **Pilgrim Amenities:** TTD provides free Matrusri Tarigonda Vengamamba Annaprasadam (wholesome meals), clean RO drinking water points, free PAC accommodations, and free transit shuttles.\n"
+            "* **Darshan Systems:** Devotees can access Sarva Darshan (Free General Queue), Special Entry Darshan (₹300 tickets), Slotted Sarva Darshan (SSD), and various sacred Arjitha Sevas.\n"
+            "* **Laddu Prasadam & Charity:** TTD prepares the GI-tagged Tirupati Laddu Prasadam daily and operates several educational institutions, charity trusts, and multi-specialty hospitals."
+        )
+
     # Laddu Prasadam
     if any(k in msg_lower for k in ("laddu", "ladoo", "prasadam", "sweet")):
         return (
-            "* **Laddu Complex Location:** Main Laddu Distribution Complex located directly outside the temple exit\n"
-            "* **Free Laddu:** 1 complimentary Laddu provided with every valid Darshan token\n"
-            "* **Additional Laddus:** Available for purchase at extra Laddu counters (₹50 per Laddu)\n"
-            "* **Packaging:** Eco-friendly jute/cloth bags available at the distribution counters"
+            "* **Distribution Location:** The primary Laddu Distribution Complex is situated immediately adjacent to the main temple exit gate.\n"
+            "* **Complimentary Laddu:** Devotees receive 1 free sanctified Laddu against each valid Darshan token or pass upon completing worship.\n"
+            "* **Additional Laddus:** Extra Laddus can be purchased at the dedicated automated counters for ₹50 per Laddu.\n"
+            "* **Packing Facilities:** Eco-friendly cloth and jute bags are readily available at all counter bays for safe carrying.\n"
+            "* **Timings:** Laddu counters operate continuously around the clock to serve pilgrims arriving from Darshan lines."
         )
 
-    # General / Open domain query fallback
+    # General / Open domain query fallback with 5 detailed lines
     return (
-        f"* **Question Received:** \"{message.strip()}\"\n"
-        f"* **Status:** AI knowledge engine is online and ready to assist on any topic\n"
-        f"* **Live Pilgrim Features:** Live queue, bus routes, food finder, and navigation available in this app\n"
-        f"* **TTD 24/7 Helpline:** Call **155257** for 24/7 official assistance"
+        f"* **Topic Requested:** \"{message.strip()}\"\n"
+        f"* **AI Knowledge Base:** The AI Assistant answers detailed questions across science, technology, history, daily life, travel, and religious topics.\n"
+        f"* **Live Pilgrim Intelligence:** Live queue waiting conditions, 24/7 bus schedules, free Annaprasadam locations, and emergency medical aid are active in this app.\n"
+        f"* **Official Support:** For official temple reservations and queries, contact the 24/7 TTD Toll-Free Helpline at **155257**.\n"
+        f"* **Guidance:** Feel free to ask any specific question to receive a detailed point-wise breakdown."
     )
 
 
