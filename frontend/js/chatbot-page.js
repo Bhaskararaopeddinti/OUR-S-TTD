@@ -108,12 +108,14 @@ function addMessage(content, type) {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Helper to determine base URL dynamically
 function getApiEndpoint() {
-  if (window.location.origin && window.location.origin.startsWith('http')) {
+  if (typeof API !== 'undefined' && API.post) {
+    return '/api/chat';
+  }
+  if (window.location.origin && window.location.origin.startsWith('http') && !['5500', '5501'].includes(window.location.port)) {
     return window.location.origin + '/api/chat';
   }
-  return 'http://127.0.0.1:8001/api/chat';
+  return 'http://localhost:8000/api/chat';
 }
 
 // Get AI response

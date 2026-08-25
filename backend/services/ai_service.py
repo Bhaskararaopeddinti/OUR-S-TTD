@@ -17,12 +17,14 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Candidate models in order of preference (prioritize fast, non-thinking flash models)
 MODEL_CANDIDATES = [
     'gemini-3.1-flash-lite-preview',
-    'gemini-3.1-pro-preview',
-    'gemini-3.6-flash',
+    'gemini-flash-lite-latest',
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
     'gemini-flash-latest',
+    'gemini-3.6-flash',
+    'gemini-3.7-flash',
     'gemma-4-26b-a4b-it',
     'gemma-4-31b-it'
 ]
@@ -249,6 +251,7 @@ def _generate_with_gemini(full_prompt: str, history: Optional[List[Dict[str, Any
             formatted_prompt = f"RECENT CONVERSATION HISTORY:\n" + "\n".join(history_lines) + f"\n\n{full_prompt}"
 
     def _call_model():
+        import time
         # Modern google.genai Client
         if _genai_client is not None:
             for model_name in MODEL_CANDIDATES:
@@ -283,7 +286,10 @@ def _generate_with_gemini(full_prompt: str, history: Optional[List[Dict[str, Any
                         except Exception:
                             pass
                 except Exception as e:
-                    logger.info("Model candidate %s attempt failed: %s", model_name, str(e)[:100])
+                    err_msg = str(e)
+                    logger.info("Model candidate %s attempt failed: %s", model_name, err_msg[:100])
+                    if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
+                        time.sleep(0.5)
                     continue
 
         # Fallback to legacy google.generativeai

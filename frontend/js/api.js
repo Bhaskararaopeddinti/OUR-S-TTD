@@ -7,16 +7,12 @@
 const API = (() => {
   const getApiBase = () => {
     if (typeof window !== 'undefined') {
-      // If serving from same origin as backend, use relative path
-      if (window.location.hostname === 'localhost' && window.location.port === '8000') {
+      // If deployed on Render or accessed via web server with /api, use relative path
+      if (window.location.origin && window.location.origin.startsWith('http') && !['5500', '5501'].includes(window.location.port)) {
         return '/api/';
       }
-      // If serving from file system or different ports
-      if (window.location.protocol === 'file:' || window.location.port === '5500' || window.location.port === '5501') {
-        return 'http://localhost:8000/api/';
-      }
-      // Otherwise use relative path
-      return '/api/';
+      // If serving from Live Server (port 5500/5501) or file://
+      return 'http://localhost:8000/api/';
     }
     return '/api/';
   };
