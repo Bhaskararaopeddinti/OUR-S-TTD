@@ -1,115 +1,105 @@
 <!-- chatbot.html – AI Assistant page -->
 <section class="chatbot-page">
-  <div class="dashboard-header">
+  <div class="dashboard-header" style="margin-bottom: 1rem;">
     <h1>🤖 AI Assistant</h1>
-    <p class="dashboard-subtitle">Your versatile intelligent assistant – ask any question on any topic!</p>
+    <p class="dashboard-subtitle" style="color: var(--gold, #F59E0B); font-weight: 600;">
+      ✨ Open-Domain AI — Ask ANY question on any topic (Science, History, Coding, Daily Life, Devotion & Tirumala Pilgrimage)
+    </p>
   </div>
 
-  <div class="chatbot-grid">
-    <!-- Chat Interface -->
-    <div class="dashboard-card chat-interface-card" style="grid-column: 1/-1;">
-      <div class="chat-header">
-        <div class="chat-avatar">🤖</div>
-        <div class="chat-info">
-          <div class="chat-name">TTD AI Assistant</div>
-          <div class="chat-status">Online • Powered by Gemini AI</div>
+  <div class="chatbot-grid" style="display: flex; flex-direction: column; gap: 1rem; max-width: 1000px; margin: 0 auto;">
+    <!-- Main Chat Interface -->
+    <div class="dashboard-card chat-interface-card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; height: 75vh; min-height: 520px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);">
+      
+      <!-- Topbar with status, language, clear -->
+      <div class="chat-header" style="padding: 0.9rem 1.2rem; background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div class="chat-avatar" style="font-size: 1.6rem; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; background: rgba(245, 158, 11, 0.15); border-radius: 50%; border: 1px solid rgba(245, 158, 11, 0.3);">🤖</div>
+          <div>
+            <div class="chat-name" style="font-weight: 700; font-size: 1rem; color: #fff;">TTD AI Assistant</div>
+            <div class="chat-status" style="font-size: 0.75rem; color: #10B981; display: flex; align-items: center; gap: 0.3rem;">
+              <span style="display: inline-block; width: 7px; height: 7px; background: #10B981; border-radius: 50%;"></span>
+              Online • Ready for ANY Question
+            </div>
+          </div>
         </div>
-        <div class="chat-actions">
-          <button class="icon-btn" onclick="clearChat()" title="Clear chat">🗑️</button>
+
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <!-- Language Selector -->
+          <div style="display: flex; align-items: center; gap: 0.35rem; background: rgba(255,255,255,0.05); padding: 0.2rem 0.5rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
+            <span style="font-size: 0.8rem;">🌐</span>
+            <select id="chatLanguage" class="lang-select" style="background: transparent; color: #fff; border: none; font-size: 0.8rem; outline: none; cursor: pointer;">
+              <option value="en" style="background: #1e293b;">English</option>
+              <option value="te" style="background: #1e293b;">తెలుగు (Telugu)</option>
+              <option value="hi" style="background: #1e293b;">हिंदी (Hindi)</option>
+              <option value="ta" style="background: #1e293b;">தமிழ் (Tamil)</option>
+              <option value="kn" style="background: #1e293b;">ಕನ್ನಡ (Kannada)</option>
+              <option value="ml" style="background: #1e293b;">മലയാളം (Malayalam)</option>
+              <option value="mr" style="background: #1e293b;">मराठी (Marathi)</option>
+              <option value="bn" style="background: #1e293b;">বাংলা (Bengali)</option>
+            </select>
+          </div>
+
+          <!-- Clear Chat -->
+          <button class="icon-btn" onclick="clearChat()" title="Clear conversation" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; padding: 0.4rem 0.65rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
+            🗑️ Clear
+          </button>
         </div>
       </div>
       
-      <div class="chat-messages" id="chatMessages">
-        <div class="message bot-message">
-          <div class="message-avatar">🤖</div>
-          <div class="message-content">
-            <p>Namaste! 🙏 I'm your AI Smart Assistant. I can answer <strong>any question</strong> you have, including:</p>
-            <ul class="help-list">
-              <li>🌍 General knowledge, science, history, geography, and facts</li>
-              <li>⏳ Live Darshan queue status & best times to visit</li>
-              <li>🚌 Bus routes, timetables, and transit directions</li>
-              <li>🛕 Temple guide, sacred places, and spiritual history</li>
-              <li>🍚 Free Annaprasadam, food, and dining timings</li>
-              <li>🏨 Free PAC accommodation and guest houses</li>
-              <li>🏥 Medical aid, first aid dispensaries, and emergency SOS</li>
+      <!-- Messages Stream -->
+      <div class="chat-messages" id="chatMessages" style="flex: 1; padding: 1.2rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; background: rgba(10, 15, 30, 0.6);">
+        <div class="message bot-message" style="display: flex; gap: 0.75rem; max-width: 85%;">
+          <div class="message-avatar" style="font-size: 1.3rem;">🤖</div>
+          <div class="message-content" style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.08); padding: 0.9rem 1.1rem; border-radius: 12px; font-size: 0.92rem; line-height: 1.5; color: #f1f5f9;">
+            <p style="margin: 0 0 0.5rem 0; font-weight: 600;">Namaste! 🙏 I'm your versatile AI Assistant.</p>
+            <p style="margin: 0 0 0.5rem 0; color: #cbd5e1;">You can ask me <strong>ANY question on any subject</strong>. For example:</p>
+            <ul style="margin: 0.3rem 0; padding-left: 1.2rem; color: #e2e8f0; font-size: 0.88rem;">
+              <li>🔬 <strong>General Knowledge & Science:</strong> <em>"How does photosynthesis work?"</em> or <em>"Why is the sky blue?"</em></li>
+              <li>💻 <strong>Technology & Math:</strong> <em>"Explain async vs sync"</em> or <em>"What is Python used for?"</em></li>
+              <li>🍲 <strong>Daily Life & Recipes:</strong> <em>"How do I make ginger tea?"</em> or <em>"Health benefits of walking"</em></li>
+              <li>⏳ <strong>Darshan & Queue:</strong> <em>"What is the live queue crowd status?"</em> or <em>"Best time to visit"</em></li>
+              <li>🚌 <strong>Travel & Transport:</strong> <em>"How do I travel from Tirupati to Tirumala?"</em></li>
+              <li>🛕 <strong>Temple & Facilities:</strong> <em>"Where is free Annaprasadam served?"</em> or <em>"Dress code guidelines"</em></li>
             </ul>
-            <p>Type any question below and I will provide an instant, point-wise answer!</p>
+            <p style="margin: 0.5rem 0 0 0; font-weight: 500; color: var(--gold, #F59E0B);">Type any question below to get an instant point-wise answer!</p>
           </div>
         </div>
       </div>
       
-      <div class="chat-input-area">
-        <div class="quick-prompts">
-          <button class="quick-prompt" onclick="sendQuickPrompt('What is the queue status?')">⏳ Queue status</button>
-          <button class="quick-prompt" onclick="sendQuickPrompt('How do I travel from Tirupati to Tirumala?')">🚌 Bus to Tirumala</button>
-          <button class="quick-prompt" onclick="sendQuickPrompt('What is the history of Tirumala Temple?')">🛕 Temple History</button>
-          <button class="quick-prompt" onclick="sendQuickPrompt('Where is free Annaprasadam served?')">🍚 Free Food</button>
-          <button class="quick-prompt" onclick="sendQuickPrompt('Explain how solar eclipse occurs')">☀️ Solar Eclipse</button>
-          <button class="quick-prompt" onclick="sendQuickPrompt('What are the health benefits of walking?')">🚶 Health Benefits</button>
+      <!-- Input Area -->
+      <div class="chat-input-area" style="padding: 1rem 1.2rem; background: rgba(15, 23, 42, 0.95); border-top: 1px solid rgba(255,255,255,0.08);">
+        <div class="input-wrapper" style="display: flex; gap: 0.6rem; align-items: center;">
+          <input 
+            type="text" 
+            id="chatInput" 
+            placeholder="Type any question here (science, coding, history, queue, travel, etc.)..." 
+            style="flex: 1; padding: 0.8rem 1.1rem; background: rgba(30, 41, 59, 0.9); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; color: #fff; font-size: 0.95rem; outline: none;" 
+            autocomplete="off"
+          />
+          <button 
+            id="sendBtn" 
+            class="send-btn btn-primary" 
+            style="padding: 0.8rem 1.4rem; font-size: 0.95rem; font-weight: 700; border-radius: 10px; white-space: nowrap; cursor: pointer;" 
+            title="Send message (or press Enter)"
+          >
+            Send ➤
+          </button>
+          <button 
+            id="voiceBtn" 
+            class="voice-btn" 
+            style="padding: 0.8rem 1rem; border-radius: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; cursor: pointer;" 
+            title="Voice input"
+          >
+            🎤
+          </button>
         </div>
-        <div class="input-wrapper" style="display:flex;gap:0.5rem;align-items:center;">
-          <input type="text" id="chatInput" placeholder="Ask any question (science, history, queue, temple, facts, etc.)..." style="flex:1;" />
-          <button id="sendBtn" class="send-btn btn-primary" style="padding:0.6rem 1.1rem;font-size:0.9rem;font-weight:700;min-width:70px;border-radius:8px;white-space:nowrap;" title="Send message (or press Enter)">Send ➤</button>
-          <button id="voiceBtn" class="voice-btn" title="Voice input">🎤</button>
-        </div>
-        <p style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem;">Press <kbd style="background:rgba(255,255,255,0.1);padding:0.1rem 0.35rem;border-radius:4px;font-size:0.72rem;">Enter</kbd> or click <strong>Send</strong> to submit.</p>
-      </div>
-    </div>
-
-    <!-- Features Panel -->
-    <div class="dashboard-card features-card">
-      <h3>✨ AI Features</h3>
-      <div class="feature-list">
-        <div class="feature-item">
-          <span class="feature-icon">🗣️</span>
-          <span class="feature-text">Voice input support</span>
-        </div>
-        <div class="feature-item">
-          <span class="feature-icon">🌐</span>
-          <span class="feature-text">Multilingual support</span>
-        </div>
-        <div class="feature-item">
-          <span class="feature-icon">📍</span>
-          <span class="feature-text">Location-aware responses</span>
-        </div>
-        <div class="feature-item">
-          <span class="feature-icon">⏰</span>
-          <span class="feature-text">Real-time queue data</span>
-        </div>
-        <div class="feature-item">
-          <span class="feature-icon">🗺️</span>
-          <span class="feature-text">Navigation integration</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; font-size: 0.75rem; color: #94a3b8;">
+          <span>💡 Press <kbd style="background: rgba(255,255,255,0.1); padding: 0.1rem 0.35rem; border-radius: 4px; color: #cbd5e1;">Enter</kbd> to send • No topic restrictions</span>
+          <span style="color: var(--gold, #F59E0B);">Point-wise & Instant AI Answers</span>
         </div>
       </div>
-    </div>
 
-    <!-- Example Questions -->
-    <div class="dashboard-card examples-card">
-      <h3>💬 Example Questions</h3>
-      <div class="example-questions">
-        <button class="example-question" onclick="sendQuickPrompt('Where is the nearest Anna Prasadam centre?')">Where is the nearest Anna Prasadam?</button>
-        <button class="example-question" onclick="sendQuickPrompt('How long is the darshan queue?')">How long is the darshan queue?</button>
-        <button class="example-question" onclick="sendQuickPrompt('Find me a hospital nearby')">Find me a hospital nearby</button>
-        <button class="example-question" onclick="sendQuickPrompt('Where can I stay for free?')">Where can I stay for free?</button>
-        <button class="example-question" onclick="sendQuickPrompt('How can I go from Tirupati to Tirumala by bus?')">Bus from Tirupati to Tirumala?</button>
-        <button class="example-question" onclick="sendQuickPrompt('Is there a bus from Tirumala to Tirupati?')">Bus from Tirumala to Tirupati?</button>
-        <button class="example-question" onclick="sendQuickPrompt('How do I reach Padmavathi Temple from Tirupati?')">How to reach Padmavathi Temple?</button>
-        <button class="example-question" onclick="sendQuickPrompt('What transport options are available from Tirupati Railway Station to Tirumala?')">Railway Station to Tirumala transport?</button>
-        <button class="example-question" onclick="sendQuickPrompt('How much time does the bus take from Tirupati to Tirumala?')">Bus duration: Tirupati to Tirumala?</button>
-        <button class="example-question" onclick="sendQuickPrompt('What are the temple timings?')">What are the temple timings?</button>
-      </div>
-    </div>
-
-    <!-- Language Selection -->
-    <div class="dashboard-card language-card">
-      <h3>🌐 Language</h3>
-      <select id="chatLanguage" class="lang-select">
-        <option value="en">English</option>
-        <option value="te">తెలుగు (Telugu)</option>
-        <option value="hi">हिंदी (Hindi)</option>
-        <option value="ta">தமிழ் (Tamil)</option>
-        <option value="kn">ಕನ್ನಡ (Kannada)</option>
-      </select>
     </div>
   </div>
 </section>
