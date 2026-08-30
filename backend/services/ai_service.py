@@ -109,46 +109,61 @@ def _build_db_context(message: str, db: Optional[Any] = None) -> str:
     context_parts = []
     msg_lower = message.lower()
 
-    # Queue status context — prefer live admin-entered data over AI prediction
-    if any(k in msg_lower for k in ("queue", "wait", "crowd", "darshan line", "density", "line", "pilgrim", "time to join")):
+    # Queue status context — prefer CCTV AI data over manual data over AI prediction
+    if any(k in msg_lower for k in ("queue", "wait", "crowd", "darshan line", "density", "line", "pilgrim", "time to join", "cctv", "people count")):
         try:
             from datetime import date as dt_date
-            from backend.models import PilgrimFlowData
+            from backend.models import PilgrimFlowData, CCTVCrowdRecord
+            from backend.services.cctv_vision import cctv_worker
             from sqlalchemy import desc
-            if db:
-                today = dt_date.today().strftime("%Y-%m-%d")
-                latest_flow = (
-                    db.query(PilgrimFlowData)
-                    .filter(PilgrimFlowData.date == today)
-                    .order_by(desc(PilgrimFlowData.start_time))
-                    .first()
+
+            cctv_live = cctv_worker.get_status()
+            if cctv_live.get("is_running") or (cctv_live.get("incoming", 0) > 0 or cctv_live.get("outgoing", 0) > 0):
+                context_parts.append(
+                    f"[SYSTEM CONTEXT - DEMO CCTV AI QUEUE DATA (Live Vision Analysis)]: "
+                    f"Data Source = Demo CCTV AI Data (Anonymous People Counting), "
+                    f"Location = {cctv_live['location_name']}, "
+                    f"Observed People in Camera = {cctv_live['observed_count']}, "
+                    f"Incoming Devotees = {cctv_live['incoming']}, "
+                    f"Outgoing Devotees = {cctv_live['outgoing']}, "
+                    f"Net Flow = {cctv_live['net_flow']:+d}, "
+                    f"Estimated Crowd = {cctv_live['estimated_crowd']:,}, "
+                    f"Queue Status = {cctv_live['queue_status']}, "
+                    f"Crowd Trend = {cctv_live['trend']}."
                 )
-                if latest_flow:
+            elif db:
+                today = dt_date.today().strftime("%Y-%m-%d")
+                latest_cctv = db.query(CCTVCrowdRecord).order_by(desc(CCTVCrowdRecord.timestamp)).first()
+                if latest_cctv:
                     context_parts.append(
-                        f"[SYSTEM CONTEXT - LIVE ADMIN QUEUE DATA (Today {today})]: "
-                        f"Current Estimated Crowd = {latest_flow.estimated_crowd:,} pilgrims, "
-                        f"Queue Status = {latest_flow.queue_status}, "
-                        f"Incoming Flow = {latest_flow.incoming_pilgrims} pilgrims/slot, "
-                        f"Outgoing Flow = {latest_flow.outgoing_pilgrims} pilgrims/slot, "
-                        f"Net Flow change = {latest_flow.net_pilgrims:+d}, "
-                        f"Festival Day = {'YES' if latest_flow.festival else 'NO'}, "
-                        f"Time Slot Recorded = {latest_flow.start_time} to {latest_flow.end_time}."
+                        f"[SYSTEM CONTEXT - DEMO CCTV AI RECORD ({latest_cctv.timestamp.strftime('%Y-%m-%d %H:%M')} UTC)]: "
+                        f"Data Source = Demo CCTV AI Data, "
+                        f"Location = {latest_cctv.location_name}, "
+                        f"Observed Count = {latest_cctv.observed_count}, "
+                        f"Incoming Count = {latest_cctv.incoming_count}, "
+                        f"Outgoing Count = {latest_cctv.outgoing_count}, "
+                        f"Net Flow = {latest_cctv.net_flow:+d}, "
+                        f"Queue Status = {latest_cctv.queue_status}, "
+                        f"Trend = {latest_cctv.trend}."
                     )
                 else:
-                    # Check recent recorded data
-                    recent_flow = (
+                    latest_flow = (
                         db.query(PilgrimFlowData)
-                        .order_by(desc(PilgrimFlowData.date), desc(PilgrimFlowData.start_time))
+                        .filter(PilgrimFlowData.date == today)
+                        .order_by(desc(PilgrimFlowData.start_time))
                         .first()
                     )
-                    if recent_flow:
+                    if latest_flow:
+                        src_label = "Demo CCTV AI Data" if getattr(latest_flow, "source", "") == "demo_cctv_ai" else "Live Admin Data"
                         context_parts.append(
-                            f"[SYSTEM CONTEXT - RECENT ADMIN QUEUE RECORD ({recent_flow.date})]: "
-                            f"Estimated Crowd = {recent_flow.estimated_crowd:,} pilgrims, "
-                            f"Queue Status = {recent_flow.queue_status}, "
-                            f"Incoming = {recent_flow.incoming_pilgrims}, "
-                            f"Outgoing = {recent_flow.outgoing_pilgrims}, "
-                            f"Recorded Slot = {recent_flow.start_time} to {recent_flow.end_time}."
+                            f"[SYSTEM CONTEXT - {src_label.upper()} (Today {today})]: "
+                            f"Current Estimated Crowd = {latest_flow.estimated_crowd:,} pilgrims, "
+                            f"Queue Status = {latest_flow.queue_status}, "
+                            f"Incoming Flow = {latest_flow.incoming_pilgrims} pilgrims/slot, "
+                            f"Outgoing Flow = {latest_flow.outgoing_pilgrims} pilgrims/slot, "
+                            f"Net Flow change = {latest_flow.net_pilgrims:+d}, "
+                            f"Festival Day = {'YES' if latest_flow.festival else 'NO'}, "
+                            f"Time Slot Recorded = {latest_flow.start_time} to {latest_flow.end_time}."
                         )
                     else:
                         from backend.services.ttd_official import public_status
@@ -158,6 +173,7 @@ def _build_db_context(message: str, db: Optional[Any] = None) -> str:
                         if wait_val is not None:
                             from backend.services.queue_prediction import predict_queue_status
                             pred = predict_queue_status(wait_val, crowd_val, db=db)
+
                             context_parts.append(
                                 f"[SYSTEM CONTEXT - ESTIMATED QUEUE STATUS]: "
                                 f"Estimated wait ≈ {wait_val} mins, "

@@ -294,7 +294,7 @@ class AdminSession(Base):
 
 
 class PilgrimFlowData(Base):
-    """Admin-entered 2-hour pilgrim arrival/departure counts per time slot."""
+    """Admin-entered or CCTV AI 2-hour pilgrim arrival/departure counts per time slot."""
     __tablename__ = "pilgrim_flow_data"
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[str] = mapped_column(String(20), index=True)           # YYYY-MM-DD
@@ -307,5 +307,29 @@ class PilgrimFlowData(Base):
     festival: Mapped[bool] = mapped_column(Boolean, default=False)
     queue_status: Mapped[str] = mapped_column(String(20), default="MODERATE")  # backend-calculated
     queue_pressure: Mapped[float] = mapped_column(Float, default=0.0)    # 0.0-1.0
+    source: Mapped[str] = mapped_column(String(40), default="manual")    # demo_cctv_ai, cctv_ai, manual
     created_by_admin: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class CCTVCrowdRecord(Base):
+    """CCTV AI people counting record with time aggregation and camera location."""
+    __tablename__ = "cctv_crowd_records"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    camera_id: Mapped[str] = mapped_column(String(80), default="CAM_01_DEMO")
+    location_id: Mapped[int] = mapped_column(Integer, default=1)
+    location_name: Mapped[str] = mapped_column(String(120), default="Sarva Darshan VQC I")
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    interval_start: Mapped[str] = mapped_column(String(20), default="")  # HH:MM
+    interval_end: Mapped[str] = mapped_column(String(20), default="")    # HH:MM
+    incoming_count: Mapped[int] = mapped_column(Integer, default=0)
+    outgoing_count: Mapped[int] = mapped_column(Integer, default=0)
+    observed_count: Mapped[int] = mapped_column(Integer, default=0)
+    net_flow: Mapped[int] = mapped_column(Integer, default=0)
+    queue_status: Mapped[str] = mapped_column(String(20), default="MODERATE")
+    trend: Mapped[str] = mapped_column(String(20), default="STABLE")
+    confidence: Mapped[float] = mapped_column(Float, default=0.92)
+    source: Mapped[str] = mapped_column(String(40), default="demo_cctv_ai")  # demo_cctv_ai, cctv_ai, manual
+    video_filename: Mapped[str] = mapped_column(String(255), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+

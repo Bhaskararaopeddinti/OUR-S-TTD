@@ -138,15 +138,51 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
     admin_crowd_data = None
     all_today_slots = []
     has_reliable_data = False
+    data_source_label = "AI Estimated Data"
+    data_source_code = "ai_prediction"
 
-    if db:
+    # 0. Check Live CCTV Vision Worker first
+    try:
+        from backend.services.cctv_vision import cctv_worker
+        cctv_live = cctv_worker.get_status()
+        if cctv_live.get("is_running") or (cctv_live.get("incoming", 0) > 0 or cctv_live.get("outgoing", 0) > 0):
+            has_reliable_data = True
+            data_source_label = cctv_live.get("source", "Demo CCTV AI Data")
+            data_source_code = cctv_live.get("source_db", "demo_cctv_ai")
+            admin_crowd_data = {
+                "estimated_crowd": cctv_live["estimated_crowd"],
+                "observed_count": cctv_live["observed_count"],
+                "queue_status": cctv_live["queue_status"],
+                "incoming_pilgrims": cctv_live["incoming"],
+                "outgoing_pilgrims": cctv_live["outgoing"],
+                "net_pilgrims": cctv_live["net_flow"],
+                "trend": cctv_live["trend"],
+                "festival": False,
+                "slot": f"{(hour//2)*2:02d}:00 – {(hour//2)*2+2:02d}:00",
+                "source": data_source_code,
+                "source_label": data_source_label,
+            }
+    except Exception as cctv_e:
+        import logging
+        logging.getLogger(__name__).debug("Could not read live CCTV worker: %s", cctv_e)
+
+    # 1. If not running, check Database (CCTV records or PilgrimFlowData)
+    if not admin_crowd_data and db:
         try:
             from datetime import date as dt_date
-            from backend.models import PilgrimFlowData
+            from backend.models import PilgrimFlowData, CCTVCrowdRecord
             from sqlalchemy import desc
 
             today_str = dt_date.today().strftime("%Y-%m-%d")
-            # Query all slots for today (or fallback to latest recorded date)
+
+            # Check for latest CCTV records
+            latest_cctv = (
+                db.query(CCTVCrowdRecord)
+                .order_by(desc(CCTVCrowdRecord.timestamp))
+                .first()
+            )
+
+            # Query all slots for today
             all_today_slots = (
                 db.query(PilgrimFlowData)
                 .filter(PilgrimFlowData.date == today_str)
@@ -154,7 +190,6 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
                 .all()
             )
 
-            # If no data for today, look for most recent date with entries
             if not all_today_slots:
                 latest_entry = db.query(PilgrimFlowData).order_by(desc(PilgrimFlowData.date), desc(PilgrimFlowData.start_time)).first()
                 if latest_entry:
@@ -165,11 +200,32 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
                         .all()
                     )
 
-            if all_today_slots:
+            if latest_cctv and (not all_today_slots or latest_cctv.timestamp > all_today_slots[-1].created_at):
+                has_reliable_data = True
+                data_source_label = "Demo CCTV AI Data" if latest_cctv.source == "demo_cctv_ai" else "CCTV AI Data"
+                data_source_code = latest_cctv.source
+                admin_crowd_data = {
+                    "estimated_crowd": max(0, 1200 + latest_cctv.net_flow),
+                    "observed_count": latest_cctv.observed_count,
+                    "queue_status": latest_cctv.queue_status,
+                    "incoming_pilgrims": latest_cctv.incoming_count,
+                    "outgoing_pilgrims": latest_cctv.outgoing_count,
+                    "net_pilgrims": latest_cctv.net_flow,
+                    "trend": latest_cctv.trend,
+                    "festival": False,
+                    "slot": f"{latest_cctv.interval_start} – {latest_cctv.interval_end}" if latest_cctv.interval_start else "Live",
+                    "source": data_source_code,
+                    "source_label": data_source_label,
+                }
+            elif all_today_slots:
                 has_reliable_data = True
                 latest_flow = all_today_slots[-1]
+                src = getattr(latest_flow, "source", "manual") or "manual"
+                data_source_code = src
+                data_source_label = "Demo CCTV AI Data" if src == "demo_cctv_ai" else ("Live Admin Data" if src == "manual" else "CCTV AI Data")
                 admin_crowd_data = {
                     "estimated_crowd": latest_flow.estimated_crowd,
+                    "observed_count": latest_flow.incoming_pilgrims,
                     "queue_status": latest_flow.queue_status,
                     "incoming_pilgrims": latest_flow.incoming_pilgrims,
                     "outgoing_pilgrims": latest_flow.outgoing_pilgrims,
@@ -179,11 +235,13 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
                     "raw_start": latest_flow.start_time,
                     "raw_end": latest_flow.end_time,
                     "date": latest_flow.date,
+                    "source": data_source_code,
+                    "source_label": data_source_label,
                     "total_slots_recorded": len(all_today_slots)
                 }
         except Exception as e:
             import logging
-            logging.getLogger(__name__).debug("Could not fetch admin queue data: %s", e)
+            logging.getLogger(__name__).debug("Could not fetch queue database data: %s", e)
 
     # 1. CURRENT QUEUE STATUS CALCULATION
     current_crowd = 0
@@ -197,14 +255,14 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
         current_crowd = admin_crowd_data["estimated_crowd"]
         incoming_count = admin_crowd_data["incoming_pilgrims"]
         outgoing_count = admin_crowd_data["outgoing_pilgrims"]
-        raw_status = admin_crowd_data["queue_status"] or "MODERATE"
-        is_festival = admin_crowd_data["festival"]
-        current_time_period = admin_crowd_data["slot"]
+        raw_status = admin_crowd_data.get("queue_status") or "MODERATE"
+        is_festival = admin_crowd_data.get("festival", False)
+        current_time_period = admin_crowd_data.get("slot") or current_time_period
     else:
-        # Base estimate when no admin data exists
         current_crowd = 3200
         incoming_count = 1200
         outgoing_count = 950
+
 
     # Status level, emoji, and waiting condition
     status_level, status_badge, badge_class = _get_status_level_and_emoji(current_crowd, is_festival)
@@ -387,9 +445,11 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
         # Source Tracking
         "admin_data_used": has_reliable_data,
         "admin_crowd_data": admin_crowd_data,
-        "data_source": "Live Admin Data" if has_reliable_data else "AI Estimated Data",
+        "data_source": data_source_label,
+        "data_source_code": data_source_code,
         "prediction_timestamp": now.isoformat()
     }
+
 
 
 def predict(current_wait: int, current_density: str) -> int:

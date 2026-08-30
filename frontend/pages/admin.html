@@ -108,12 +108,192 @@
       </div>
     </div>
 
-    <!-- ── DATA ENTRY FORM ── -->
+    <!-- ── CCTV AI CROWD MONITORING (AUTOMATIC YOLO PEOPLE COUNTER) ── -->
+    <div class="dashboard-card" style="margin-top:1.5rem; border-top: 3px solid var(--gold);">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem;">
+        <div>
+          <h3 style="margin:0; display:flex; align-items:center; gap:0.5rem;">
+            <span>🎥</span>
+            <span>CCTV AI Crowd Monitoring</span>
+          </h3>
+          <p style="font-size:0.85rem; color:var(--muted); margin:0.25rem 0 0;">
+            Automatic CCTV video-based people counting using YOLO person detection &amp; object tracking.
+          </p>
+        </div>
+        <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+          <span id="cctvSourceBadge" class="pill open" style="background:rgba(59,130,246,0.15); color:#60A5FA;">
+            Demo CCTV AI Data
+          </span>
+          <span id="cctvWorkerStatusBadge" class="pill open" style="background:rgba(245,158,11,0.15); color:var(--gold);">
+            Status: Waiting
+          </span>
+        </div>
+      </div>
+
+      <!-- Controls & Live Preview Grid -->
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:1.25rem;">
+        
+        <!-- Left: Configuration & Controls -->
+        <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:1rem;">
+          <h4 style="margin-top:0; color:var(--gold); font-size:0.95rem; margin-bottom:0.85rem;">⚙️ CCTV AI Setup &amp; Analysis Controls</h4>
+          
+          <!-- Demo Video Quick Select -->
+          <div style="background:rgba(218,165,32,0.08); border:1px solid rgba(218,165,32,0.25); border-radius:8px; padding:0.75rem; margin-bottom:1rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong style="font-size:0.85rem; color:var(--gold);">Reference CCTV Video</strong>
+                <div style="font-size:0.78rem; color:var(--muted);">WhatsApp Video 2026-08-30 at 5.29.14 PM.mp4</div>
+              </div>
+              <button type="button" id="useDemoVideoBtn" class="btn-ghost" style="padding:0.35rem 0.75rem; font-size:0.8rem; border-color:var(--gold); color:var(--gold);">
+                🎬 Use Reference Demo
+              </button>
+            </div>
+          </div>
+
+          <!-- Custom Video File Upload -->
+          <div style="margin-bottom:0.9rem;">
+            <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Or Upload CCTV Video (.mp4, .avi, .mov, .mkv)</label>
+            <div style="display:flex; gap:0.5rem;">
+              <input type="file" id="cctvVideoFileInput" accept="video/mp4,video/avi,video/quicktime,video/x-matroska" class="admin-input" style="padding:0.4rem;" />
+              <button type="button" id="uploadCctvFileBtn" class="btn-ghost" style="padding:0.4rem 0.8rem; white-space:nowrap;">Upload</button>
+            </div>
+            <span id="cctvUploadStatus" style="font-size:0.78rem; display:block; margin-top:0.3rem;"></span>
+          </div>
+
+          <!-- Form Fields -->
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem; margin-bottom:0.9rem;">
+            <div>
+              <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Camera Location</label>
+              <select id="cctvLocationSelect" class="admin-select" style="font-size:0.85rem;">
+                <option value="Sarva Darshan VQC I">Sarva Darshan VQC I</option>
+                <option value="Sarva Darshan VQC II">Sarva Darshan VQC II</option>
+                <option value="Srivari Temple Main Gate">Srivari Temple Main Gate</option>
+                <option value="MTVAC Annaprasadam">MTVAC Annaprasadam</option>
+                <option value="Laddu Distribution Counter">Laddu Distribution Counter</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Counting Direction</label>
+              <select id="cctvDirectionSelect" class="admin-select" style="font-size:0.85rem;">
+                <option value="left_to_right">Left → Right (IN)</option>
+                <option value="right_to_left">Right → Left (IN)</option>
+                <option value="top_to_bottom">Top ↓ Bottom (IN)</option>
+                <option value="bottom_to_top">Bottom ↑ Top (IN)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem; margin-bottom:1.1rem;">
+            <div>
+              <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Aggregation Interval</label>
+              <select id="cctvIntervalSelect" class="admin-select" style="font-size:0.85rem;">
+                <option value="15" selected>15 Minutes (Standard)</option>
+                <option value="30">30 Minutes</option>
+                <option value="60">1 Hour</option>
+                <option value="120">2 Hours</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Camera ID</label>
+              <input type="text" id="cctvCameraId" class="admin-input" value="CAM_01_DEMO" style="font-size:0.85rem;" />
+            </div>
+          </div>
+
+          <!-- Start / Stop Action Buttons -->
+          <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+            <button type="button" id="startCctvAnalysisBtn" class="btn-primary btn-glow" style="flex:1; min-width:140px; padding:0.65rem 1rem;">
+              ⚡ Start AI Analysis
+            </button>
+            <button type="button" id="stopCctvAnalysisBtn" class="btn-danger-sm" style="padding:0.65rem 1.2rem; font-weight:700;">
+              ⏹️ Stop Analysis
+            </button>
+          </div>
+          <div id="cctvActionMessage" style="font-size:0.82rem; margin-top:0.6rem;"></div>
+        </div>
+
+        <!-- Right: Live Video Stream & HUD -->
+        <div style="background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:1rem; display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+            <span style="font-size:0.85rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:0.4rem;">
+              <span class="live-dot" style="display:inline-block; width:8px; height:8px; background:#10B981; border-radius:50%;"></span>
+              Live AI Video Monitor (YOLO + Tracking HUD)
+            </span>
+            <span id="cctvFpsLabel" style="font-size:0.75rem; color:var(--muted);">AI Inference: Active</span>
+          </div>
+
+          <div style="position:relative; width:100%; height:240px; background:#070B14; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.05);">
+            <img id="cctvStreamDisplay" src="" alt="CCTV Stream" style="width:100%; height:100%; object-fit:contain; display:none;" />
+            <div id="cctvStreamPlaceholder" style="text-align:center; padding:1rem; color:var(--muted);">
+              <div style="font-size:2rem; margin-bottom:0.5rem;">📹</div>
+              <div style="font-size:0.88rem; font-weight:600;">CCTV Stream Offline</div>
+              <p style="font-size:0.78rem; margin:0.3rem 0 0;">Click "Start AI Analysis" to launch live YOLO detection &amp; people tracking.</p>
+            </div>
+          </div>
+
+          <!-- Live Metrics Mini-Grid -->
+          <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:0.5rem; margin-top:0.75rem;">
+            <div style="background:rgba(255,255,255,0.03); padding:0.5rem; border-radius:6px; text-align:center;">
+              <div style="font-size:0.7rem; color:var(--muted);">Observed</div>
+              <div id="cctvLiveObserved" style="font-size:1.15rem; font-weight:800; color:var(--text);">0</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.03); padding:0.5rem; border-radius:6px; text-align:center;">
+              <div style="font-size:0.7rem; color:#60A5FA;">Incoming (In)</div>
+              <div id="cctvLiveIncoming" style="font-size:1.15rem; font-weight:800; color:#60A5FA;">0</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.03); padding:0.5rem; border-radius:6px; text-align:center;">
+              <div style="font-size:0.7rem; color:#34D399;">Outgoing (Out)</div>
+              <div id="cctvLiveOutgoing" style="font-size:1.15rem; font-weight:800; color:#34D399;">0</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.03); padding:0.5rem; border-radius:6px; text-align:center;">
+              <div style="font-size:0.7rem; color:var(--gold);">Queue Status</div>
+              <div id="cctvLiveQueueStatus" style="font-size:0.95rem; font-weight:800; color:var(--gold);">MODERATE</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Recent CCTV AI Records History Table -->
+      <div style="margin-top:1.25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+          <h4 style="margin:0; font-size:0.9rem; color:var(--gold);">📋 Recent Automatic CCTV AI Aggregated Records</h4>
+          <button type="button" id="refreshCctvHistoryBtn" class="btn-ghost" style="padding:0.25rem 0.65rem; font-size:0.78rem;">↻ Refresh History</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="admin-table" style="font-size:0.82rem; width:100%;">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Location</th>
+                <th>Interval</th>
+                <th>Incoming</th>
+                <th>Outgoing</th>
+                <th>Observed</th>
+                <th>Net Flow</th>
+                <th>Queue Status</th>
+                <th>Trend</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody id="cctvHistoryBody">
+              <tr><td colspan="10" style="text-align:center; padding:1rem; color:var(--muted);">No CCTV records yet. Start analysis above to record automatic counts.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DATA ENTRY FORM (MANUAL FALLBACK) ── -->
     <div class="dashboard-card" style="margin-top:1.5rem;">
-      <h3>📊 Enter Pilgrim Flow Data</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
+        <h3 style="margin:0;">📊 Manual Pilgrim Flow Entry (Fallback)</h3>
+        <span class="pill" style="background:rgba(255,255,255,0.05); color:var(--muted); font-size:0.75rem;">Manual Fallback System</span>
+      </div>
       <p style="font-size:0.85rem; color:var(--muted); margin-bottom:1rem;">
-        Enter raw arrival and departure counts for each 2-hour time slot. The backend automatically calculates queue status and predictions.
+        Admin manual fallback system. When CCTV AI is running, the system collects crowd data automatically.
       </p>
+
       <form id="pilgrimFlowForm">
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
 

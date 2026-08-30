@@ -20,7 +20,7 @@ from backend.models import (
     Notification
 )
 from backend.auth import hash_password
-from backend.routers import auth_routes, core, transport_routes
+from backend.routers import auth_routes, core, transport_routes, cctv_routes
 from backend.routers.navigation import router as locations_router, navigation_router
 from backend.routers import admin_routes
 from backend.models import TransportRoute
@@ -71,6 +71,8 @@ app.include_router(transport_routes.router)
 app.include_router(locations_router)
 app.include_router(navigation_router)
 app.include_router(admin_routes.router)
+app.include_router(cctv_routes.router)
+
 
 # ── WebSocket Hub ──────────────────────────────────────────────────────────
 @app.websocket("/ws/live")

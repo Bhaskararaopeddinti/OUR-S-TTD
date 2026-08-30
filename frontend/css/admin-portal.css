@@ -303,3 +303,87 @@
 
 /* ── Admin Page Container ────────────────────────── */
 .admin-page { padding: 0 0.5rem 2rem; }
+
+/* ──────────────────────────────────────────────────────
+   CCTV AI Crowd Monitoring – Shared Form Inputs
+   ────────────────────────────────────────────────────── */
+
+/* Admin input field – styled form text/file inputs */
+.admin-input {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  color: var(--text, #f1f5f9);
+  font-size: 0.88rem;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  box-sizing: border-box;
+}
+.admin-input:focus {
+  border-color: var(--gold, #DAA520);
+  box-shadow: 0 0 0 2px rgba(218,165,32,0.18);
+}
+
+/* Admin select – dropdown matching admin-input look */
+.admin-select {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  color: var(--text, #f1f5f9);
+  font-size: 0.88rem;
+  font-family: inherit;
+  transition: border-color 0.2s;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+}
+.admin-select:focus {
+  border-color: var(--gold, #DAA520);
+  box-shadow: 0 0 0 2px rgba(218,165,32,0.18);
+}
+.admin-select option {
+  background: #1a1f2e;
+  color: var(--text, #f1f5f9);
+}
+
+/* Danger / Stop button (small) */
+.btn-danger-sm {
+  background: rgba(239,68,68,0.12);
+  color: #EF4444;
+  border: 1px solid rgba(239,68,68,0.35);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+  outline: none;
+}
+.btn-danger-sm:hover {
+  background: rgba(239,68,68,0.22);
+  border-color: #EF4444;
+  transform: translateY(-1px);
+}
+.btn-danger-sm:active { transform: translateY(0); }
+
+/* Glow variant for primary action button */
+.btn-glow {
+  box-shadow: 0 0 18px rgba(218,165,32,0.30), 0 4px 12px rgba(0,0,0,0.3);
+}
+.btn-glow:hover {
+  box-shadow: 0 0 28px rgba(218,165,32,0.50), 0 6px 16px rgba(0,0,0,0.4);
+}
+
+/* Live dot pulse animation */
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.55; transform: scale(1.3); }
+}
+.live-dot { animation: livePulse 1.8s ease-in-out infinite; }
+

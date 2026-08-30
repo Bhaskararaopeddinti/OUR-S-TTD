@@ -60,10 +60,12 @@ function initAdminModule() {
       loadAdminDashboard();
       loadPilgrimFlowTable(null);
       setupFlowForm();
+      initAdminCCTVMonitoring();
       setupAdminRouteForm();
       initAdminCrowdUpload();
       loadAdminEmergencies();
       startAdminClock();
+
     })
     .catch(() => {
       if (notice)  notice.style.display = 'flex';
@@ -548,3 +550,299 @@ async function loadAdminEmergencies() {
 // ──────────────────────────────────────────────────────────────────────────────
 window.initAdminModule          = initAdminModule;
 window.loadAdminTransportRoutes = loadAdminTransportRoutes;
+
+// ──────────────────────────────────────────────────────────────────────────────
+// CCTV AI Crowd Monitoring Module
+// Handles: video upload, start/stop analysis, live stream, status polling,
+//          CCTV history table, WebSocket cctv_queue_update integration
+// ──────────────────────────────────────────────────────────────────────────────
+
+let _cctvStatusInterval   = null;  // polling timer for live metrics
+let _cctvStreamActive     = false; // whether MJPEG stream is mounted
+let _cctvUploadedFilename = null;  // last uploaded or selected filename
+
+function initAdminCCTVMonitoring() {
+  const btn = (id) => document.getElementById(id);
+
+  // Wire: use reference demo video button
+  if (btn('useDemoVideoBtn')) {
+    btn('useDemoVideoBtn').addEventListener('click', () => {
+      _cctvUploadedFilename = 'demo_cctv.mp4';
+      _showCctvMsg('✅ Reference demo video selected: demo_cctv.mp4', 'success');
+      btn('cctvUploadStatus').textContent = '';
+    });
+  }
+
+  // Wire: custom upload button
+  if (btn('uploadCctvFileBtn')) {
+    btn('uploadCctvFileBtn').addEventListener('click', () => _handleCctvFileUpload());
+  }
+
+  // Wire: start analysis
+  if (btn('startCctvAnalysisBtn')) {
+    btn('startCctvAnalysisBtn').addEventListener('click', () => _startCctvAnalysis());
+  }
+
+  // Wire: stop analysis
+  if (btn('stopCctvAnalysisBtn')) {
+    btn('stopCctvAnalysisBtn').addEventListener('click', () => _stopCctvAnalysis());
+  }
+
+  // Wire: refresh CCTV history table
+  if (btn('refreshCctvHistoryBtn')) {
+    btn('refreshCctvHistoryBtn').addEventListener('click', () => _loadCctvRecentRecords());
+  }
+
+  // Load initial status and history
+  _pollCctvStatus();
+  _loadCctvRecentRecords();
+}
+
+// ── File Upload ────────────────────────────────────────────────────────────────
+async function _handleCctvFileUpload() {
+  const fileInput = document.getElementById('cctvVideoFileInput');
+  const statusEl  = document.getElementById('cctvUploadStatus');
+  if (!fileInput || !fileInput.files.length) {
+    if (statusEl) statusEl.textContent = '⚠️ Please select a video file first.';
+    return;
+  }
+  const file = fileInput.files[0];
+  const form = new FormData();
+  form.append('file', file);
+
+  if (statusEl) statusEl.textContent = '⏳ Uploading…';
+  try {
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+    const res = await fetch('/api/cctv/upload', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: form,
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Upload failed'); }
+    const data = await res.json();
+    _cctvUploadedFilename = data.filename;
+    if (statusEl) statusEl.textContent = `✅ Uploaded: ${data.filename}`;
+    _showCctvMsg(`✅ Video uploaded successfully: ${data.filename}`, 'success');
+  } catch (err) {
+    if (statusEl) statusEl.textContent = `❌ ${err.message}`;
+    _showCctvMsg(`❌ Upload error: ${err.message}`, 'error');
+  }
+}
+
+// ── Start Analysis ─────────────────────────────────────────────────────────────
+async function _startCctvAnalysis() {
+  const filename = _cctvUploadedFilename;
+  if (!filename) {
+    _showCctvMsg('⚠️ Please select the reference demo video or upload a CCTV file first.', 'warn');
+    return;
+  }
+
+  const payload = {
+    video_filename : filename,
+    camera_location: document.getElementById('cctvLocationSelect')?.value  || 'Sarva Darshan VQC I',
+    direction_mode : document.getElementById('cctvDirectionSelect')?.value  || 'left_to_right',
+    interval_minutes: parseInt(document.getElementById('cctvIntervalSelect')?.value || '15', 10),
+    camera_id      : document.getElementById('cctvCameraId')?.value          || 'CAM_01_DEMO',
+  };
+
+  _showCctvMsg('⏳ Starting YOLO AI analysis…', 'info');
+  try {
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+    const res = await fetch('/api/cctv/start', {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body   : JSON.stringify(payload),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Start failed'); }
+    const data = await res.json();
+    _showCctvMsg(`✅ ${data.message || 'CCTV AI Analysis started!'}`, 'success');
+
+    // Mount the MJPEG live stream
+    _mountCctvStream();
+
+    // Start polling for live status
+    if (_cctvStatusInterval) clearInterval(_cctvStatusInterval);
+    _cctvStatusInterval = setInterval(_pollCctvStatus, 2500);
+
+    _updateWorkerStatusBadge('🟢 Running');
+  } catch (err) {
+    _showCctvMsg(`❌ ${err.message}`, 'error');
+  }
+}
+
+// ── Stop Analysis ──────────────────────────────────────────────────────────────
+async function _stopCctvAnalysis() {
+  _showCctvMsg('⏳ Stopping analysis…', 'info');
+  try {
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+    const res = await fetch('/api/cctv/stop', {
+      method : 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Stop failed'); }
+    const data = await res.json();
+    _showCctvMsg(`⏹️ ${data.message || 'CCTV analysis stopped.'}`, 'info');
+
+    // Unmount stream
+    _unmountCctvStream();
+
+    // Stop polling
+    if (_cctvStatusInterval) { clearInterval(_cctvStatusInterval); _cctvStatusInterval = null; }
+    _updateWorkerStatusBadge('⏹️ Stopped');
+
+    // Refresh history after stopping
+    setTimeout(_loadCctvRecentRecords, 1500);
+  } catch (err) {
+    _showCctvMsg(`❌ ${err.message}`, 'error');
+  }
+}
+
+// ── MJPEG Stream Mount / Unmount ───────────────────────────────────────────────
+function _mountCctvStream() {
+  const img  = document.getElementById('cctvStreamDisplay');
+  const ph   = document.getElementById('cctvStreamPlaceholder');
+  if (!img) return;
+
+  // Add timestamp to bust cache / force reconnect
+  img.src = `/api/cctv/stream?t=${Date.now()}`;
+  img.style.display = 'block';
+  if (ph) ph.style.display = 'none';
+  _cctvStreamActive = true;
+
+  img.onerror = () => {
+    // Stream ended or errored – show placeholder
+    _unmountCctvStream();
+  };
+}
+
+function _unmountCctvStream() {
+  const img = document.getElementById('cctvStreamDisplay');
+  const ph  = document.getElementById('cctvStreamPlaceholder');
+  if (img) { img.src = ''; img.style.display = 'none'; }
+  if (ph)  ph.style.display = 'flex';
+  _cctvStreamActive = false;
+}
+
+// ── Poll Worker Status ─────────────────────────────────────────────────────────
+async function _pollCctvStatus() {
+  try {
+    const res  = await fetch('/api/cctv/status');
+    if (!res.ok) return;
+    const data = await res.json();
+    _applyCctvStatusToUI(data);
+  } catch (_) {}
+}
+
+function _applyCctvStatusToUI(data) {
+  const el = (id) => document.getElementById(id);
+
+  // Worker state badge — API returns is_running or worker_running
+  const running = data.is_running === true || data.worker_running === true;
+  _updateWorkerStatusBadge(running ? '🟢 Running' : '⏸️ Idle');
+
+  // Metric cards — map API fields to display
+  const observed  = data.observed_count  ?? data.current_observed  ?? '—';
+  const incoming  = data.incoming        ?? data.total_in           ?? '—';
+  const outgoing  = data.outgoing        ?? data.total_out          ?? '—';
+  const queueStat = data.queue_status    ?? '—';
+
+  if (el('cctvLiveObserved'))    el('cctvLiveObserved').textContent    = observed;
+  if (el('cctvLiveIncoming'))    el('cctvLiveIncoming').textContent    = incoming;
+  if (el('cctvLiveOutgoing'))    el('cctvLiveOutgoing').textContent    = outgoing;
+  if (el('cctvLiveQueueStatus')) el('cctvLiveQueueStatus').textContent = queueStat;
+
+  // Colour the queue status
+  const qsEl = el('cctvLiveQueueStatus');
+  if (qsEl) {
+    const colours = { 'LOW': '#10B981', 'MODERATE': '#F59E0B', 'HIGH': '#F97316', 'VERY HIGH': '#EF4444' };
+    qsEl.style.color = colours[queueStat] || 'var(--gold)';
+  }
+
+  // FPS / track label
+  if (el('cctvFpsLabel')) {
+    const fps    = data.fps != null ? `FPS: ${Math.round(data.fps)} | ` : '';
+    const frames = data.current_frame ? `Frame: ${data.current_frame}` : '';
+    const tracks = data.active_tracks != null ? ` | Tracks: ${data.active_tracks}` : '';
+    el('cctvFpsLabel').textContent = (fps + frames + tracks) || 'AI Inference: Active';
+  }
+
+  // If worker is running and stream is not mounted, mount it
+  if (running && !_cctvStreamActive) _mountCctvStream();
+}
+
+// ── CCTV History Table ─────────────────────────────────────────────────────────
+async function _loadCctvRecentRecords() {
+  const tbody = document.getElementById('cctvHistoryBody');
+  if (!tbody) return;
+  try {
+    const res = await fetch('/api/cctv/recent?limit=20');
+    if (!res.ok) throw new Error('Failed to load records');
+    const records = await res.json();
+
+    if (!records.length) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:1rem; color:var(--muted);">No CCTV records yet. Start analysis above to record automatic counts.</td></tr>';
+      return;
+    }
+
+    const statusColor = (s) => ({ 'LOW': '#10B981', 'MODERATE': '#F59E0B', 'HIGH': '#F97316', 'VERY HIGH': '#EF4444' }[s] || '#6B7280');
+    const trendArrow  = (t) => ({ 'Increasing': '↑ Increasing', 'Decreasing': '↓ Decreasing', 'Stable': '→ Stable' }[t] || t || '—');
+
+    tbody.innerHTML = records.map(r => {
+      const ts      = (r.timestamp || r.recorded_at) ? new Date(r.timestamp || r.recorded_at).toLocaleString() : '—';
+      const interval= r.interval || (r.interval_minutes ? `${r.interval_minutes} min` : '—');
+      const netFlow = (r.incoming_count ?? 0) - (r.outgoing_count ?? 0);
+      const netCls  = netFlow >= 0 ? '#60A5FA' : '#34D399';
+      const trend   = r.crowd_trend || r.trend || '—';
+      return `<tr>
+        <td style="font-size:0.8rem; white-space:nowrap;">${ts}</td>
+        <td style="font-size:0.8rem;">${r.location_name || r.camera_location || '—'}</td>
+        <td>${interval}</td>
+        <td style="color:#60A5FA; font-weight:700;">${r.incoming_count ?? 0}</td>
+        <td style="color:#34D399; font-weight:700;">${r.outgoing_count ?? 0}</td>
+        <td style="font-weight:700;">${r.observed_count ?? 0}</td>
+        <td style="color:${netCls}; font-weight:700;">${netFlow >= 0 ? '+' : ''}${netFlow}</td>
+        <td style="color:${statusColor(r.queue_status)}; font-weight:700;">${r.queue_status || '—'}</td>
+        <td style="font-size:0.8rem;">${trendArrow(trend)}</td>
+        <td><span style="background:rgba(59,130,246,0.15); color:#60A5FA; border-radius:4px; padding:2px 6px; font-size:0.75rem;">Demo CCTV AI</span></td>
+      </tr>`;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:1rem; color:#EF4444;">Error loading CCTV records: ${err.message}</td></tr>`;
+  }
+}
+
+// ── WebSocket CCTV update handler (called from app.js WS dispatcher) ───────────
+window.handleCctvQueueUpdate = function(data) {
+  _applyCctvStatusToUI(data);
+  // Also refresh the history table periodically when worker is running
+  if (data.worker_running) {
+    _loadCctvRecentRecords();
+  }
+};
+
+// ── UI Helpers ─────────────────────────────────────────────────────────────────
+function _showCctvMsg(msg, type = 'info') {
+  const el = document.getElementById('cctvActionMessage');
+  if (!el) return;
+  const colors = { success: '#10B981', error: '#EF4444', warn: '#F59E0B', info: '#60A5FA' };
+  el.style.color = colors[type] || '#60A5FA';
+  el.textContent = msg;
+  // Auto-clear success messages after 6s
+  if (type === 'success') setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 6000);
+}
+
+function _updateWorkerStatusBadge(text) {
+  const badge = document.getElementById('cctvWorkerStatusBadge');
+  if (!badge) return;
+  badge.textContent = `Status: ${text}`;
+  if (text.includes('Running')) {
+    badge.style.background = 'rgba(16,185,129,0.15)';
+    badge.style.color = '#10B981';
+  } else if (text.includes('Stopped') || text.includes('Idle')) {
+    badge.style.background = 'rgba(107,114,128,0.15)';
+    badge.style.color = '#6B7280';
+  } else {
+    badge.style.background = 'rgba(245,158,11,0.15)';
+    badge.style.color = 'var(--gold)';
+  }
+}
