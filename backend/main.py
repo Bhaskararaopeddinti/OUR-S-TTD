@@ -411,6 +411,11 @@ async def health_check():
         "gemini_model": os.getenv("GEMINI_MODEL", "gemini-flash-latest")
     }
 
+@app.get("/health", tags=["Health"], include_in_schema=False)
+async def health_check_root():
+    """Render health check endpoint — returns ok if server is running."""
+    return {"status": "ok"}
+
 # Serve index.html at root and /index.html
 @app.get("/", include_in_schema=False)
 @app.get("/index.html", include_in_schema=False)
