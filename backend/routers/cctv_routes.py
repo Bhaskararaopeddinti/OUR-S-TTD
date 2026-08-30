@@ -29,7 +29,9 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class CCTVStartRequest(BaseModel):
+    mode: str = "demo_video"                 # "demo_video" or "rtsp_stream"
     video_filename: Optional[str] = None
+    rtsp_url: Optional[str] = None           # e.g. "rtsp://camera_ip:554/live"
     location_name: Optional[str] = None
     camera_location: Optional[str] = None   # alias used by frontend
     direction_mode: str = "left_to_right"
@@ -82,7 +84,7 @@ async def upload_cctv_video(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 2. POST /api/cctv/start (Start AI Video Analysis)
+# 2. POST /api/cctv/start (Start AI Video Analysis - Demo Video or RTSP Stream)
 # ─────────────────────────────────────────────────────────────────────────────
 @router.post("/start")
 def start_cctv_analysis(
@@ -90,36 +92,52 @@ def start_cctv_analysis(
     admin: User = Depends(get_current_admin)
 ):
     """
-    Start the CCTV AI video processing worker on the selected video.
-    Defaults to the reference demo video if no file is specified.
+    Start the CCTV AI video processing worker in either:
+    - Mode 1: Demo Video Mode (source: demo_cctv_video)
+    - Mode 2: Live IP CCTV Mode via RTSP stream (source: authorized_cctv)
     """
-    selected_path = None
-    if req.video_filename:
-        # Check uploaded videos first
-        uploaded = UPLOAD_DIR / req.video_filename
-        if uploaded.exists():
-            selected_path = str(uploaded)
-        # Check demo media folder
-        demo_named = Path(__file__).resolve().parent.parent / "demo_media" / req.video_filename
-        if demo_named.exists():
-            selected_path = str(demo_named)
+    if req.mode == "rtsp_stream" or (req.rtsp_url and req.rtsp_url.strip()):
+        rtsp_clean = (req.rtsp_url or "").strip()
+        if not (rtsp_clean.startswith("rtsp://") or rtsp_clean.startswith("http://") or rtsp_clean.startswith("https://")):
+            raise HTTPException(400, "Invalid RTSP/Stream URL. Must start with rtsp://, http://, or https://")
 
-    if not selected_path:
-        if DEFAULT_DEMO_VIDEO.exists():
-            selected_path = str(DEFAULT_DEMO_VIDEO)
-        elif FALLBACK_DEMO_VIDEO.exists():
-            selected_path = str(FALLBACK_DEMO_VIDEO)
+        res = cctv_worker.start(
+            mode="rtsp_stream",
+            rtsp_url=rtsp_clean,
+            location_name=req.resolved_location(),
+            direction_mode=req.direction_mode,
+            interval_minutes=req.interval_minutes,
+            camera_id=req.camera_id
+        )
+    else:
+        selected_path = None
+        if req.video_filename:
+            # Check uploaded videos first
+            uploaded = UPLOAD_DIR / req.video_filename
+            if uploaded.exists():
+                selected_path = str(uploaded)
+            # Check demo media folder
+            demo_named = Path(__file__).resolve().parent.parent / "demo_media" / req.video_filename
+            if demo_named.exists():
+                selected_path = str(demo_named)
 
-    if not selected_path or not os.path.exists(selected_path):
-        raise HTTPException(404, "Reference CCTV video file not found. Please upload a video first.")
+        if not selected_path:
+            if DEFAULT_DEMO_VIDEO.exists():
+                selected_path = str(DEFAULT_DEMO_VIDEO)
+            elif FALLBACK_DEMO_VIDEO.exists():
+                selected_path = str(FALLBACK_DEMO_VIDEO)
 
-    res = cctv_worker.start(
-        video_path=selected_path,
-        location_name=req.resolved_location(),
-        direction_mode=req.direction_mode,
-        interval_minutes=req.interval_minutes,
-        camera_id=req.camera_id
-    )
+        if not selected_path or not os.path.exists(selected_path):
+            raise HTTPException(404, "Reference CCTV video file not found. Please upload a video first.")
+
+        res = cctv_worker.start(
+            mode="demo_video",
+            video_path=selected_path,
+            location_name=req.resolved_location(),
+            direction_mode=req.direction_mode,
+            interval_minutes=req.interval_minutes,
+            camera_id=req.camera_id
+        )
 
     if not res.get("success"):
         raise HTTPException(400, res.get("message", "Failed to start CCTV analysis."))

@@ -559,17 +559,52 @@ window.loadAdminTransportRoutes = loadAdminTransportRoutes;
 
 let _cctvStatusInterval   = null;  // polling timer for live metrics
 let _cctvStreamActive     = false; // whether MJPEG stream is mounted
-let _cctvUploadedFilename = null;  // last uploaded or selected filename
+let _cctvUploadedFilename = 'demo_cctv.mp4';  // default to reference demo
+let _cctvSelectedMode     = 'demo_video';     // 'demo_video' or 'rtsp_stream'
 
 function initAdminCCTVMonitoring() {
   const btn = (id) => document.getElementById(id);
+
+  // Wire: Mode Toggle Tabs
+  const modeDemoBtn = btn('cctvModeDemoBtn');
+  const modeRtspBtn = btn('cctvModeRtspBtn');
+  const demoBox     = btn('cctvModeDemoBox');
+  const rtspBox     = btn('cctvModeRtspBox');
+
+  if (modeDemoBtn && modeRtspBtn) {
+    modeDemoBtn.addEventListener('click', () => {
+      _cctvSelectedMode = 'demo_video';
+      if (demoBox) demoBox.style.display = 'block';
+      if (rtspBox) rtspBox.style.display = 'none';
+      modeDemoBtn.style.background = 'rgba(218,165,32,0.15)';
+      modeDemoBtn.style.color = 'var(--gold)';
+      modeDemoBtn.style.borderColor = 'var(--gold)';
+      modeRtspBtn.style.background = 'transparent';
+      modeRtspBtn.style.color = 'var(--muted)';
+      modeRtspBtn.style.borderColor = 'transparent';
+      _showCctvMsg('🎬 Mode 1 Selected: Demo Video Mode (Source: demo_cctv_video)', 'info');
+    });
+
+    modeRtspBtn.addEventListener('click', () => {
+      _cctvSelectedMode = 'rtsp_stream';
+      if (demoBox) demoBox.style.display = 'none';
+      if (rtspBox) rtspBox.style.display = 'block';
+      modeRtspBtn.style.background = 'rgba(59,130,246,0.15)';
+      modeRtspBtn.style.color = '#60A5FA';
+      modeRtspBtn.style.borderColor = '#60A5FA';
+      modeDemoBtn.style.background = 'transparent';
+      modeDemoBtn.style.color = 'var(--muted)';
+      modeDemoBtn.style.borderColor = 'transparent';
+      _showCctvMsg('🌐 Mode 2 Selected: Live IP CCTV RTSP Mode (Source: authorized_cctv)', 'info');
+    });
+  }
 
   // Wire: use reference demo video button
   if (btn('useDemoVideoBtn')) {
     btn('useDemoVideoBtn').addEventListener('click', () => {
       _cctvUploadedFilename = 'demo_cctv.mp4';
       _showCctvMsg('✅ Reference demo video selected: demo_cctv.mp4', 'success');
-      btn('cctvUploadStatus').textContent = '';
+      if (btn('cctvUploadStatus')) btn('cctvUploadStatus').textContent = '';
     });
   }
 
@@ -631,21 +666,27 @@ async function _handleCctvFileUpload() {
 
 // ── Start Analysis ─────────────────────────────────────────────────────────────
 async function _startCctvAnalysis() {
-  const filename = _cctvUploadedFilename;
-  if (!filename) {
-    _showCctvMsg('⚠️ Please select the reference demo video or upload a CCTV file first.', 'warn');
-    return;
-  }
-
-  const payload = {
-    video_filename : filename,
+  let payload = {
+    mode           : _cctvSelectedMode,
     camera_location: document.getElementById('cctvLocationSelect')?.value  || 'Sarva Darshan VQC I',
     direction_mode : document.getElementById('cctvDirectionSelect')?.value  || 'left_to_right',
     interval_minutes: parseInt(document.getElementById('cctvIntervalSelect')?.value || '15', 10),
     camera_id      : document.getElementById('cctvCameraId')?.value          || 'CAM_01_DEMO',
   };
 
-  _showCctvMsg('⏳ Starting YOLO AI analysis…', 'info');
+  if (_cctvSelectedMode === 'rtsp_stream') {
+    const rtspUrl = document.getElementById('cctvRtspUrlInput')?.value?.trim();
+    if (!rtspUrl) {
+      _showCctvMsg('⚠️ Please enter an authorized RTSP stream URL (e.g. rtsp://192.168.1.100:554/live).', 'warn');
+      return;
+    }
+    payload.rtsp_url = rtspUrl;
+  } else {
+    const filename = _cctvUploadedFilename || 'demo_cctv.mp4';
+    payload.video_filename = filename;
+  }
+
+  _showCctvMsg('⏳ Starting YOLO AI people tracking analysis…', 'info');
   try {
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
     const res = await fetch('/api/cctv/start', {
@@ -653,20 +694,15 @@ async function _startCctvAnalysis() {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body   : JSON.stringify(payload),
     });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Start failed'); }
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Could not start analysis'); }
     const data = await res.json();
-    _showCctvMsg(`✅ ${data.message || 'CCTV AI Analysis started!'}`, 'success');
-
-    // Mount the MJPEG live stream
+    _showCctvMsg(`⚡ Analysis started (${data.source}). Inference active!`, 'success');
     _mountCctvStream();
-
-    // Start polling for live status
     if (_cctvStatusInterval) clearInterval(_cctvStatusInterval);
     _cctvStatusInterval = setInterval(_pollCctvStatus, 2500);
-
     _updateWorkerStatusBadge('🟢 Running');
   } catch (err) {
-    _showCctvMsg(`❌ ${err.message}`, 'error');
+    _showCctvMsg(`❌ Start error: ${err.message}`, 'error');
   }
 }
 
@@ -846,3 +882,86 @@ function _updateWorkerStatusBadge(text) {
     badge.style.color = 'var(--gold)';
   }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Admin Crowd Image Upload & AI Computer Vision Analysis
+// ──────────────────────────────────────────────────────────────────────────────
+function initAdminCrowdUpload() {
+  const uploadBtn = document.getElementById('adminUploadCrowdBtn');
+  const fileInput = document.getElementById('adminCrowdFile');
+  const locSelect = document.getElementById('adminCrowdLocation');
+  const overSelect = document.getElementById('adminCrowdOverride');
+  const statusSpan = document.getElementById('adminCrowdStatus');
+
+  if (!uploadBtn || !fileInput) return;
+
+  uploadBtn.addEventListener('click', async () => {
+    if (!fileInput.files || fileInput.files.length === 0) {
+      if (statusSpan) {
+        statusSpan.style.color = '#EF4444';
+        statusSpan.textContent = '⚠️ Please select a crowd image file first.';
+      }
+      return;
+    }
+
+    const file = fileInput.files[0];
+    const location = locSelect ? locSelect.value : 'Vaikuntam Queue Complex (VQC I)';
+    const overrideLevel = overSelect ? overSelect.value : '';
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('location', location);
+    if (overrideLevel) {
+      formData.append('override_level', overrideLevel);
+    }
+
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = '⏳ Analyzing Image with AI...';
+    if (statusSpan) {
+      statusSpan.style.color = 'var(--gold)';
+      statusSpan.textContent = 'Running Computer Vision (YOLO) detection...';
+    }
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch('/api/admin/crowd-analysis', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || data.message || 'Image analysis failed.');
+      }
+
+      if (statusSpan) {
+        statusSpan.style.color = '#10B981';
+        statusSpan.textContent = `✅ Analyzed: ${data.crowd_level} (Detected: ${data.detected_count} people, Est. Wait: ~${Math.round(data.estimated_wait_minutes / 60)} hrs)`;
+      }
+
+      if (typeof window.showToast === 'function') {
+        window.showToast(`📸 Crowd AI: Queue updated to ${data.crowd_level} (${location})`, 'success');
+      }
+
+      // Reload dashboard metrics & chart
+      loadAdminDashboard();
+      loadPilgrimFlowTable(null);
+
+    } catch (err) {
+      if (statusSpan) {
+        statusSpan.style.color = '#EF4444';
+        statusSpan.textContent = `❌ ${err.message}`;
+      }
+      if (typeof window.showToast === 'function') {
+        window.showToast(`Upload failed: ${err.message}`, 'error');
+      }
+    } finally {
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = '⚡ Analyze & Update Live Queue';
+    }
+  });
+}
+

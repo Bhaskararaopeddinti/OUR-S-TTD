@@ -202,7 +202,15 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
 
             if latest_cctv and (not all_today_slots or latest_cctv.timestamp > all_today_slots[-1].created_at):
                 has_reliable_data = True
-                data_source_label = "Demo CCTV AI Data" if latest_cctv.source == "demo_cctv_ai" else "CCTV AI Data"
+                if latest_cctv.source == "authorized_cctv":
+                    data_source_label = "Authorized CCTV Stream"
+                elif latest_cctv.source in ("demo_cctv_video", "demo_cctv_ai"):
+                    data_source_label = "Demo CCTV AI Data"
+                elif latest_cctv.source == "admin_image":
+                    data_source_label = "Admin Crowd Photo Analysis"
+                else:
+                    data_source_label = "CCTV AI Data"
+
                 data_source_code = latest_cctv.source
                 admin_crowd_data = {
                     "estimated_crowd": max(0, 1200 + latest_cctv.net_flow),
@@ -222,7 +230,15 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
                 latest_flow = all_today_slots[-1]
                 src = getattr(latest_flow, "source", "manual") or "manual"
                 data_source_code = src
-                data_source_label = "Demo CCTV AI Data" if src == "demo_cctv_ai" else ("Live Admin Data" if src == "manual" else "CCTV AI Data")
+                if src == "authorized_cctv":
+                    data_source_label = "Authorized CCTV Stream"
+                elif src in ("demo_cctv_video", "demo_cctv_ai"):
+                    data_source_label = "Demo CCTV AI Data"
+                elif src == "admin_image":
+                    data_source_label = "Admin Crowd Photo Analysis"
+                else:
+                    data_source_label = "Live Admin Data"
+
                 admin_crowd_data = {
                     "estimated_crowd": latest_flow.estimated_crowd,
                     "observed_count": latest_flow.incoming_pilgrims,

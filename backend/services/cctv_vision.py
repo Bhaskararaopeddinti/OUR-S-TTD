@@ -311,15 +311,17 @@ class CCTVVisionWorker:
         self.should_stop: bool = False
 
         # Configuration
+        self.mode: str = "demo_video"  # "demo_video" or "rtsp_stream"
         self.video_path: str = ""
         self.video_filename: str = ""
+        self.rtsp_url: str = ""
         self.location_name: str = "Sarva Darshan VQC I"
         self.location_id: int = 1
         self.camera_id: str = "CAM_01_DEMO"
         self.direction_mode: str = "left_to_right"
         self.interval_minutes: int = 15
         self.source_label: str = "Demo CCTV AI Data"
-        self.source_db_code: str = "demo_cctv_ai"
+        self.source_db_code: str = "demo_cctv_video"
 
         # Virtual counting line (normalized 0.0-1.0)
         self.line_coords_norm: Tuple[Tuple[float, float], Tuple[float, float]] = ((0.5, 0.1), (0.5, 0.9))
@@ -341,7 +343,7 @@ class CCTVVisionWorker:
         self.confidence: float = 0.92
         self.video_quality_warning: bool = False
 
-        # Live Annotated Frame Buffer for MJPEG Stream
+        # Live Annotated Frame Buffer for MJPEG Stream (Transient, in-memory only)
         self.latest_jpeg_frame: Optional[bytes] = None
         self.last_update_time: datetime = datetime.utcnow()
 
@@ -354,32 +356,54 @@ class CCTVVisionWorker:
 
     def start(
         self,
+        mode: str = "demo_video",
         video_path: Optional[str] = None,
+        rtsp_url: Optional[str] = None,
         location_name: str = "Sarva Darshan VQC I",
         direction_mode: str = "left_to_right",
         interval_minutes: int = 15,
         camera_id: str = "CAM_01_DEMO"
     ) -> Dict[str, Any]:
-        """Start the CCTV AI video processing worker."""
+        """
+        Start the CCTV AI video processing worker in either:
+        MODE 1 – DEMO VIDEO MODE (source: demo_cctv_video)
+        MODE 2 – LIVE IP CCTV MODE (source: authorized_cctv)
+        """
         with self.lock:
             if self.is_running:
                 return {"success": False, "message": "CCTV processing is already running."}
 
-            # Select video path
-            if not video_path or not os.path.exists(video_path):
-                if DEFAULT_DEMO_VIDEO.exists():
-                    self.video_path = str(DEFAULT_DEMO_VIDEO)
-                elif FALLBACK_DEMO_VIDEO.exists():
-                    self.video_path = str(FALLBACK_DEMO_VIDEO)
-                else:
-                    return {"success": False, "message": "Reference video not found on server."}
-            else:
-                self.video_path = video_path
+            self.mode = mode
 
-            self.video_filename = Path(self.video_path).name
+            # Handle MODE 2: Live IP CCTV / RTSP Stream
+            if mode == "rtsp_stream" or (rtsp_url and rtsp_url.strip()):
+                self.rtsp_url = (rtsp_url or "").strip()
+                if not self.rtsp_url:
+                    return {"success": False, "message": "Authorized RTSP camera stream URL is required for Live IP CCTV mode."}
+                self.video_path = self.rtsp_url
+                self.video_filename = f"RTSP Stream ({camera_id})"
+                self.source_label = "Authorized CCTV Stream"
+                self.source_db_code = "authorized_cctv"
+            else:
+                # Handle MODE 1: Demo Video Mode
+                self.mode = "demo_video"
+                self.source_label = "Demo CCTV AI Data"
+                self.source_db_code = "demo_cctv_video"
+                if not video_path or not os.path.exists(video_path):
+                    if DEFAULT_DEMO_VIDEO.exists():
+                        self.video_path = str(DEFAULT_DEMO_VIDEO)
+                    elif FALLBACK_DEMO_VIDEO.exists():
+                        self.video_path = str(FALLBACK_DEMO_VIDEO)
+                    else:
+                        return {"success": False, "message": "Reference video not found on server. Please upload a video first."}
+                else:
+                    self.video_path = video_path
+
+                self.video_filename = Path(self.video_path).name
+
             self.location_name = location_name
             self.direction_mode = direction_mode
-            self.interval_minutes = interval_minutes
+            self.interval_minutes = interval_minutes if interval_minutes in (15, 30, 60, 120) else 15
             self.camera_id = camera_id
             self.status = "processing"
             self.error_message = ""
@@ -402,13 +426,17 @@ class CCTVVisionWorker:
             self.thread = threading.Thread(target=self._process_video_loop, daemon=True)
             self.thread.start()
 
-            logger.info("Started CCTV AI Video Worker for: %s (Location: %s)", self.video_filename, location_name)
+            logger.info("Started CCTV AI Worker [%s] for: %s (Location: %s, Mode: %s)",
+                        self.source_db_code, self.video_filename, location_name, self.mode)
             return {
                 "success": True,
                 "status": "processing",
+                "mode": self.mode,
                 "video": self.video_filename,
                 "location": self.location_name,
-                "source": self.source_label
+                "source": self.source_label,
+                "source_db": self.source_db_code,
+                "interval_minutes": self.interval_minutes
             }
 
     def stop(self) -> Dict[str, Any]:

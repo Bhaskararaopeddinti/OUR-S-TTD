@@ -109,39 +109,50 @@ NAV_LOCATIONS = [
     dict(name="Alipiri Parking", category="parking", description="Main parking area at Alipiri base", latitude=13.6300, longitude=79.3200),
 ]
 
-def migrate_users_columns(db):
-    """Ensure newly added User columns exist in SQLite database."""
-    # PostgreSQL schemas are created by SQLAlchemy metadata on startup; PRAGMA
-    # is SQLite-only and would abort a PostgreSQL transaction.
-    if db.bind.dialect.name != "sqlite":
-        logger.info("Using PostgreSQL - column migration handled by SQLAlchemy metadata")
-        return
+def run_database_migrations(db):
+    """Ensure newly added columns exist in both SQLite and PostgreSQL databases."""
+    from sqlalchemy import text
     try:
-        from sqlalchemy import text
-        res = db.execute(text("PRAGMA table_info(users)")).fetchall()
-        cols = {row[1] for row in res}
-        if "is_active" not in cols:
-            db.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1"))
-            logger.info("Migrated SQLite: added is_active to users table")
-        if "reset_token" not in cols:
-            db.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR(100)"))
-            logger.info("Migrated SQLite: added reset_token to users table")
-        if "reset_token_expires" not in cols:
-            db.execute(text("ALTER TABLE users ADD COLUMN reset_token_expires DATETIME"))
-            logger.info("Migrated SQLite: added reset_token_expires to users table")
-        if "last_login" not in cols:
-            db.execute(text("ALTER TABLE users ADD COLUMN last_login DATETIME"))
-            logger.info("Migrated SQLite: added last_login to users table")
-        db.commit()
+        if db.bind.dialect.name == "sqlite":
+            # 1. Users table
+            res = db.execute(text("PRAGMA table_info(users)")).fetchall()
+            cols = {row[1] for row in res}
+            if "is_active" not in cols:
+                db.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+            if "reset_token" not in cols:
+                db.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR(100)"))
+            if "reset_token_expires" not in cols:
+                db.execute(text("ALTER TABLE users ADD COLUMN reset_token_expires DATETIME"))
+            if "last_login" not in cols:
+                db.execute(text("ALTER TABLE users ADD COLUMN last_login DATETIME"))
+
+            # 2. PilgrimFlowData table
+            res_p = db.execute(text("PRAGMA table_info(pilgrim_flow_data)")).fetchall()
+            cols_p = {row[1] for row in res_p}
+            if "source" not in cols_p:
+                db.execute(text("ALTER TABLE pilgrim_flow_data ADD COLUMN source VARCHAR(40) DEFAULT 'manual'"))
+
+            db.commit()
+            logger.info("✓ SQLite column migrations checked and up to date.")
+        elif db.bind.dialect.name == "postgresql":
+            # PostgreSQL column migrations
+            db.execute(text("ALTER TABLE pilgrim_flow_data ADD COLUMN IF NOT EXISTS source VARCHAR(40) DEFAULT 'manual';"))
+            db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;"))
+            db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(100);"))
+            db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP;"))
+            db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;"))
+            db.commit()
+            logger.info("✓ PostgreSQL column migrations checked and up to date.")
     except Exception as e:
-        logger.warning("Users column migration check: %s", e)
+        db.rollback()
+        logger.warning("Database column migration check notice: %s", e)
 
 def seed_db():
     """Seed initial data – runs only on first startup (idempotent)."""
     Base.metadata.create_all(engine)
     db = SessionLocal()
     try:
-        migrate_users_columns(db)
+        run_database_migrations(db)
         # Demo admin
         admin_user = db.query(User).filter_by(email="admin@oursttd.demo").first()
         if not admin_user:
@@ -349,12 +360,16 @@ async def startup():
     logger.info("OURS TTD API started successfully.")
 
 
-# ── Static Files (Frontend) ────────────────────────────────────────────────
+# ── Static Files (Frontend & Uploads) ──────────────────────────────────────
 frontend_dir = ROOT / "frontend"
 for folder in ["css", "js", "pages", "images", "assets", "icons"]:
     folder_path = frontend_dir / folder
     if folder_path.exists():
         app.mount(f"/{folder}", StaticFiles(directory=str(folder_path)), name=folder)
+
+uploads_dir = ROOT / "backend" / "uploads"
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 @app.get("/manifest.json")
 async def serve_manifest():

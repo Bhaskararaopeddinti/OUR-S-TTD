@@ -137,27 +137,55 @@
         <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:1rem;">
           <h4 style="margin-top:0; color:var(--gold); font-size:0.95rem; margin-bottom:0.85rem;">⚙️ CCTV AI Setup &amp; Analysis Controls</h4>
           
-          <!-- Demo Video Quick Select -->
-          <div style="background:rgba(218,165,32,0.08); border:1px solid rgba(218,165,32,0.25); border-radius:8px; padding:0.75rem; margin-bottom:1rem;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <strong style="font-size:0.85rem; color:var(--gold);">Reference CCTV Video</strong>
-                <div style="font-size:0.78rem; color:var(--muted);">WhatsApp Video 2026-08-30 at 5.29.14 PM.mp4</div>
+          <!-- Mode Selector Tabs (Mode 1: Demo Video vs Mode 2: Live IP CCTV) -->
+          <div style="display:flex; gap:0.5rem; margin-bottom:1rem; background:rgba(0,0,0,0.3); padding:0.3rem; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+            <button type="button" id="cctvModeDemoBtn" class="btn-ghost" style="flex:1; padding:0.45rem 0.5rem; font-size:0.8rem; font-weight:700; border-radius:6px; background:rgba(218,165,32,0.15); color:var(--gold); border-color:var(--gold);">
+              🎬 Mode 1: Demo Video
+            </button>
+            <button type="button" id="cctvModeRtspBtn" class="btn-ghost" style="flex:1; padding:0.45rem 0.5rem; font-size:0.8rem; font-weight:700; border-radius:6px; background:transparent; color:var(--muted); border-color:transparent;">
+              🌐 Mode 2: Live IP CCTV (RTSP)
+            </button>
+          </div>
+
+          <!-- Mode 1: Demo Video Mode Box -->
+          <div id="cctvModeDemoBox">
+            <!-- Demo Video Quick Select -->
+            <div style="background:rgba(218,165,32,0.08); border:1px solid rgba(218,165,32,0.25); border-radius:8px; padding:0.75rem; margin-bottom:0.9rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <strong style="font-size:0.85rem; color:var(--gold);">Reference CCTV Video</strong>
+                  <div style="font-size:0.78rem; color:var(--muted);">WhatsApp Video 2026-08-30 at 5.29.14 PM.mp4</div>
+                </div>
+                <button type="button" id="useDemoVideoBtn" class="btn-ghost" style="padding:0.35rem 0.75rem; font-size:0.8rem; border-color:var(--gold); color:var(--gold);">
+                  🎬 Use Reference
+                </button>
               </div>
-              <button type="button" id="useDemoVideoBtn" class="btn-ghost" style="padding:0.35rem 0.75rem; font-size:0.8rem; border-color:var(--gold); color:var(--gold);">
-                🎬 Use Reference Demo
-              </button>
+            </div>
+
+            <!-- Custom Video File Upload -->
+            <div style="margin-bottom:0.9rem;">
+              <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Or Upload CCTV Video (.mp4, .avi, .mov, .mkv)</label>
+              <div style="display:flex; gap:0.5rem;">
+                <input type="file" id="cctvVideoFileInput" accept="video/mp4,video/avi,video/quicktime,video/x-matroska" class="admin-input" style="padding:0.4rem;" />
+                <button type="button" id="uploadCctvFileBtn" class="btn-ghost" style="padding:0.4rem 0.8rem; white-space:nowrap;">Upload</button>
+              </div>
+              <span id="cctvUploadStatus" style="font-size:0.78rem; display:block; margin-top:0.3rem;"></span>
             </div>
           </div>
 
-          <!-- Custom Video File Upload -->
-          <div style="margin-bottom:0.9rem;">
-            <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Or Upload CCTV Video (.mp4, .avi, .mov, .mkv)</label>
-            <div style="display:flex; gap:0.5rem;">
-              <input type="file" id="cctvVideoFileInput" accept="video/mp4,video/avi,video/quicktime,video/x-matroska" class="admin-input" style="padding:0.4rem;" />
-              <button type="button" id="uploadCctvFileBtn" class="btn-ghost" style="padding:0.4rem 0.8rem; white-space:nowrap;">Upload</button>
+          <!-- Mode 2: Live IP CCTV / RTSP Stream Box (Hidden by default) -->
+          <div id="cctvModeRtspBox" style="display:none; margin-bottom:0.9rem;">
+            <div style="background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.25); border-radius:8px; padding:0.75rem; margin-bottom:0.75rem;">
+              <strong style="font-size:0.85rem; color:#60A5FA;">📡 Authorized IP CCTV Stream Connection</strong>
+              <p style="font-size:0.75rem; color:var(--muted); margin:0.2rem 0 0;">
+                Connect an authorized IP CCTV camera via RTSP stream. AI inference processes live video with real-time ByteTrack people counting.
+              </p>
             </div>
-            <span id="cctvUploadStatus" style="font-size:0.78rem; display:block; margin-top:0.3rem;"></span>
+            <div>
+              <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">RTSP / Stream URL</label>
+              <input type="text" id="cctvRtspUrlInput" class="admin-input" placeholder="rtsp://username:password@camera_ip:554/stream" style="font-size:0.85rem; font-family:monospace;" />
+              <span style="font-size:0.72rem; color:var(--muted); display:block; margin-top:0.2rem;">Example: rtsp://192.168.1.100:554/live/ch0</span>
+            </div>
           </div>
 
           <!-- Form Fields -->
@@ -210,6 +238,11 @@
             </button>
           </div>
           <div id="cctvActionMessage" style="font-size:0.82rem; margin-top:0.6rem;"></div>
+
+          <!-- Privacy Protection Notice -->
+          <div style="margin-top:0.85rem; padding:0.5rem 0.65rem; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:6px; font-size:0.72rem; color:var(--muted); line-height:1.35;">
+            🔒 <strong>Privacy Compliant:</strong> AI counts anonymous people volume only. No facial recognition, face identification, or personal data storage is performed.
+          </div>
         </div>
 
         <!-- Right: Live Video Stream & HUD -->
