@@ -164,9 +164,9 @@
 
             <!-- Custom Video File Upload -->
             <div style="margin-bottom:0.9rem;">
-              <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Or Upload CCTV Video (.mp4, .avi, .mov, .mkv)</label>
+              <label style="font-size:0.8rem; display:block; margin-bottom:0.3rem;">Or Upload CCTV Video or Image (.mp4, .avi, .mov, .jpg, .png)</label>
               <div style="display:flex; gap:0.5rem;">
-                <input type="file" id="cctvVideoFileInput" accept="video/mp4,video/avi,video/quicktime,video/x-matroska" class="admin-input" style="padding:0.4rem;" />
+                <input type="file" id="cctvVideoFileInput" accept="video/mp4,video/avi,video/quicktime,video/x-matroska,image/jpeg,image/png,image/webp" class="admin-input" style="padding:0.4rem;" />
                 <button type="button" id="uploadCctvFileBtn" class="btn-ghost" style="padding:0.4rem 0.8rem; white-space:nowrap;">Upload</button>
               </div>
               <span id="cctvUploadStatus" style="font-size:0.78rem; display:block; margin-top:0.3rem;"></span>
@@ -461,8 +461,8 @@
           </select>
         </div>
         <div>
-          <label style="display:block; margin-bottom:0.4rem; font-size:0.85rem;">Crowd Image</label>
-          <input type="file" id="adminCrowdFile" accept="image/*" style="width:100%; font-size:0.85rem;" />
+          <label style="display:block; margin-bottom:0.4rem; font-size:0.85rem;">Crowd Image or Video (.jpg, .png, .mp4, .avi)</label>
+          <input type="file" id="adminCrowdFile" accept="image/jpeg,image/png,image/webp,image/bmp,video/mp4,video/avi,video/quicktime,video/x-matroska" style="width:100%; font-size:0.85rem;" />
         </div>
       </div>
       <div style="margin-top:1rem;">

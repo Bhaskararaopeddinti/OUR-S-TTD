@@ -399,6 +399,7 @@ document.getElementById('adminLogoutBtn')?.addEventListener('click', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 function initAdminCrowdUpload() {
   const uploadBtn      = document.getElementById('adminUploadCrowdBtn');
+  const fileInput      = document.getElementById('adminCrowdFile');
   const statusSpan     = document.getElementById('adminCrowdStatus');
   const locationSelect = document.getElementById('adminCrowdLocation');
   const overrideSelect = document.getElementById('adminCrowdOverride');
@@ -406,19 +407,64 @@ function initAdminCrowdUpload() {
   if (!uploadBtn) return;
 
   uploadBtn.addEventListener('click', async () => {
-    if (statusSpan) statusSpan.textContent = '⏳ Analyzing crowd image with AI…';
-    const locName     = locationSelect ? locationSelect.value : 'VQC I';
-    const manualLevel = overrideSelect ? overrideSelect.value : null;
+    // Validate file selection
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+      if (statusSpan) {
+        statusSpan.style.color = '#EF4444';
+        statusSpan.textContent = '⚠️ Please select a crowd image file first.';
+      }
+      return;
+    }
+
+    const file = fileInput.files[0];
+    const location = locationSelect ? locationSelect.value : 'Vaikuntam Queue Complex (VQC I)';
+    const overrideLevel = overrideSelect ? overrideSelect.value : '';
+
+    // Build multipart FormData (required by backend /api/admin/crowd-analysis)
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('location', location);
+    if (overrideLevel) formData.append('override_level', overrideLevel);
+
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = '⏳ Analyzing with AI…';
+    if (statusSpan) {
+      statusSpan.style.color = 'var(--gold)';
+      statusSpan.textContent = 'Running Computer Vision (YOLO) detection…';
+    }
+
     try {
-      const payload = { location_name: locName, manual_crowd_level: manualLevel || undefined };
-      const data = await API.authPost('admin/crowd/upload', payload);
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+      if (!token) throw new Error('You must be logged in as Admin to upload.');
+
+      const res = await fetch('/api/admin/crowd-analysis', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || data.message || 'Image analysis failed.');
+
       if (statusSpan) {
         statusSpan.style.color = '#10B981';
-        statusSpan.textContent = `✅ Crowd Level: ${data.crowd_level || 'HIGH'} (Wait: ${data.estimated_wait_minutes || 180} mins)`;
+        statusSpan.textContent = `✅ ${data.crowd_level} crowd detected (${data.detected_count} people, ~${Math.round((data.estimated_wait_minutes || 150) / 60)} hr wait)`;
       }
-      if (window.showToast) window.showToast('Live Queue Intelligence updated!', 'success');
+      if (window.showToast) window.showToast(`📸 AI Crowd Analysis: Queue updated to ${data.crowd_level} at ${location}`, 'success');
+
+      // Refresh dashboard
+      if (typeof loadAdminDashboard === 'function') loadAdminDashboard();
+      if (typeof loadPilgrimFlowTable === 'function') loadPilgrimFlowTable(null);
+
     } catch (err) {
-      if (statusSpan) { statusSpan.style.color = '#EF4444'; statusSpan.textContent = `ℹ️ ${err.message}`; }
+      if (statusSpan) {
+        statusSpan.style.color = '#EF4444';
+        statusSpan.textContent = `❌ ${err.message}`;
+      }
+      if (window.showToast) window.showToast(`Upload failed: ${err.message}`, 'error');
+    } finally {
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = '⚡ Analyze & Update Live Queue';
     }
   });
 }
@@ -882,86 +928,3 @@ function _updateWorkerStatusBadge(text) {
     badge.style.color = 'var(--gold)';
   }
 }
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Admin Crowd Image Upload & AI Computer Vision Analysis
-// ──────────────────────────────────────────────────────────────────────────────
-function initAdminCrowdUpload() {
-  const uploadBtn = document.getElementById('adminUploadCrowdBtn');
-  const fileInput = document.getElementById('adminCrowdFile');
-  const locSelect = document.getElementById('adminCrowdLocation');
-  const overSelect = document.getElementById('adminCrowdOverride');
-  const statusSpan = document.getElementById('adminCrowdStatus');
-
-  if (!uploadBtn || !fileInput) return;
-
-  uploadBtn.addEventListener('click', async () => {
-    if (!fileInput.files || fileInput.files.length === 0) {
-      if (statusSpan) {
-        statusSpan.style.color = '#EF4444';
-        statusSpan.textContent = '⚠️ Please select a crowd image file first.';
-      }
-      return;
-    }
-
-    const file = fileInput.files[0];
-    const location = locSelect ? locSelect.value : 'Vaikuntam Queue Complex (VQC I)';
-    const overrideLevel = overSelect ? overSelect.value : '';
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('location', location);
-    if (overrideLevel) {
-      formData.append('override_level', overrideLevel);
-    }
-
-    uploadBtn.disabled = true;
-    uploadBtn.textContent = '⏳ Analyzing Image with AI...';
-    if (statusSpan) {
-      statusSpan.style.color = 'var(--gold)';
-      statusSpan.textContent = 'Running Computer Vision (YOLO) detection...';
-    }
-
-    try {
-      const token = localStorage.getItem('authToken');
-      const res = await fetch('/api/admin/crowd-analysis', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || data.message || 'Image analysis failed.');
-      }
-
-      if (statusSpan) {
-        statusSpan.style.color = '#10B981';
-        statusSpan.textContent = `✅ Analyzed: ${data.crowd_level} (Detected: ${data.detected_count} people, Est. Wait: ~${Math.round(data.estimated_wait_minutes / 60)} hrs)`;
-      }
-
-      if (typeof window.showToast === 'function') {
-        window.showToast(`📸 Crowd AI: Queue updated to ${data.crowd_level} (${location})`, 'success');
-      }
-
-      // Reload dashboard metrics & chart
-      loadAdminDashboard();
-      loadPilgrimFlowTable(null);
-
-    } catch (err) {
-      if (statusSpan) {
-        statusSpan.style.color = '#EF4444';
-        statusSpan.textContent = `❌ ${err.message}`;
-      }
-      if (typeof window.showToast === 'function') {
-        window.showToast(`Upload failed: ${err.message}`, 'error');
-      }
-    } finally {
-      uploadBtn.disabled = false;
-      uploadBtn.textContent = '⚡ Analyze & Update Live Queue';
-    }
-  });
-}
-

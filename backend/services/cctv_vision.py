@@ -511,20 +511,46 @@ class CCTVVisionWorker:
             self.detector = YOLOPersonDetector()
         self.tracker = SimpleObjectTracker(max_disappeared=20, max_distance=90.0)
 
-        # Open video capture
-        cap = cv2.VideoCapture(self.video_path)
-        if not cap.isOpened():
-            logger.error("Failed to open video file: %s", self.video_path)
-            with self.lock:
-                self.status = "error"
-                self.error_message = "Unable to process the video. Please try another video."
-                self.is_running = False
-            return
+        # Check if input is a still image file
+        is_image = Path(self.video_path).suffix.lower() in (".jpg", ".jpeg", ".png", ".webp", ".bmp")
+        static_img = None
+        cap = None
 
-        self.total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 1000
-        self.fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
-        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
-        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480
+        if is_image:
+            static_img = cv2.imread(self.video_path)
+            if static_img is None:
+                logger.error("Failed to read image file: %s", self.video_path)
+                with self.lock:
+                    self.status = "error"
+                    self.error_message = "Unable to process the image. Please try another file."
+                    self.is_running = False
+                return
+            frame_height, frame_width = static_img.shape[:2]
+            self.total_frames = 1
+            self.fps = 10.0
+        else:
+            # Open video capture
+            cap = cv2.VideoCapture(self.video_path)
+            if not cap.isOpened():
+                # Fallback check if it can be read as static image
+                static_img = cv2.imread(self.video_path)
+                if static_img is not None:
+                    is_image = True
+                    frame_height, frame_width = static_img.shape[:2]
+                    self.total_frames = 1
+                    self.fps = 10.0
+                else:
+                    logger.error("Failed to open video file: %s", self.video_path)
+                    with self.lock:
+                        self.status = "error"
+                        self.error_message = "Unable to process the video. Please try another video."
+                        self.is_running = False
+                    return
+            else:
+                self.total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 1000
+                self.fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+                frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
+                frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480
 
         # Calculate actual pixel coordinates for counting line
         (lx1_norm, ly1_norm), (lx2_norm, ly2_norm) = self.line_coords_norm
@@ -545,13 +571,16 @@ class CCTVVisionWorker:
         )
 
         while not self.should_stop:
-            ret, frame = cap.read()
-            if not ret:
-                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                frame_idx = 0
+            if is_image:
+                frame = static_img.copy()
+            else:
                 ret, frame = cap.read()
                 if not ret:
-                    break
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    frame_idx = 0
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
 
             frame_idx += 1
             self.current_frame_idx = frame_idx
@@ -642,7 +671,8 @@ class CCTVVisionWorker:
 
             time.sleep(1.0 / min(self.fps, 25.0))
 
-        cap.release()
+        if cap is not None:
+            cap.release()
         with self.lock:
             self.status = "completed" if not self.should_stop else "stopped"
             self.is_running = False

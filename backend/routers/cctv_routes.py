@@ -55,10 +55,10 @@ async def upload_cctv_video(
     Admin uploads a CCTV video for AI analysis.
     Validates file extension (.mp4, .avi, .mov, .mkv) and saves to server.
     """
-    allowed_exts = {".mp4", ".avi", ".mov", ".mkv"}
+    allowed_exts = {".mp4", ".avi", ".mov", ".mkv", ".jpg", ".jpeg", ".png", ".webp", ".bmp"}
     ext = Path(file.filename).suffix.lower()
     if ext not in allowed_exts:
-        raise HTTPException(400, f"Unsupported video format '{ext}'. Allowed: {', '.join(allowed_exts)}")
+        raise HTTPException(400, f"Unsupported file format '{ext}'. Allowed videos (.mp4, .avi, .mov, .mkv) or images (.jpg, .png, .webp)")
 
     # Sanitize filename
     safe_filename = Path(file.filename).name.replace(" ", "_")
