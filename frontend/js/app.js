@@ -35,7 +35,7 @@ const PAGES = {
 function navigate(page) {
   if (!PAGES[page]) page = 'dashboard';
   currentPage = page;
-  // Update active state for topnav-links, mobile-drawer-nav items
+  // Update active state for sidebar nav items
   document.querySelectorAll('.nav-item').forEach(btn => {
     const isMatch = btn.dataset.page === page || (page === 'home' && btn.dataset.page === 'dashboard') || (page === 'dashboard' && btn.dataset.page === 'home');
     btn.classList.toggle('active', isMatch);
@@ -71,49 +71,79 @@ document.getElementById('themeToggle')?.addEventListener('click', () => {
 const savedTheme = localStorage.getItem('theme');
 setTheme(savedTheme !== null ? savedTheme === 'dark' : true);
 
-// ── Nav click handler (top navbar + mobile drawer) ────────────────────────
+// ── Nav click handler (sidebar) ─────────────────────────────────────────
 function _wireNavClicks(container) {
   container?.addEventListener('click', e => {
     const btn = e.target.closest('.nav-item');
     if (btn && btn.dataset.page) {
       navigate(btn.dataset.page);
-      // Close mobile drawer if it was open
-      _closeMobileDrawer();
+      // Close mobile sidebar if open
+      _closeMobileSidebar();
     }
   });
 }
-_wireNavClicks(document.querySelector('.topnav-links'));
-_wireNavClicks(document.querySelector('.mobile-drawer-nav'));
+_wireNavClicks(document.querySelector('.sidebar-nav'));
 
-// Mobile mobile-nav-item (bottom nav, kept for small screens)
+// Mobile bottom nav items (if present)
 const mobileNav = document.querySelector('.mobile-nav');
 mobileNav?.addEventListener('click', e => {
   const btn = e.target.closest('.mobile-nav-item');
   if (btn) navigate(btn.dataset.page);
 });
 
-// ── Mobile drawer open/close ──────────────────────────────────────────────
-function _openMobileDrawer() {
-  const drawer  = document.getElementById('mobileDrawer');
-  const overlay = document.getElementById('mobileDrawerOverlay');
-  const toggle  = document.getElementById('mobileMenuToggle');
-  drawer?.classList.add('open');
+// ── Sidebar collapse/expand toggle (Desktop) ──────────────────────────────
+const sidebar = document.getElementById('sidebar');
+const mainWrapper = document.getElementById('mainWrapper');
+const sidebarToggle = document.getElementById('sidebarToggle');
+
+function setSidebarCollapsed(collapsed) {
+  if (!sidebar) return;
+  sidebar.classList.toggle('collapsed', collapsed);
+  mainWrapper?.classList.toggle('sidebar-collapsed', collapsed);
+  localStorage.setItem('sidebarCollapsed', collapsed ? 'true' : 'false');
+  if (sidebarToggle) {
+    sidebarToggle.setAttribute('aria-expanded', !collapsed);
+    sidebarToggle.title = collapsed ? 'Expand Sidebar' : 'Collapse Sidebar';
+  }
+}
+
+// Restore saved sidebar collapsed state
+if (localStorage.getItem('sidebarCollapsed') === 'true') {
+  setSidebarCollapsed(true);
+}
+
+sidebarToggle?.addEventListener('click', () => {
+  const isCollapsed = sidebar?.classList.contains('collapsed');
+  setSidebarCollapsed(!isCollapsed);
+});
+
+// ── Mobile Sidebar Drawer open/close ──────────────────────────────────────
+function _openMobileSidebar() {
+  sidebar?.classList.add('open');
+  const overlay = document.getElementById('sidebarOverlay');
   overlay?.classList.add('active');
+  const toggle = document.getElementById('mobileMenuToggle');
   if (toggle) toggle.setAttribute('aria-expanded', 'true');
   document.body.style.overflow = 'hidden';
 }
-function _closeMobileDrawer() {
-  const drawer  = document.getElementById('mobileDrawer');
-  const overlay = document.getElementById('mobileDrawerOverlay');
-  const toggle  = document.getElementById('mobileMenuToggle');
-  drawer?.classList.remove('open');
+
+function _closeMobileSidebar() {
+  sidebar?.classList.remove('open');
+  const overlay = document.getElementById('sidebarOverlay');
   overlay?.classList.remove('active');
+  const toggle = document.getElementById('mobileMenuToggle');
   if (toggle) toggle.setAttribute('aria-expanded', 'false');
   document.body.style.overflow = '';
 }
-document.getElementById('mobileMenuToggle')?.addEventListener('click', _openMobileDrawer);
-document.getElementById('mobileDrawerClose')?.addEventListener('click', _closeMobileDrawer);
-document.getElementById('mobileDrawerOverlay')?.addEventListener('click', _closeMobileDrawer);
+
+document.getElementById('mobileMenuToggle')?.addEventListener('click', () => {
+  if (sidebar?.classList.contains('open')) {
+    _closeMobileSidebar();
+  } else {
+    _openMobileSidebar();
+  }
+});
+document.getElementById('sidebarOverlay')?.addEventListener('click', _closeMobileSidebar);
 
 
 // ── Auth ──────────────────────────────────────
@@ -397,12 +427,15 @@ async function onAuthSuccess(redirect = false) {
 
     const userName = document.querySelector('.user-name');
     const userRole = document.querySelector('.user-role');
-    const topNavUserName = document.getElementById('topNavUserName');
-    if (userName) userName.textContent = profile.name || 'Pilgrim';
+    const sidebarUserName = document.getElementById('sidebarUserName');
+    const topbarUserName = document.getElementById('topbarUserName');
+    const displayName = profile.name || 'Pilgrim';
+    if (userName) userName.textContent = displayName;
     if (userRole) userRole.textContent = profile.role || 'Pilgrim';
-    if (topNavUserName) topNavUserName.textContent = profile.name || 'Pilgrim';
+    if (sidebarUserName) sidebarUserName.textContent = displayName;
+    if (topbarUserName) topbarUserName.textContent = displayName;
 
-    // Show admin nav items (they exist in both topnav-links and mobile-drawer-nav)
+    // Show admin nav items in sidebar
     const adminNavItems = document.querySelectorAll('.admin-only-item');
     adminNavItems.forEach(item => {
       if (profile.role === 'admin' || profile.role === 'super_admin') {
@@ -459,10 +492,12 @@ function logout() {
 
   const userName = document.querySelector('.user-name');
   const userRole = document.querySelector('.user-role');
-  const topNavUserName = document.getElementById('topNavUserName');
+  const sidebarUserName = document.getElementById('sidebarUserName');
+  const topbarUserName = document.getElementById('topbarUserName');
   if (userName) userName.textContent = 'Pilgrim';
   if (userRole) userRole.textContent = 'Guest';
-  if (topNavUserName) topNavUserName.textContent = 'Pilgrim';
+  if (sidebarUserName) sidebarUserName.textContent = 'Pilgrim';
+  if (topbarUserName) topbarUserName.textContent = 'Pilgrim';
 
 
   navigate('home');

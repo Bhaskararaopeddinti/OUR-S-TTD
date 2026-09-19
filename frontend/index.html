@@ -29,12 +29,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 
-  <!-- Styles (v6 cache-busting) -->
-  <link rel="stylesheet" href="css/style.css?v=6" />
-  <link rel="stylesheet" href="css/responsive.css?v=6" />
-  <link rel="stylesheet" href="css/components.css?v=6" />
-  <link rel="stylesheet" href="css/dashboard.css?v=6" />
-  <link rel="stylesheet" href="css/admin-portal.css?v=6" />
+  <!-- Styles (v7 cache-busting) -->
+  <link rel="stylesheet" href="css/style.css?v=7" />
+  <link rel="stylesheet" href="css/responsive.css?v=7" />
+  <link rel="stylesheet" href="css/components.css?v=7" />
+  <link rel="stylesheet" href="css/dashboard.css?v=7" />
+  <link rel="stylesheet" href="css/admin-portal.css?v=7" />
 
 </head>
 <body>
@@ -55,25 +55,26 @@
 </div>
 
 <!-- ═══════════════════════════════════════
-     APP LAYOUT – TOP NAVBAR + FULLSCREEN
+     APP LAYOUT – LEFT SIDEBAR + MAIN CONTENT
 ════════════════════════════════════════ -->
-<div class="app-layout">
+<div class="app-layout" id="appLayout">
 
-  <!-- ── TOP NAVIGATION BAR ── -->
-  <header class="topnav" id="topnav" role="banner">
-    <!-- Brand Logo -->
-    <div class="topnav-brand">
-      <button class="topnav-hamburger" id="mobileMenuToggle" aria-label="Toggle menu" aria-expanded="false">
-        <span></span><span></span><span></span>
-      </button>
-      <div class="brand-name" role="img" aria-label="OURS TTD logo">
-        <span class="om" aria-hidden="true">ॐ</span>
-        <span>OURS&nbsp;<strong>TTD</strong></span>
+  <!-- ── LEFT SIDEBAR ── -->
+  <aside class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+
+    <!-- Sidebar Header: Logo + Toggle -->
+    <div class="sidebar-header">
+      <div class="sidebar-brand" role="img" aria-label="OURS TTD logo">
+        <span class="sidebar-om" aria-hidden="true">ॐ</span>
+        <span class="sidebar-brand-text">OURS&nbsp;<strong>TTD</strong></span>
       </div>
+      <button class="sidebar-collapse-btn" id="sidebarToggle" aria-label="Collapse sidebar" title="Toggle Sidebar">
+        <span class="collapse-icon">◀</span>
+      </button>
     </div>
 
-    <!-- Navigation Links (desktop) -->
-    <nav class="topnav-links" id="topNavLinks" role="menubar" aria-label="Main navigation">
+    <!-- Navigation Menu -->
+    <nav class="sidebar-nav" id="sidebarNav" role="menubar" aria-label="Dashboard menu">
       <button class="nav-item active" data-page="dashboard" role="menuitem" aria-current="page">
         <span class="nav-icon">📊</span>
         <span class="nav-text">Home</span>
@@ -124,91 +125,44 @@
       </button>
     </nav>
 
-    <!-- Right controls: user info + auth + theme -->
-    <div class="topnav-actions">
-      <div class="topnav-user" id="topNavUser">
+    <!-- Sidebar Footer: user info + auth + theme -->
+    <div class="sidebar-footer">
+      <div class="sidebar-user" id="sidebarUser">
         <span class="user-avatar-sm">👤</span>
-        <span class="user-name" id="topNavUserName">Pilgrim</span>
-      </div>
-      <button id="authBtn" class="topnav-auth-btn" aria-label="Login or logout">Login</button>
-      <button id="themeToggle" class="topnav-theme-btn" aria-label="Toggle dark/light mode" title="Toggle Theme">🌙</button>
-    </div>
-  </header>
-
-  <!-- Mobile drawer menu -->
-  <div class="mobile-drawer" id="mobileDrawer" role="dialog" aria-modal="true" aria-label="Navigation menu">
-    <div class="mobile-drawer-inner">
-      <div class="mobile-drawer-header">
-        <div class="brand-name">
-          <span class="om">ॐ</span> OURS&nbsp;<strong>TTD</strong>
-        </div>
-        <button class="mobile-drawer-close" id="mobileDrawerClose" aria-label="Close menu">✕</button>
-      </div>
-      <nav class="mobile-drawer-nav" role="menubar">
-        <button class="nav-item active" data-page="dashboard" role="menuitem">
-          <span class="nav-icon">📊</span>
-          <span class="nav-text">Dashboard</span>
-        </button>
-        <button class="nav-item" data-page="queue" role="menuitem">
-          <span class="nav-icon">⏳</span>
-          <span class="nav-text">Darshan Queue</span>
-        </button>
-        <button class="nav-item" data-page="navigation" role="menuitem">
-          <span class="nav-icon">🗺️</span>
-          <span class="nav-text">Live Navigation</span>
-        </button>
-        <button class="nav-item" data-page="temple" role="menuitem">
-          <span class="nav-icon">🛕</span>
-          <span class="nav-text">Temple Guide</span>
-        </button>
-        <button class="nav-item" data-page="food" role="menuitem">
-          <span class="nav-icon">🍚</span>
-          <span class="nav-text">Food Finder</span>
-        </button>
-        <button class="nav-item" data-page="medical" role="menuitem">
-          <span class="nav-icon">🏥</span>
-          <span class="nav-text">Medical Assistance</span>
-        </button>
-        <button class="nav-item" data-page="emergency" role="menuitem">
-          <span class="nav-icon">🚨</span>
-          <span class="nav-text">Emergency SOS</span>
-        </button>
-        <button class="nav-item" data-page="accommodation" role="menuitem">
-          <span class="nav-icon">🏨</span>
-          <span class="nav-text">Accommodation</span>
-        </button>
-        <button class="nav-item" data-page="transport" role="menuitem">
-          <span class="nav-icon">🚌</span>
-          <span class="nav-text">Travel & Transport</span>
-        </button>
-        <button class="nav-item" data-page="chatbot" role="menuitem">
-          <span class="nav-icon">🤖</span>
-          <span class="nav-text">AI Assistant</span>
-        </button>
-        <button class="nav-item" data-page="settings" role="menuitem">
-          <span class="nav-icon">⚙️</span>
-          <span class="nav-text">Settings</span>
-        </button>
-        <button class="nav-item admin-only-item" data-page="admin" role="menuitem" style="display: none;">
-          <span class="nav-icon">🛡️</span>
-          <span class="nav-text">Admin Panel</span>
-        </button>
-      </nav>
-      <div class="mobile-drawer-footer">
-        <div class="user-info">
-          <div class="user-avatar">👤</div>
-          <div class="user-details">
-            <div class="user-name">Pilgrim</div>
-            <div class="user-role">Guest</div>
-          </div>
+        <div class="sidebar-user-info">
+          <span class="user-name" id="sidebarUserName">Pilgrim</span>
+          <span class="user-role">Guest</span>
         </div>
       </div>
+      <div class="sidebar-footer-actions">
+        <button id="authBtn" class="sidebar-auth-btn" aria-label="Login or logout">Login</button>
+        <button id="themeToggle" class="sidebar-theme-btn" aria-label="Toggle dark/light mode" title="Toggle Theme">🌙</button>
+      </div>
     </div>
-  </div>
-  <div class="mobile-drawer-overlay" id="mobileDrawerOverlay"></div>
 
-  <!-- MAIN CONTENT AREA (full width) -->
-  <div class="main-wrapper">
+  </aside>
+
+  <!-- Mobile overlay (closes sidebar on mobile) -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ── MAIN CONTENT AREA ── -->
+  <div class="main-wrapper" id="mainWrapper">
+
+    <!-- Slim top bar (mobile hamburger + page title indicator) -->
+    <header class="topbar" id="topbar" role="banner">
+      <button class="topbar-hamburger" id="mobileMenuToggle" aria-label="Open sidebar menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="topbar-brand">
+        <span class="om" aria-hidden="true">ॐ</span>
+        <span>OURS <strong>TTD</strong></span>
+      </div>
+      <div class="topbar-actions">
+        <span class="user-avatar-sm" style="font-size:1.3rem;">👤</span>
+        <span id="topbarUserName" style="font-size:0.85rem; font-weight:600; color:#fff;">Pilgrim</span>
+      </div>
+    </header>
+
     <main class="main-content app-root" id="appRoot" role="main" aria-live="polite" tabindex="-1">
       <!-- Pages rendered here by app.js SPA router -->
     </main>
@@ -372,24 +326,24 @@
 ════════════════════════════════════════ -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-<script src="js/api.js?v=6"></script>
-<script src="js/app.js?v=6"></script>
+<script src="js/api.js?v=7"></script>
+<script src="js/app.js?v=7"></script>
 
-<script src="js/chatbot.js?v=6"></script>
-<script src="js/chatbot-page.js?v=6"></script>
-<script src="js/queue.js?v=6"></script>
-<script src="js/sos.js?v=6"></script>
-<script src="js/emergency.js?v=6"></script>
-<script src="js/voice.js?v=6"></script>
-<script src="js/language.js?v=6"></script>
-<script src="js/navigation.js?v=6"></script>
-<script src="js/health.js?v=6"></script>
-<script src="js/notifications.js?v=6"></script>
-<script src="js/admin.js?v=6"></script>
-<script src="js/booking.js?v=6"></script>
-<script src="js/maps.js?v=6"></script>
-<script src="js/dashboard.js?v=6"></script>
-<script src="js/transport.js?v=6"></script>
+<script src="js/chatbot.js?v=7"></script>
+<script src="js/chatbot-page.js?v=7"></script>
+<script src="js/queue.js?v=7"></script>
+<script src="js/sos.js?v=7"></script>
+<script src="js/emergency.js?v=7"></script>
+<script src="js/voice.js?v=7"></script>
+<script src="js/language.js?v=7"></script>
+<script src="js/navigation.js?v=7"></script>
+<script src="js/health.js?v=7"></script>
+<script src="js/notifications.js?v=7"></script>
+<script src="js/admin.js?v=7"></script>
+<script src="js/booking.js?v=7"></script>
+<script src="js/maps.js?v=7"></script>
+<script src="js/dashboard.js?v=7"></script>
+<script src="js/transport.js?v=7"></script>
 
 <script>
   function hideLoader() {
