@@ -574,6 +574,21 @@ function renderDashboard() {
       if (root) root.innerHTML = html;
       console.log('Dashboard HTML loaded');
       
+      // Immediately populate date and day with zero latency
+      try {
+        if (typeof window.updateDateTime === 'function') {
+          window.updateDateTime();
+        } else {
+          const now = new Date();
+          const dEl = document.getElementById('currentDate');
+          const dayEl = document.getElementById('currentDay');
+          const tEl = document.getElementById('tithi');
+          if (dEl) dEl.textContent = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+          if (dayEl) dayEl.textContent = now.toLocaleDateString('en-IN', { weekday: 'long' });
+          if (tEl && tEl.textContent === '--') tEl.textContent = 'Today';
+        }
+      } catch (_) {}
+
       // Load dashboard data with active retry to ensure dashboard.js is ready
       let attempts = 0;
       function tryLoadDashboard() {

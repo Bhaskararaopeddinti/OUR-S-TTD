@@ -117,14 +117,14 @@ async function loadDashboardQueueIntelligence() {
 // Update date and time display
 function updateDateTime() {
     const now = new Date();
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const dateOptions = { day: 'numeric', month: 'short', year: 'numeric' };
     const dayOptions = { weekday: 'long' };
     
     const dateElement = document.getElementById('currentDate');
     const dayElement = document.getElementById('currentDay');
     
     if (dateElement) {
-        dateElement.textContent = now.toLocaleDateString('en-IN', options);
+        dateElement.textContent = now.toLocaleDateString('en-IN', dateOptions);
     }
     
     if (dayElement) {
@@ -135,7 +135,7 @@ function updateDateTime() {
     const tithiElement = document.getElementById('tithi');
     if (tithiElement) {
         const tithi = calculateTithi(now);
-        tithiElement.textContent = tithi;
+        tithiElement.textContent = `Tithi: ${tithi}`;
     }
 }
 
@@ -321,6 +321,7 @@ function loadUserProfile() {
 window.loadDashboard = loadDashboard;
 window.loadDashboardQueueIntelligence = loadDashboardQueueIntelligence;
 window.loadQueueStatus = loadQueueStatus;
+window.updateDateTime = updateDateTime;
 
 // Handle sidebar toggle
 const sidebarToggle = document.getElementById('sidebarToggle');
@@ -344,6 +345,7 @@ if (sidebarOverlay) {
 }
 
 // Auto-load if dashboard DOM is already mounted
-if (document.getElementById('queueWaitTime') || document.querySelector('.dashboard-page')) {
+if (document.getElementById('queueWaitTime') || document.querySelector('.dashboard-page') || document.getElementById('currentDate')) {
+    updateDateTime();
     loadDashboard();
 }
