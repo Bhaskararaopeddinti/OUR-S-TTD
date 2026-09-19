@@ -86,8 +86,11 @@ async function loadDashboardQueueIntelligence() {
             const predObj = aiPred.ai_prediction_summary || {};
             const expCrowd = predObj.expected_crowd || aiPred.current_crowd_level?.toUpperCase() || 'MODERATE';
             const waitMin = aiPred.predicted_wait_minutes || 60;
+            const hrs = Math.floor(waitMin / 60);
+            const mins = waitMin % 60;
+            const waitStr = hrs > 0 ? (mins > 0 ? `${hrs}h ${mins}m` : `${hrs} hrs`) : `${waitMin} min`;
             const pts = predObj.points || [];
-            prediction.innerHTML = `<strong>Expected Crowd: ${expCrowd}</strong> (Wait: ~${waitMin} min)<br>${pts[0] || 'Queue wait times remain normal.'}`;
+            prediction.innerHTML = `<strong>Expected Crowd: ${expCrowd}</strong> (Wait: ~${waitStr})<br>${pts[0] || 'Queue wait times remain normal.'}`;
         }
         
         if (recommendation) {
@@ -166,12 +169,18 @@ async function loadQueueStatus() {
         
         if (queueWaitElement) {
             const waitMinutes = data.ai_prediction?.predicted_wait_minutes || data.wait_minutes;
-            queueWaitElement.textContent = waitMinutes ? `${waitMinutes} min` : 'N/A';
+            if (waitMinutes) {
+                const hrs = Math.floor(waitMinutes / 60);
+                const mins = waitMinutes % 60;
+                queueWaitElement.textContent = hrs > 0 ? (mins > 0 ? `${hrs}h ${mins}m` : `${hrs} hrs`) : `${waitMinutes} min`;
+            } else {
+                queueWaitElement.textContent = 'Normal';
+            }
         }
         
         if (crowdLevelElement) {
-            const crowdLevel = data.ai_prediction?.current_crowd_level || data.crowd_density;
-            crowdLevelElement.textContent = crowdLevel || 'N/A';
+            const crowdLevel = data.ai_prediction?.current_crowd_level || (data.crowd_density && data.crowd_density !== 'Not published by TTD' ? data.crowd_density : 'Moderate');
+            crowdLevelElement.textContent = crowdLevel || 'Moderate';
         }
         
         // Update alert message
@@ -332,4 +341,9 @@ if (sidebarOverlay) {
         sidebar.classList.remove('open');
         sidebarOverlay.classList.remove('active');
     });
+}
+
+// Auto-load if dashboard DOM is already mounted
+if (document.getElementById('queueWaitTime') || document.querySelector('.dashboard-page')) {
+    loadDashboard();
 }

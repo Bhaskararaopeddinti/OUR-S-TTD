@@ -12,23 +12,23 @@ let authUser  = null;  // populated after login
 
 // ── Page Definitions ──────────────────────────
 const PAGES = {
-  dashboard:  renderDashboard,
-  navigation: renderNavigation,
-  temple:     renderTemple,
-  queue:      renderQueue,
-  food:       renderFood,
-  medical:    renderMedical,
-  emergency:  renderEmergency,
+  dashboard:     renderDashboard,
+  home:          renderDashboard,
+  navigation:    renderNavigation,
+  temple:        renderTemple,
+  queue:         renderQueue,
+  food:          renderFood,
+  medical:       renderMedical,
+  emergency:     renderEmergency,
   accommodation: renderAccommodation,
-  chatbot:    renderChatbot,
-  transport:  renderTransport,
-  settings:   renderSettings,
-  home:       renderHome,
-  services:   renderServices,
-  booking:    renderBooking,
-  health:     renderHealth,
-  lostfound:  renderLostFound,
-  admin:      renderAdmin,
+  chatbot:       renderChatbot,
+  transport:     renderTransport,
+  settings:      renderSettings,
+  services:      renderServices,
+  booking:       renderBooking,
+  health:        renderHealth,
+  lostfound:     renderLostFound,
+  admin:         renderAdmin,
 };
 
 // ── Router ────────────────────────────────────
@@ -500,7 +500,7 @@ function logout() {
   if (topbarUserName) topbarUserName.textContent = 'Pilgrim';
 
 
-  navigate('home');
+  navigate('dashboard');
 
   // Don't automatically show auth dialog on logout - let user choose when to login
   if (authDialog && typeof authDialog.close === 'function') {
@@ -555,41 +555,8 @@ adminAuthForm?.addEventListener('submit', async (e) => {
 
 // ── HOME PAGE ─────────────────────────────────
 function renderHome() {
-  const root = document.getElementById('appRoot');
-  root.innerHTML = `
-    <section class="entry-screen" aria-labelledby="entryTitle">
-      <div class="entry-brand"><span class="om">ॐ</span> OURS TTD</div>
-      <p class="entry-tagline">AI Smart Pilgrim Companion</p>
-      <div class="entry-welcome">
-        <h1 id="entryTitle">Welcome to OURS TTD</h1>
-        <p>Choose how you want to continue.</p>
-      </div>
-      <div class="entry-options">
-        <article class="entry-option pilgrim-option">
-          <div class="entry-icon">👤</div>
-          <h2>Pilgrim</h2>
-          <p>Login as a pilgrim to access your personal dashboard and journey tools.</p>
-          <button type="button" class="btn-primary entry-button" id="entryPilgrimLogin">User Login</button>
-        </article>
-        <article class="entry-option admin-option">
-          <div class="entry-icon">🛡️</div>
-          <h2>Admin</h2>
-          <p>Authorized personnel can access the protected Admin Portal.</p>
-          <button type="button" class="btn-primary entry-button" id="entryAdminLogin">Admin Login</button>
-        </article>
-      </div>
-    </section>`;
-
-  document.getElementById('entryPilgrimLogin')?.addEventListener('click', () => {
-    resetAuthModalView();
-    switchAuthTab('pilgrim');
-    authDialog?.showModal();
-  });
-  document.getElementById('entryAdminLogin')?.addEventListener('click', () => {
-    resetAuthModalView();
-    switchAuthTab('admin');
-    authDialog?.showModal();
-  });
+  // Home page is the live, feature-rich Pilgrim Dashboard
+  renderDashboard();
 }
 
 // ── DASHBOARD PAGE ───────────────────────────
@@ -603,21 +570,27 @@ function renderDashboard() {
       return response.text();
     })
     .then(html => {
-      document.getElementById('appRoot').innerHTML = html;
+      const root = document.getElementById('appRoot');
+      if (root) root.innerHTML = html;
       console.log('Dashboard HTML loaded');
       
-      // Load dashboard data with a small delay to ensure DOM is ready
-      setTimeout(() => {
+      // Load dashboard data with active retry to ensure dashboard.js is ready
+      let attempts = 0;
+      function tryLoadDashboard() {
         if (typeof window.loadDashboard === 'function') {
           console.log('Calling loadDashboard...');
           window.loadDashboard();
         } else if (typeof loadDashboard === 'function') {
           console.log('Calling loadDashboard (global)...');
           loadDashboard();
+        } else if (attempts < 20) {
+          attempts++;
+          setTimeout(tryLoadDashboard, 80);
         } else {
-          console.error('loadDashboard function not available');
+          console.warn('loadDashboard function not available after retries');
         }
-      }, 100);
+      }
+      tryLoadDashboard();
     })
     .catch(error => {
       console.error('Failed to load dashboard page:', error);
@@ -833,8 +806,20 @@ async function loadHeroStats() {
     const q = await API.get('queue');
     const heroQueue = document.getElementById('heroQueue');
     const heroCrowd = document.getElementById('heroCrowd');
-    if (heroQueue) heroQueue.textContent = q.wait_minutes ? `~${Math.round(q.wait_minutes/60)}h` : '—';
-    if (heroCrowd) heroCrowd.textContent = q.crowd_density || 'Unknown';
+    const waitMin = q.ai_prediction?.predicted_wait_minutes || q.wait_minutes;
+    if (heroQueue) {
+      if (waitMin) {
+        const hrs = Math.floor(waitMin / 60);
+        const mins = waitMin % 60;
+        heroQueue.textContent = hrs > 0 ? (mins > 0 ? `~${hrs}h ${mins}m` : `~${hrs}h`) : `~${waitMin}m`;
+      } else {
+        heroQueue.textContent = 'Normal';
+      }
+    }
+    if (heroCrowd) {
+      const crowd = q.ai_prediction?.current_crowd_level || (q.crowd_density && q.crowd_density !== 'Not published by TTD' ? q.crowd_density : 'Moderate');
+      heroCrowd.textContent = crowd;
+    }
   } catch (e) { /* silently fail */ }
 }
 
@@ -1419,7 +1404,7 @@ if (authToken) {
   if (userName) userName.textContent = 'Pilgrim';
   if (userRole) userRole.textContent = 'Guest';
   
-  navigate('home');
+  navigate('dashboard');
 }
 // Load hero queue stats
 loadHeroStats();

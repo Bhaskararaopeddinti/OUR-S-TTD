@@ -785,6 +785,7 @@ dialog::backdrop {
 .loading-screen.hidden {
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
 }
 
 .loading-content {
