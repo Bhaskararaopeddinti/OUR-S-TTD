@@ -487,19 +487,65 @@
 
 /* ── Glassmorphism Cards ───────────────────────────────────────────────────────── */
 .dashboard-card {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(22, 163, 74, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.15);
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   box-shadow: var(--shadow);
   transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+  color: #0F172A;
 }
 
 .dark .dashboard-card {
-  background: rgba(51, 65, 85, 0.7);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 28, 60, 0.88) !important;
+  border-color: rgba(212, 175, 55, 0.22) !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.45), 0 0 1px rgba(212,175,55,0.15) !important;
+  color: #F1F5F9 !important;
+}
+
+/* Force all text inside dark cards to be readable */
+.dark .dashboard-card h1,
+.dark .dashboard-card h2,
+.dark .dashboard-card h3,
+.dark .dashboard-card h4,
+.dark .dashboard-card h5,
+.dark .dashboard-card h6 {
+  color: #FFFFFF !important;
+}
+
+.dark .dashboard-card p {
+  color: #CBD5E1 !important;
+}
+
+.dark .dashboard-card span:not(.nav-icon):not(.stat-emoji):not(.om):not(.card-icon):not(.live-dot):not(.alert-icon) {
+  color: #E2E8F0;
+}
+
+.dark .dashboard-card .card-header {
+  border-bottom-color: rgba(212, 175, 55, 0.2) !important;
+}
+
+.dark .dashboard-card .card-header h3 {
+  color: #FFFFFF !important;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.dark .dashboard-card .timing-label,
+.dark .dashboard-card .timing-item,
+.dark .dashboard-card .announcement-item p,
+.dark .dashboard-card .weather-detail span:first-child {
+  color: #CBD5E1 !important;
+}
+
+.dark .dashboard-card .alert-header h3 {
+  color: #FFFFFF !important;
+}
+
+.dark .dashboard-card #alertMessage {
+  color: #FDE047 !important;
+  font-weight: 600;
 }
 
 .dashboard-card:hover {
@@ -507,6 +553,7 @@
   box-shadow: var(--shadow-lg);
   border-color: rgba(22, 163, 74, 0.2);
 }
+
 
 /* ── Dashboard Grid ───────────────────────────────────────────────────────────── */
 .dashboard-grid {
@@ -1005,6 +1052,10 @@
   font-family: var(--font-heading);
 }
 
+.dark .weather-temp {
+  color: #FBBF24 !important;
+}
+
 .weather-details {
   display: flex;
   flex-direction: column;
@@ -1029,10 +1080,18 @@
   font-family: var(--font-body);
 }
 
+.dark .weather-detail span:first-child {
+  color: #94A3B8 !important;
+}
+
 .weather-detail span:last-child {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
   font-family: var(--font-body);
+}
+
+.dark .weather-detail span:last-child {
+  color: #F1F5F9 !important;
 }
 
 /* ── Announcements List ─────────────────────────────────────────────────────── */
@@ -1049,13 +1108,22 @@
   border-left: 3px solid var(--primary);
 }
 
+.dark .announcement-item {
+  background: rgba(255,255,255,0.05) !important;
+  border-left-color: #F59E0B !important;
+}
+
 .announcement-time {
   display: block;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--primary);
   margin-bottom: 0.25rem;
   font-family: var(--font-body);
+}
+
+.dark .announcement-time {
+  color: #FDE047 !important;
 }
 
 .announcement-item p {
@@ -1063,6 +1131,10 @@
   margin: 0;
   color: var(--text);
   font-family: var(--font-body);
+}
+
+.dark .announcement-item p {
+  color: #E2E8F0 !important;
 }
 
 /* ── Profile Section ─────────────────────────────────────────────────────────── */
@@ -1096,10 +1168,14 @@
 
 .profile-name {
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
   margin-bottom: 0.25rem;
   font-family: var(--font-heading);
+}
+
+.dark .profile-name {
+  color: #FFFFFF !important;
 }
 
 .profile-email {
@@ -1109,13 +1185,21 @@
   font-family: var(--font-body);
 }
 
+.dark .profile-email {
+  color: #94A3B8 !important;
+}
+
 .profile-role {
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--primary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-family: var(--font-body);
+}
+
+.dark .profile-role {
+  color: #FDE047 !important;
 }
 
 .profile-actions {
