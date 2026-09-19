@@ -5,7 +5,6 @@ Provides predictive queue analysis including best times, crowd trends, and AI-ge
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import calendar
-import random
 
 # Historical patterns based on time of day, day of week, and season
 TIME_PATTERNS = {
@@ -213,7 +212,7 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
 
                 data_source_code = latest_cctv.source
                 admin_crowd_data = {
-                    "estimated_crowd": max(0, 1200 + latest_cctv.net_flow),
+                    "estimated_crowd": latest_cctv.observed_count if latest_cctv.observed_count > 0 else max(0, latest_cctv.net_flow),
                     "observed_count": latest_cctv.observed_count,
                     "queue_status": latest_cctv.queue_status,
                     "incoming_pilgrims": latest_cctv.incoming_count,
@@ -275,26 +274,36 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
         is_festival = admin_crowd_data.get("festival", False)
         current_time_period = admin_crowd_data.get("slot") or current_time_period
     else:
-        current_crowd = 3200
-        incoming_count = 1200
-        outgoing_count = 950
+        # No real data from CCTV or admin entries — do NOT fabricate numbers
+        current_crowd = 0
+        incoming_count = 0
+        outgoing_count = 0
+        raw_status = "No crowd data available"
+        has_reliable_data = False
 
 
     # Status level, emoji, and waiting condition
-    status_level, status_badge, badge_class = _get_status_level_and_emoji(current_crowd, is_festival)
-    if admin_crowd_data and admin_crowd_data.get("queue_status"):
-        norm_qs = admin_crowd_data["queue_status"].upper()
-        if norm_qs in ("LOW", "🟢 LOW"):
-            status_level, status_badge, badge_class = "Low", "🟢 LOW", "low"
-        elif norm_qs in ("MODERATE", "🟡 MODERATE"):
-            status_level, status_badge, badge_class = "Moderate", "🟡 MODERATE", "moderate"
-        elif norm_qs in ("HIGH", "🔴 HIGH"):
-            status_level, status_badge, badge_class = "High", "🔴 HIGH", "high"
-        elif norm_qs in ("VERY HIGH", "CRITICAL", "🟣 VERY HIGH"):
-            status_level, status_badge, badge_class = "Very High", "🟣 VERY HIGH", "very-high"
+    if not has_reliable_data:
+        # No data — return a clean "no data" state without fabricated badges
+        status_level, status_badge, badge_class = "Unknown", "No crowd data available", "no-data"
+    else:
+        status_level, status_badge, badge_class = _get_status_level_and_emoji(current_crowd, is_festival)
+        if admin_crowd_data and admin_crowd_data.get("queue_status"):
+            norm_qs = admin_crowd_data["queue_status"].upper()
+            if norm_qs in ("LOW", "🟢 LOW"):
+                status_level, status_badge, badge_class = "Low", "🟢 LOW", "low"
+            elif norm_qs in ("MODERATE", "🟡 MODERATE"):
+                status_level, status_badge, badge_class = "Moderate", "🟡 MODERATE", "moderate"
+            elif norm_qs in ("HIGH", "🔴 HIGH"):
+                status_level, status_badge, badge_class = "High", "🔴 HIGH", "high"
+            elif norm_qs in ("VERY HIGH", "CRITICAL", "🟣 VERY HIGH"):
+                status_level, status_badge, badge_class = "Very High", "🟣 VERY HIGH", "very-high"
 
     # Waiting condition string
-    if status_level == "Low":
+    if not has_reliable_data:
+        waiting_condition = "No crowd data available"
+        predicted_wait = None
+    elif status_level == "Low":
         waiting_condition = "Minimal (under 1 hr)"
         predicted_wait = max(15, int(current_crowd / 100))
     elif status_level == "Moderate":
@@ -309,7 +318,9 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
 
     # Trend string
     net_diff = incoming_count - outgoing_count
-    if net_diff > 250:
+    if not has_reliable_data:
+        crowd_trend_label = "N/A"
+    elif net_diff > 250:
         crowd_trend_label = "Increasing"
     elif net_diff < -200:
         crowd_trend_label = "Decreasing"
@@ -318,96 +329,105 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
 
     # 2. CROWD TREND — NEXT 6 HOURS (3 consecutive 2-hour slots)
     crowd_trend_6h = []
-    current_sim_crowd = current_crowd
-    base_hour = hour
+    if has_reliable_data:
+        current_sim_crowd = current_crowd
+        base_hour = hour
 
-    for i in range(1, 4):
-        slot_start_h = (base_hour + (i - 1) * 2) % 24
-        slot_end_h = (slot_start_h + 2) % 24
-        slot_label = _format_slot_time(f"{slot_start_h:02d}:00", f"{slot_end_h:02d}:00")
+        for i in range(1, 4):
+            slot_start_h = (base_hour + (i - 1) * 2) % 24
+            slot_end_h = (slot_start_h + 2) % 24
+            slot_label = _format_slot_time(f"{slot_start_h:02d}:00", f"{slot_end_h:02d}:00")
 
-        # Time of day factors
-        if 2 <= slot_start_h < 6:
-            rate_factor = -0.15  # Early morning clearing
-        elif 6 <= slot_start_h < 12:
-            rate_factor = 0.20   # Morning rush
-        elif 12 <= slot_start_h < 16:
-            rate_factor = -0.05  # Afternoon lull
-        elif 16 <= slot_start_h < 21:
-            rate_factor = 0.18   # Evening peak
-        else:
-            rate_factor = -0.25  # Night clearing
+            # Time of day factors
+            if 2 <= slot_start_h < 6:
+                rate_factor = -0.15  # Early morning clearing
+            elif 6 <= slot_start_h < 12:
+                rate_factor = 0.20   # Morning rush
+            elif 12 <= slot_start_h < 16:
+                rate_factor = -0.05  # Afternoon lull
+            elif 16 <= slot_start_h < 21:
+                rate_factor = 0.18   # Evening peak
+            else:
+                rate_factor = -0.25  # Night clearing
 
-        if is_festival:
-            rate_factor += 0.12
+            if is_festival:
+                rate_factor += 0.12
 
-        projected_crowd = max(400, int(current_sim_crowd * (1 + rate_factor)))
-        current_sim_crowd = projected_crowd
+            projected_crowd = max(400, int(current_sim_crowd * (1 + rate_factor)))
+            current_sim_crowd = projected_crowd
 
-        s_level, s_badge, s_class = _get_status_level_and_emoji(projected_crowd, is_festival)
-        proj_wait = max(15, int(projected_crowd / 45))
+            s_level, s_badge, s_class = _get_status_level_and_emoji(projected_crowd, is_festival)
+            proj_wait = max(15, int(projected_crowd / 45))
 
-        crowd_trend_6h.append({
-            "time": slot_label,
-            "expected_crowd": projected_crowd,
-            "status": s_badge,
-            "status_level": s_level,
-            "predicted_wait_minutes": proj_wait
-        })
+            crowd_trend_6h.append({
+                "time": slot_label,
+                "expected_crowd": projected_crowd,
+                "status": s_badge,
+                "status_level": s_level,
+                "predicted_wait_minutes": proj_wait
+            })
 
     # 3. BEST TIME TO JOIN QUEUE ANALYSIS
     best_time_data = None
     if has_reliable_data and all_today_slots:
-        # Find the slot with minimum estimated crowd / maximum net outflow
+        # Find the slot with minimum estimated crowd from real recorded data
         best_slot = min(all_today_slots, key=lambda s: s.estimated_crowd)
         best_time_data = {
             "has_data": True,
             "time_window": _format_slot_time(best_slot.start_time, best_slot.end_time),
             "reasons": [
-                "Lower expected crowd",
-                "More outgoing devotees",
-                "Better incoming/outgoing balance"
+                "Lower observed crowd in recorded slots",
+                "Better incoming/outgoing pilgrim balance",
+                "Project prediction based on available data (not an official TTD guarantee)"
             ]
         }
-    elif crowd_trend_6h:
-        # Pick lowest slot from 6h projection
-        lowest_proj = min(crowd_trend_6h, key=lambda x: x["expected_crowd"])
+    elif has_reliable_data and admin_crowd_data:
         best_time_data = {
             "has_data": True,
-            "time_window": lowest_proj["time"],
+            "time_window": admin_crowd_data.get("slot") or current_time_period,
             "reasons": [
-                "Lower expected crowd",
-                "More outgoing devotees",
-                "Better incoming/outgoing balance"
+                "Current observed crowd window",
+                "Project prediction based on available data (not an official TTD guarantee)"
             ]
         }
     else:
         best_time_data = {
             "has_data": False,
             "time_window": None,
-            "message": "Not enough data to determine the best time."
+            "message": "Best time recommendation unavailable due to insufficient crowd data. (Project prediction based on available data, not an official TTD guarantee)."
         }
 
     # 4. AI-GENERATED QUEUE ADVICE
     ai_advice = [
         "Avoid the queue during peak crowd periods.",
-        "Consider joining during the lower-crowd time slot.",
+        "Consider joining during lower-crowd time slots.",
         "Keep water and essential items with you.",
-        "Follow TTD queue instructions.",
+        "Follow official TTD queue instructions.",
         "Check the latest queue status before joining."
     ]
 
     # 5. AI PREDICTION
-    next_trend_str = "increase" if crowd_trend_label == "Increasing" else "remain stable" if crowd_trend_label == "Stable" else "decrease"
-    ai_prediction = {
-        "expected_crowd": status_level.upper(),
-        "status_badge": status_badge,
-        "points": [
-            f"Crowd is expected to {next_trend_str} during the next time slot.",
-            "Queue waiting time may increase." if crowd_trend_label == "Increasing" else "Queue waiting time expected to remain manageable.",
-            "Recommended action: Consider joining during the next low-crowd period." if status_level in ("High", "Very High") else "Recommended action: Good window to enter queue."
-        ]
-    }
+    if not has_reliable_data:
+        ai_prediction = {
+            "expected_crowd": "UNAVAILABLE",
+            "status_badge": "No crowd data available",
+            "points": [
+                "Prediction unavailable due to insufficient data.",
+                "Live CCTV AI or admin flow records have not yet been logged for this period.",
+                "Please verify physical display boards at Vaikuntam Queue Complex (VQC)."
+            ]
+        }
+    else:
+        next_trend_str = "increase" if crowd_trend_label == "Increasing" else ("remain stable" if crowd_trend_label == "Stable" else "decrease")
+        ai_prediction = {
+            "expected_crowd": status_level.upper(),
+            "status_badge": status_badge,
+            "points": [
+                f"Crowd is expected to {next_trend_str} based on current inflow/outflow balance.",
+                "Queue waiting time may increase." if crowd_trend_label == "Increasing" else "Queue waiting time expected to remain manageable.",
+                "Recommended action: Good window to enter queue." if status_level in ("Low", "Moderate") else "Recommended action: Consider waiting for a lower-crowd interval."
+            ]
+        }
 
     # 6. FESTIVAL IMPACT
     if is_festival:
@@ -436,11 +456,11 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
         "queue_status": status_level.upper(),
         "queue_status_badge": status_badge,
         "waiting_condition": waiting_condition,
-        "incoming_devotees": incoming_count,
-        "outgoing_devotees": outgoing_count,
-        "current_time_period": current_time_period,
+        "incoming_devotees": incoming_count if has_reliable_data else None,
+        "outgoing_devotees": outgoing_count if has_reliable_data else None,
+        "current_time_period": current_time_period if has_reliable_data else "Current",
         "crowd_trend": crowd_trend_label,
-        "estimated_crowd": current_crowd,
+        "estimated_crowd": current_crowd if has_reliable_data else None,
         "predicted_wait_minutes": predicted_wait,
 
         # Master Prompt Section 6: Next 6 Hours Crowd Trend
@@ -471,8 +491,7 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
 def predict(current_wait: int, current_density: str) -> int:
     """
     Legacy function for backward compatibility.
-    Returns simple predicted wait time.
+    Returns simple predicted wait time based on density factor.
     """
-    variance = random.randint(-8, 12)
     factor = {"Low": .85, "Moderate": 1, "High": 1.18, "Very High": 1.38}.get(current_density, 1)
-    return max(10, round(current_wait * factor + variance))
+    return max(10, round(current_wait * factor))

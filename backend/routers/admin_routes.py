@@ -353,10 +353,10 @@ def queue_prediction_public(db: Session = Depends(get_db)):
     if not latest:
         return {
             "source": "AI_PREDICTION",
-            "queue_status": "MODERATE",
+            "queue_status": "No crowd data available",
             "estimated_crowd": 0,
             "trend": "STABLE",
-            "prediction": "Live admin data not yet available. AI prediction active.",
+            "prediction": "Live admin data not yet available.",
             "festival": False,
             "data_available": False,
         }
@@ -607,7 +607,7 @@ async def analyze_crowd_image(
         q_status = QueueStatus(
             wait_minutes=estimated_wait_minutes,
             crowd_density=crowd_level.title(),
-            people_count=max(detected_count * 40, 1500),
+            people_count=detected_count,
             location=location,
             updated_at=datetime.utcnow()
         )
@@ -615,7 +615,7 @@ async def analyze_crowd_image(
     else:
         q_status.wait_minutes = estimated_wait_minutes
         q_status.crowd_density = crowd_level.title()
-        q_status.people_count = max(detected_count * 40, 1500 if crowd_level != "LOW" else 800)
+        q_status.people_count = detected_count
         q_status.location = location
         q_status.updated_at = datetime.utcnow()
 
@@ -635,8 +635,7 @@ async def analyze_crowd_image(
         .first()
     )
 
-    crowd_est_map = {"LOW": 1800, "MODERATE": 4200, "HIGH": 8200, "VERY HIGH": 14500}
-    est_people = crowd_est_map.get(crowd_level, 4200)
+    est_people = detected_count
 
     if existing_flow:
         existing_flow.queue_status = crowd_level
@@ -647,13 +646,13 @@ async def analyze_crowd_image(
             date=today_str,
             start_time=start_str,
             end_time=end_str,
-            incoming_pilgrims=int(est_people * 0.4),
-            outgoing_pilgrims=int(est_people * 0.3),
-            net_pilgrims=int(est_people * 0.1),
+            incoming_pilgrims=0,
+            outgoing_pilgrims=0,
+            net_pilgrims=0,
             estimated_crowd=est_people,
             festival=False,
             queue_status=crowd_level,
-            queue_pressure=0.85 if crowd_level == "VERY HIGH" else (0.65 if crowd_level == "HIGH" else 0.4),
+            queue_pressure=0.85 if crowd_level == "VERY HIGH" else (0.65 if crowd_level == "HIGH" else (0.4 if crowd_level == "MODERATE" else 0.15)),
             source="admin_image",
             created_by_admin=admin.id
         )

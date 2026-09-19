@@ -7,6 +7,28 @@
 
 let _pilgrimChart = null; // Chart.js instance
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Dynamic API base URL helper (mirrors api.js BASE logic for multipart calls)
+// ─────────────────────────────────────────────────────────────────────────────
+function _adminApiBase() {
+  if (typeof window !== 'undefined' && window.location) {
+    const { hostname, port, protocol } = window.location;
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || protocol === 'file:') {
+      if (port === '8000') return '/api/';
+      return 'http://127.0.0.1:8000/api/';
+    }
+  }
+  return '/api/';
+}
+
+function _adminAuthHeaders(includeContentType = false) {
+  const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+  const h = {};
+  if (token) h['Authorization'] = `Bearer ${token}`;
+  if (includeContentType) h['Content-Type'] = 'application/json';
+  return h;
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Queue status badge colour map
 // ──────────────────────────────────────────────────────────────────────────────
@@ -437,7 +459,7 @@ function initAdminCrowdUpload() {
       const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
       if (!token) throw new Error('You must be logged in as Admin to upload.');
 
-      const res = await fetch('/api/admin/crowd-analysis', {
+      const res = await fetch(_adminApiBase() + 'admin/crowd-analysis', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
@@ -693,17 +715,17 @@ async function _handleCctvFileUpload() {
 
   if (statusEl) statusEl.textContent = '⏳ Uploading…';
   try {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
-    const res = await fetch('/api/cctv/upload', {
+    const res = await fetch(_adminApiBase() + 'cctv/upload', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
+      headers: _adminAuthHeaders(),
       body: form,
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Upload failed'); }
     const data = await res.json();
     _cctvUploadedFilename = data.filename;
-    if (statusEl) statusEl.textContent = `✅ Uploaded: ${data.filename}`;
-    _showCctvMsg(`✅ Video uploaded successfully: ${data.filename}`, 'success');
+    const mediaLabel = data.media_type === 'image' ? 'Image' : 'Video';
+    if (statusEl) statusEl.textContent = `✅ ${mediaLabel} uploaded: ${data.filename} (${data.size_mb}MB)`;
+    _showCctvMsg(`✅ ${mediaLabel} uploaded successfully: ${data.filename}`, 'success');
   } catch (err) {
     if (statusEl) statusEl.textContent = `❌ ${err.message}`;
     _showCctvMsg(`❌ Upload error: ${err.message}`, 'error');
@@ -734,10 +756,9 @@ async function _startCctvAnalysis() {
 
   _showCctvMsg('⏳ Starting YOLO AI people tracking analysis…', 'info');
   try {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
-    const res = await fetch('/api/cctv/start', {
+    const res = await fetch(_adminApiBase() + 'cctv/start', {
       method : 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      headers: _adminAuthHeaders(true),
       body   : JSON.stringify(payload),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Could not start analysis'); }
@@ -756,10 +777,9 @@ async function _startCctvAnalysis() {
 async function _stopCctvAnalysis() {
   _showCctvMsg('⏳ Stopping analysis…', 'info');
   try {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
-    const res = await fetch('/api/cctv/stop', {
+    const res = await fetch(_adminApiBase() + 'cctv/stop', {
       method : 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
+      headers: _adminAuthHeaders(),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Stop failed'); }
     const data = await res.json();
@@ -786,7 +806,7 @@ function _mountCctvStream() {
   if (!img) return;
 
   // Add timestamp to bust cache / force reconnect
-  img.src = `/api/cctv/stream?t=${Date.now()}`;
+  img.src = `${_adminApiBase()}cctv/stream?t=${Date.now()}`;
   img.style.display = 'block';
   if (ph) ph.style.display = 'none';
   _cctvStreamActive = true;
@@ -808,7 +828,7 @@ function _unmountCctvStream() {
 // ── Poll Worker Status ─────────────────────────────────────────────────────────
 async function _pollCctvStatus() {
   try {
-    const res  = await fetch('/api/cctv/status');
+    const res  = await fetch(_adminApiBase() + 'cctv/status');
     if (!res.ok) return;
     const data = await res.json();
     _applyCctvStatusToUI(data);
@@ -857,7 +877,7 @@ async function _loadCctvRecentRecords() {
   const tbody = document.getElementById('cctvHistoryBody');
   if (!tbody) return;
   try {
-    const res = await fetch('/api/cctv/recent?limit=20');
+    const res = await fetch(_adminApiBase() + 'cctv/recent?limit=20');
     if (!res.ok) throw new Error('Failed to load records');
     const records = await res.json();
 

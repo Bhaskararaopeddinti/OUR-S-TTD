@@ -28,10 +28,10 @@ async function loadQueueIntelligence(retryCount = 0) {
     // 1. CURRENT QUEUE STATUS (Master Prompt Section 5)
     // ─────────────────────────────────────────────────────────────
     if (statusContainer) {
-      const statusBadge = aiPred.queue_status_badge || (adminData?.queue_status ? `🔴 ${adminData.queue_status}` : '🟡 MODERATE');
-      const waitingCond = aiPred.waiting_condition || (data.wait_minutes ? `Approx ${data.wait_minutes} mins` : 'Moderate (2–3 hrs)');
-      const incoming = aiPred.incoming_devotees ?? adminData?.incoming_pilgrims ?? 1800;
-      const outgoing = aiPred.outgoing_devotees ?? adminData?.outgoing_pilgrims ?? 1100;
+      const statusBadge = aiPred.queue_status_badge || (adminData?.queue_status ? `🔴 ${adminData.queue_status}` : (aiPred.admin_data_used ? '🟡 MODERATE' : 'No crowd data available'));
+      const waitingCond = aiPred.waiting_condition || (data.wait_minutes ? `Approx ${data.wait_minutes} mins` : (aiPred.admin_data_used ? 'Check VQC display boards' : 'No crowd data available'));
+      const incoming = aiPred.incoming_devotees ?? adminData?.incoming_pilgrims ?? null;
+      const outgoing = aiPred.outgoing_devotees ?? adminData?.outgoing_pilgrims ?? null;
       const timePeriod = aiPred.current_time_period || adminData?.slot || 'Current Slot';
       const trend = aiPred.crowd_trend || 'Stable';
       const totalCrowd = aiPred.estimated_crowd ?? adminData?.estimated_crowd ?? data.people_count ?? 0;
@@ -66,11 +66,11 @@ async function loadQueueIntelligence(retryCount = 0) {
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:0.6rem; margin-top:0.6rem;">
             <div style="background:rgba(0,0,0,0.2); padding:0.6rem 0.8rem; border-radius:8px;">
               <div style="font-size:0.72rem; color:var(--muted);">Incoming Devotees</div>
-              <div style="font-size:1.1rem; font-weight:700; color:#60A5FA;">📥 ${Number(incoming).toLocaleString()}</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#60A5FA;">📥 ${incoming !== null ? Number(incoming).toLocaleString() : '—'}</div>
             </div>
             <div style="background:rgba(0,0,0,0.2); padding:0.6rem 0.8rem; border-radius:8px;">
               <div style="font-size:0.72rem; color:var(--muted);">Outgoing Devotees</div>
-              <div style="font-size:1.1rem; font-weight:700; color:#34D399;">📤 ${Number(outgoing).toLocaleString()}</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#34D399;">📤 ${outgoing !== null ? Number(outgoing).toLocaleString() : '—'}</div>
             </div>
             <div style="background:rgba(0,0,0,0.2); padding:0.6rem 0.8rem; border-radius:8px;">
               <div style="font-size:0.72rem; color:var(--muted);">Crowd Trend</div>

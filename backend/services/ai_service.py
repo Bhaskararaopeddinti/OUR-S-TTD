@@ -16,10 +16,13 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Default verified active models (configurable via GEMINI_MODEL)
 DEFAULT_MODELS = [
-    'gemini-flash-lite-latest',
-    'gemini-flash-latest',
+    'gemini-3.5-flash-lite',        # confirmed working — fastest and cheapest
+    'gemini-flash-lite-latest',     # alias for latest lite flash
+    'gemini-flash-latest',          # alias for latest flash
+    'gemini-3.1-flash-lite',        # newer generation lite
+    'gemini-3-flash-preview',       # preview generation
+    'gemini-2.5-flash',             # stable generation fallback
 ]
 
 _genai_client = None

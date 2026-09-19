@@ -54,7 +54,7 @@ async function loadDashboardQueueIntelligence() {
         const dataSource = document.getElementById('queueDataSource');
         
         if (queueStatus) {
-            queueStatus.textContent = aiPred.queue_status_badge || (adminData?.queue_status ? `🔴 ${adminData.queue_status}` : '🟡 MODERATE');
+            queueStatus.textContent = aiPred.queue_status_badge || (adminData?.queue_status ? `🔴 ${adminData.queue_status}` : 'No crowd data available');
         }
         
         if (crowd) {

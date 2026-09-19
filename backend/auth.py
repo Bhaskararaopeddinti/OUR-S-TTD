@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 import jwt
 import bcrypt
 from datetime import datetime, timedelta, timezone
@@ -6,10 +8,19 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
+ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(ROOT / ".env")
+load_dotenv()
+
 from backend.database import get_db
 
 security = HTTPBearer(auto_error=False)
-SECRET = os.getenv("SECRET_KEY", "change-me-in-production")
+
+def get_secret() -> str:
+    key = os.getenv("SECRET_KEY", "ours-ttd-secret-key-2026-production-jwt-32bytes")
+    if len(key.encode("utf-8")) < 32:
+        key = key.ljust(32, "-")
+    return key
 
 
 def hash_password(password: str) -> str:
@@ -33,14 +44,14 @@ def create_token(user_id: int, role: str) -> str:
         "role": role,
         "exp": datetime.now(timezone.utc) + timedelta(hours=12)
     }
-    return jwt.encode(payload, SECRET, algorithm="HS256")
+    return jwt.encode(payload, get_secret(), algorithm="HS256")
 
 
 def current_claims(creds: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     if not creds:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sign in required")
     try:
-        return jwt.decode(creds.credentials, SECRET, algorithms=["HS256"])
+        return jwt.decode(creds.credentials, get_secret(), algorithms=["HS256"])
     except jwt.PyJWTError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired session")
 

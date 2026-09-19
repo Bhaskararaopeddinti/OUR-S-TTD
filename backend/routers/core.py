@@ -63,7 +63,11 @@ def queue_recommendation(db: Session = Depends(get_db)):
     
     # Determine action based on crowd level
     crowd_level = prediction.get("current_crowd_level", "Moderate")
-    if crowd_level == "Low":
+    if not prediction.get("admin_data_used") or crowd_level == "Unknown":
+        action = "CHECK DISPLAY BOARDS"
+        action_color = "gray"
+        message = "Live crowd data is currently not available. Please check physical display boards at Vaikuntam Queue Complex."
+    elif crowd_level == "Low":
         action = "JOIN NOW"
         action_color = "green"
         message = "Good time to join. Queue is currently less crowded."

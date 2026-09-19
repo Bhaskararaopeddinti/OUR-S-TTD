@@ -165,20 +165,20 @@ def seed_db():
             )
             db.add(admin)
             logger.info("Demo admin user created.")
-        elif admin_user.role != "admin":
+        else:
             admin_user.role = "admin"
             admin_user.is_active = True
+            admin_user.password_hash = hash_password("DemoAdmin123")
             db.commit()
-            logger.info("Updated demo admin user role to admin.")
+            logger.info("Verified demo admin user credentials and admin role.")
 
-        # Queue status placeholder
-        if not db.query(QueueStatus).first():
-            db.add(QueueStatus(
-                wait_minutes=135,
-                crowd_density="High",
-                people_count=7420,
-                location="Sarva Darshan"
-            ))
+        # Ensure testadmin@example.com (if created) has admin role
+        test_admin = db.query(User).filter_by(email="testadmin@example.com").first()
+        if test_admin and test_admin.role != "admin":
+            test_admin.role = "admin"
+            test_admin.is_active = True
+            db.commit()
+            logger.info("Promoted testadmin@example.com to admin role.")
 
         # Facilities
         if not db.query(Facility).first():

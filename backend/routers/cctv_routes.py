@@ -44,7 +44,7 @@ class CCTVStartRequest(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 1. POST /api/cctv/upload (Admin Video Upload)
+# 1. POST /api/cctv/upload (Admin Media Upload - Video or Image)
 # ─────────────────────────────────────────────────────────────────────────────
 @router.post("/upload")
 async def upload_cctv_video(
@@ -52,13 +52,21 @@ async def upload_cctv_video(
     admin: User = Depends(get_current_admin)
 ):
     """
-    Admin uploads a CCTV video for AI analysis.
-    Validates file extension (.mp4, .avi, .mov, .mkv) and saves to server.
+    Admin uploads a CCTV video or image for AI analysis.
+    Validates file extension (.mp4, .avi, .mov, .mkv, .jpg, .jpeg, .png, .webp) and size.
     """
-    allowed_exts = {".mp4", ".avi", ".mov", ".mkv", ".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+    image_exts = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+    video_exts = {".mp4", ".avi", ".mov", ".mkv"}
+    allowed_exts = image_exts | video_exts
+    
     ext = Path(file.filename).suffix.lower()
     if ext not in allowed_exts:
-        raise HTTPException(400, f"Unsupported file format '{ext}'. Allowed videos (.mp4, .avi, .mov, .mkv) or images (.jpg, .png, .webp)")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file format '{ext}'. Allowed videos: {', '.join(video_exts)} or images: {', '.join(image_exts)}"
+        )
+
+    media_type = "image" if ext in image_exts else "video"
 
     # Sanitize filename
     safe_filename = Path(file.filename).name.replace(" ", "_")
@@ -68,23 +76,31 @@ async def upload_cctv_video(
         with open(target_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
     except Exception as e:
-        raise HTTPException(500, f"Failed to save video: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to save {media_type}: {str(e)}")
 
-    file_size_mb = target_path.stat().st_size / (1024 * 1024)
+    file_size_bytes = target_path.stat().st_size
+    file_size_mb = file_size_bytes / (1024 * 1024)
+
+    # Size limit checks: 150MB for video, 25MB for image
+    max_mb = 25.0 if media_type == "image" else 150.0
+    if file_size_mb > max_mb:
+        target_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail=f"File too large ({file_size_mb:.1f}MB). Maximum allowed is {max_mb}MB.")
 
     return {
         "success": True,
         "filename": safe_filename,
         "original_filename": file.filename,
+        "media_type": media_type,
         "size_mb": round(file_size_mb, 2),
         "path": str(target_path),
-        "message": "CCTV video uploaded successfully. Ready for AI analysis.",
+        "message": f"CCTV {media_type} uploaded successfully. Ready for AI analysis.",
         "source": "Demo CCTV AI Data"
     }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 2. POST /api/cctv/start (Start AI Video Analysis - Demo Video or RTSP Stream)
+# 2. POST /api/cctv/start (Start AI Media Analysis - Video, Image, or RTSP Stream)
 # ─────────────────────────────────────────────────────────────────────────────
 @router.post("/start")
 def start_cctv_analysis(
@@ -92,14 +108,16 @@ def start_cctv_analysis(
     admin: User = Depends(get_current_admin)
 ):
     """
-    Start the CCTV AI video processing worker in either:
-    - Mode 1: Demo Video Mode (source: demo_cctv_video)
+    Start the CCTV AI video/image processing worker in either:
+    - Mode 1: Demo Media Mode (source: demo_cctv_video or cctv_image)
     - Mode 2: Live IP CCTV Mode via RTSP stream (source: authorized_cctv)
     """
     if req.mode == "rtsp_stream" or (req.rtsp_url and req.rtsp_url.strip()):
         rtsp_clean = (req.rtsp_url or "").strip()
+        if not rtsp_clean:
+            raise HTTPException(status_code=400, detail="Live CCTV stream is not configured. Please provide an RTSP URL.")
         if not (rtsp_clean.startswith("rtsp://") or rtsp_clean.startswith("http://") or rtsp_clean.startswith("https://")):
-            raise HTTPException(400, "Invalid RTSP/Stream URL. Must start with rtsp://, http://, or https://")
+            raise HTTPException(status_code=400, detail="Invalid RTSP/Stream URL. Must start with rtsp://, http://, or https://")
 
         res = cctv_worker.start(
             mode="rtsp_stream",
@@ -112,7 +130,7 @@ def start_cctv_analysis(
     else:
         selected_path = None
         if req.video_filename:
-            # Check uploaded videos first
+            # Check uploaded media first
             uploaded = UPLOAD_DIR / req.video_filename
             if uploaded.exists():
                 selected_path = str(uploaded)
@@ -128,7 +146,7 @@ def start_cctv_analysis(
                 selected_path = str(FALLBACK_DEMO_VIDEO)
 
         if not selected_path or not os.path.exists(selected_path):
-            raise HTTPException(404, "Reference CCTV video file not found. Please upload a video first.")
+            raise HTTPException(status_code=404, detail="Reference CCTV media file not found. Please upload a video or image first.")
 
         res = cctv_worker.start(
             mode="demo_video",
@@ -140,7 +158,7 @@ def start_cctv_analysis(
         )
 
     if not res.get("success"):
-        raise HTTPException(400, res.get("message", "Failed to start CCTV analysis."))
+        raise HTTPException(status_code=400, detail=res.get("message", "Failed to start CCTV analysis."))
 
     return res
 
@@ -176,7 +194,7 @@ def get_cctv_current(db: Session = Depends(get_db)):
     if live_status.get("is_running"):
         return {
             "source": "demo_cctv_ai",
-            "source_display": "Demo CCTV AI Data",
+            "source_display": live_status.get("source_label", "Demo CCTV AI Data"),
             "status": live_status["status"],
             "location": live_status["location_name"],
             "incoming": live_status["incoming"],
@@ -199,21 +217,48 @@ def get_cctv_current(db: Session = Depends(get_db)):
     )
 
     if latest_rec:
+        # Determine estimated crowd from observed or net flow without fake constants
+        crowd_est = latest_rec.observed_count if latest_rec.observed_count > 0 else max(0, latest_rec.net_flow)
         return {
             "source": latest_rec.source,
-            "source_display": "Demo CCTV AI Data" if latest_rec.source == "demo_cctv_ai" else "CCTV AI Data",
+            "source_display": "Demo CCTV AI Data" if latest_rec.source in ("demo_cctv_video", "cctv_image", "demo_cctv_ai") else "CCTV AI Data",
             "status": "completed",
             "location": latest_rec.location_name,
             "incoming": latest_rec.incoming_count,
             "outgoing": latest_rec.outgoing_count,
             "observed_count": latest_rec.observed_count,
-            "estimated_crowd": max(0, 1200 + latest_rec.net_flow),
+            "estimated_crowd": crowd_est,
             "net_flow": latest_rec.net_flow,
             "trend": latest_rec.trend,
             "queue_status": latest_rec.queue_status,
             "confidence": latest_rec.confidence,
             "is_live_stream": False,
             "last_updated": latest_rec.timestamp.isoformat()
+        }
+
+    # Check if manual pilgrim flow records exist
+    latest_flow = (
+        db.query(PilgrimFlowData)
+        .order_by(desc(PilgrimFlowData.date), desc(PilgrimFlowData.start_time))
+        .first()
+    )
+    if latest_flow:
+        net = latest_flow.incoming_pilgrims - latest_flow.outgoing_pilgrims
+        return {
+            "source": latest_flow.source or "manual_entry",
+            "source_display": "Official Pilgrim Data" if latest_flow.source in ("manual", "manual_entry") else "Pilgrim Flow Data",
+            "status": "completed",
+            "location": "Sarva Darshan VQC I",
+            "incoming": latest_flow.incoming_pilgrims,
+            "outgoing": latest_flow.outgoing_pilgrims,
+            "observed_count": latest_flow.estimated_crowd,
+            "estimated_crowd": latest_flow.estimated_crowd,
+            "net_flow": net,
+            "trend": "INCREASING" if net > 50 else ("DECREASING" if net < -50 else "STABLE"),
+            "queue_status": latest_flow.queue_status or "MODERATE",
+            "confidence": 0.95,
+            "is_live_stream": False,
+            "last_updated": latest_flow.created_at.isoformat() if latest_flow.created_at else datetime.utcnow().isoformat()
         }
 
     return {
@@ -226,8 +271,8 @@ def get_cctv_current(db: Session = Depends(get_db)):
         "estimated_crowd": 0,
         "net_flow": 0,
         "trend": "STABLE",
-        "queue_status": "MODERATE",
-        "confidence": 0.90,
+        "queue_status": "No crowd data available",
+        "confidence": 0.0,
         "is_live_stream": False,
         "last_updated": datetime.utcnow().isoformat()
     }

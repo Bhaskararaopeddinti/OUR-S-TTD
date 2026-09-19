@@ -20,6 +20,10 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+# Absolute paths
+ROOT = Path(__file__).resolve().parent.parent.parent
+DEFAULT_MODEL_PATH = ROOT / "yolov8n.pt"
+
 # Default reference video path
 DEFAULT_DEMO_VIDEO = Path(__file__).resolve().parent.parent / "demo_media" / "demo_cctv.mp4"
 FALLBACK_DEMO_VIDEO = Path(__file__).resolve().parent.parent / "demo_media" / "WhatsApp Video 2026-08-30 at 5.29.14 PM.mp4"
@@ -156,53 +160,64 @@ class SimpleObjectTracker:
 # ─────────────────────────────────────────────────────────────────────────────
 # 2. Virtual Counting Line & Crossing Logic
 # ─────────────────────────────────────────────────────────────────────────────
+def _ccw(A: Tuple[int, int], B: Tuple[int, int], C: Tuple[int, int]) -> float:
+    """Counter-clockwise 2D orientation test."""
+    return (B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0])
+
+
 def check_line_crossing(
     p1: Tuple[int, int],
     p2: Tuple[int, int],
     line_start: Tuple[int, int],
     line_end: Tuple[int, int],
     direction_mode: str = "left_to_right",
-    deadzone: float = 3.0
+    deadzone: float = 2.0
 ) -> Tuple[bool, Optional[str]]:
     """
-    Determines if movement from p1 to p2 crossed the line (line_start -> line_end).
+    Determines if person movement from p1 to p2 crossed virtual line (line_start -> line_end).
     Returns (crossed: bool, direction: 'IN' | 'OUT' | None).
-    Uses 2D signed area (cross-product orientation) to detect crossings and direction.
+    Accurately handles Left -> Right (IN) and Right -> Left (OUT).
     """
-    x1, y1 = line_start
-    x2, y2 = line_end
-    px1, py1 = p1
-    px2, py2 = p2
+    # 1. Broad-phase bounding box rejection
+    min_px, max_px = min(p1[0], p2[0]) - 8, max(p1[0], p2[0]) + 8
+    min_py, max_py = min(p1[1], p2[1]) - 8, max(p1[1], p2[1]) + 8
+    min_lx, max_lx = min(line_start[0], line_end[0]), max(line_start[0], line_end[0])
+    min_ly, max_ly = min(line_start[1], line_end[1]), max(line_start[1], line_end[1])
 
-    # Vector of line: (dx, dy)
-    dx = x2 - x1
-    dy = y2 - y1
+    if max_px < min_lx or min_px > max_lx or max_py < min_ly or min_py > max_ly:
+        return False, None
 
-    # Signed distance / cross-product of p1 and p2 relative to line
-    # d > 0 on one side, d < 0 on other side
-    d1 = (px1 - x1) * dy - (py1 - y1) * dx
-    d2 = (px2 - x1) * dy - (py2 - y1) * dx
+    # 2. Narrow-phase 2D orientation segment intersection
+    d1 = _ccw(line_start, line_end, p1)
+    d2 = _ccw(line_start, line_end, p2)
+    d3 = _ccw(p1, p2, line_start)
+    d4 = _ccw(p1, p2, line_end)
 
-    # Check if endpoints straddle the line
-    if (d1 > deadzone and d2 < -deadzone) or (d1 < -deadzone and d2 > deadzone):
-        # Line intersection test: verify the movement segment crosses the actual line segment bounding
-        min_lx, max_lx = min(x1, x2) - 40, max(x1, x2) + 40
-        min_ly, max_ly = min(y1, y2) - 40, max(y1, y2) + 40
-        avg_x = (px1 + px2) / 2
-        avg_y = (py1 + py2) / 2
+    straddles_line = (d1 * d2 < -deadzone)
+    straddles_segment = (d3 * d4 <= 0)
 
-        if min_lx <= avg_x <= max_lx and min_ly <= avg_y <= max_ly:
-            # Determine direction
-            if d1 > 0 and d2 < 0:
-                if direction_mode in ("left_to_right", "top_to_bottom"):
-                    return True, "IN"
-                else:
-                    return True, "OUT"
+    if straddles_line and straddles_segment:
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+
+        if direction_mode in ("left_to_right", "right_to_left"):
+            # Horizontal motion evaluation
+            if dx > 0:
+                dir_label = "IN" if direction_mode == "left_to_right" else "OUT"
+            elif dx < 0:
+                dir_label = "OUT" if direction_mode == "left_to_right" else "IN"
             else:
-                if direction_mode in ("left_to_right", "top_to_bottom"):
-                    return True, "OUT"
-                else:
-                    return True, "IN"
+                dir_label = "IN" if d2 < 0 else "OUT"
+        else:
+            # Vertical motion evaluation
+            if dy > 0:
+                dir_label = "IN" if direction_mode == "top_to_bottom" else "OUT"
+            elif dy < 0:
+                dir_label = "OUT" if direction_mode == "top_to_bottom" else "IN"
+            else:
+                dir_label = "IN" if d2 < 0 else "OUT"
+
+        return True, dir_label
 
     return False, None
 
@@ -213,10 +228,15 @@ def check_line_crossing(
 class YOLOPersonDetector:
     """Detects people in frames using YOLO (class 0 'person' only)."""
 
-    def __init__(self, model_name: str = "yolov8n.pt", conf_threshold: float = 0.35):
+    def __init__(self, model_name: Optional[str] = None, conf_threshold: float = 0.25):
         self.conf_threshold = conf_threshold
         self.model = None
         self.backend_type = "yolo"
+        if not model_name:
+            if DEFAULT_MODEL_PATH.exists():
+                model_name = str(DEFAULT_MODEL_PATH)
+            else:
+                model_name = "yolov8n.pt"
         self._init_model(model_name)
 
     def _init_model(self, model_name: str):
@@ -227,13 +247,13 @@ class YOLOPersonDetector:
             self.backend_type = "ultralytics_yolo"
             logger.info("✓ YOLO person detection model loaded successfully.")
         except Exception as e:
-            logger.warning("Could not initialize Ultralytics YOLO (%s). Using OpenCV HOG person detector fallback.", e)
+            logger.error("Could not initialize Ultralytics YOLO (%s). Using OpenCV HOG fallback.", e)
             try:
                 import cv2
                 self.model = cv2.HOGDescriptor()
                 self.model.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
                 self.backend_type = "opencv_hog"
-                logger.info("✓ OpenCV HOG Person Detector initialized as fallback.")
+                logger.warning("✓ OpenCV HOG Person Detector initialized as fallback.")
             except Exception as cv_err:
                 logger.error("Failed to load OpenCV HOG fallback: %s", cv_err)
                 self.model = None
@@ -266,7 +286,7 @@ class YOLOPersonDetector:
                                 x2, y2 = min(w - 1, x2), min(h - 1, y2)
                                 detections.append(((x1, y1, x2, y2), conf))
             except Exception as e:
-                logger.debug("YOLO inference exception: %s", e)
+                logger.error("YOLO inference error: %s", e)
 
         elif self.backend_type == "opencv_hog":
             try:
@@ -299,7 +319,7 @@ class YOLOPersonDetector:
 # ─────────────────────────────────────────────────────────────────────────────
 class CCTVVisionWorker:
     """
-    Background worker that continuously processes an uploaded CCTV video file or stream,
+    Background worker that continuously processes an uploaded CCTV video file, image, or stream,
     performs person detection, tracks people, counts line crossings, aggregates time data,
     stores records in Supabase/PostgreSQL/SQLite, and broadcasts real-time updates.
     """
@@ -309,6 +329,7 @@ class CCTVVisionWorker:
         self.thread: Optional[threading.Thread] = None
         self.is_running: bool = False
         self.should_stop: bool = False
+        self.is_image_mode: bool = False
 
         # Configuration
         self.mode: str = "demo_video"  # "demo_video" or "rtsp_stream"
@@ -326,8 +347,8 @@ class CCTVVisionWorker:
         # Virtual counting line (normalized 0.0-1.0)
         self.line_coords_norm: Tuple[Tuple[float, float], Tuple[float, float]] = ((0.5, 0.1), (0.5, 0.9))
 
-        # Runtime Stats & Metrics
-        self.status: str = "waiting"  # waiting, uploading, processing, completed, stopped, error
+        # Runtime Stats & Metrics (Lifecycle states: IDLE, PROCESSING, COMPLETED, STOPPED, ERROR)
+        self.status: str = "IDLE"
         self.error_message: str = ""
         self.current_frame_idx: int = 0
         self.total_frames: int = 0
@@ -337,8 +358,8 @@ class CCTVVisionWorker:
         self.incoming_count: int = 0
         self.outgoing_count: int = 0
         self.net_flow: int = 0
-        self.estimated_crowd: int = 1200
-        self.queue_status: str = "MODERATE"
+        self.estimated_crowd: int = 0
+        self.queue_status: str = "LOW"
         self.trend: str = "STABLE"
         self.confidence: float = 0.92
         self.video_quality_warning: bool = False
@@ -365,13 +386,15 @@ class CCTVVisionWorker:
         camera_id: str = "CAM_01_DEMO"
     ) -> Dict[str, Any]:
         """
-        Start the CCTV AI video processing worker in either:
-        MODE 1 – DEMO VIDEO MODE (source: demo_cctv_video)
-        MODE 2 – LIVE IP CCTV MODE (source: authorized_cctv)
+        Start the CCTV AI processing worker for uploaded video, single image, or RTSP stream.
         """
         with self.lock:
+            # Check thread liveness to prevent orphaned lock
             if self.is_running:
-                return {"success": False, "message": "CCTV processing is already running."}
+                if self.thread and self.thread.is_alive():
+                    return {"success": False, "message": "CCTV processing is already running."}
+                else:
+                    self.is_running = False
 
             self.mode = mode
 
@@ -379,13 +402,13 @@ class CCTVVisionWorker:
             if mode == "rtsp_stream" or (rtsp_url and rtsp_url.strip()):
                 self.rtsp_url = (rtsp_url or "").strip()
                 if not self.rtsp_url:
-                    return {"success": False, "message": "Authorized RTSP camera stream URL is required for Live IP CCTV mode."}
+                    return {"success": False, "message": "Live CCTV stream is not configured."}
                 self.video_path = self.rtsp_url
                 self.video_filename = f"RTSP Stream ({camera_id})"
                 self.source_label = "Authorized CCTV Stream"
                 self.source_db_code = "authorized_cctv"
             else:
-                # Handle MODE 1: Demo Video Mode
+                # Handle MODE 1: Demo Video Mode / Uploaded Media
                 self.mode = "demo_video"
                 self.source_label = "Demo CCTV AI Data"
                 self.source_db_code = "demo_cctv_video"
@@ -395,17 +418,24 @@ class CCTVVisionWorker:
                     elif FALLBACK_DEMO_VIDEO.exists():
                         self.video_path = str(FALLBACK_DEMO_VIDEO)
                     else:
-                        return {"success": False, "message": "Reference video not found on server. Please upload a video first."}
+                        return {"success": False, "message": "Reference media not found on server. Please upload a video or image first."}
                 else:
                     self.video_path = video_path
 
                 self.video_filename = Path(self.video_path).name
 
+            # Detect whether input is an IMAGE or a VIDEO
+            ext = Path(self.video_path).suffix.lower()
+            self.is_image_mode = ext in (".jpg", ".jpeg", ".png", ".webp", ".bmp")
+            if self.is_image_mode:
+                self.source_db_code = "cctv_image"
+                self.source_label = "Demo CCTV AI Data (Image)"
+
             self.location_name = location_name
             self.direction_mode = direction_mode
             self.interval_minutes = interval_minutes if interval_minutes in (15, 30, 60, 120) else 15
             self.camera_id = camera_id
-            self.status = "processing"
+            self.status = "PROCESSING"
             self.error_message = ""
             self.should_stop = False
             self.is_running = True
@@ -416,6 +446,7 @@ class CCTVVisionWorker:
             self.net_flow = 0
             self.observed_count = 0
             self.recent_net_history = []
+            self.current_frame_idx = 0
 
             # Adjust virtual counting line based on direction
             if direction_mode in ("left_to_right", "right_to_left"):
@@ -423,15 +454,21 @@ class CCTVVisionWorker:
             else:
                 self.line_coords_norm = ((0.05, 0.5), (0.95, 0.5))
 
-            self.thread = threading.Thread(target=self._process_video_loop, daemon=True)
+            if self.is_image_mode:
+                self.thread = threading.Thread(target=self._process_image_job, daemon=True)
+            else:
+                self.thread = threading.Thread(target=self._process_video_loop, daemon=True)
             self.thread.start()
 
-            logger.info("Started CCTV AI Worker [%s] for: %s (Location: %s, Mode: %s)",
-                        self.source_db_code, self.video_filename, location_name, self.mode)
+            logger.info("Started CCTV AI Worker [%s] for: %s (Location: %s, Media: %s)",
+                        self.source_db_code, self.video_filename, location_name,
+                        "IMAGE" if self.is_image_mode else "VIDEO")
             return {
                 "success": True,
-                "status": "processing",
+                "status": "PROCESSING",
                 "mode": self.mode,
+                "media_type": "IMAGE" if self.is_image_mode else "VIDEO",
+                "is_image": self.is_image_mode,
                 "video": self.video_filename,
                 "location": self.location_name,
                 "source": self.source_label,
@@ -440,27 +477,28 @@ class CCTVVisionWorker:
             }
 
     def stop(self) -> Dict[str, Any]:
-        """Gracefully stop the background CCTV worker."""
+        """Gracefully stop the background CCTV worker and release resources."""
         with self.lock:
             if not self.is_running:
-                return {"success": True, "status": "stopped", "message": "Worker was not running."}
+                return {"success": True, "status": self.status, "message": "CCTV processing is not running."}
             self.should_stop = True
-            self.status = "stopped"
+            self.status = "STOPPED"
 
         if self.thread and self.thread.is_alive():
-            self.thread.join(timeout=3.0)
-
-        # Persist final aggregated counts upon stopping
-        try:
-            self._save_aggregated_record_to_db()
-        except Exception as err:
-            logger.warning("Could not persist final CCTV record on stop: %s", err)
+            self.thread.join(timeout=2.0)
 
         with self.lock:
             self.is_running = False
 
+        if self.current_frame_idx > 0:
+            try:
+                self._save_aggregated_record_to_db()
+            except Exception as err:
+                logger.warning("Could not persist final CCTV record on stop: %s", err)
+
+        self._broadcast_update()
         logger.info("Stopped CCTV AI Video Worker.")
-        return {"success": True, "status": "stopped", "message": "CCTV processing stopped."}
+        return {"success": True, "status": "STOPPED", "message": "CCTV processing stopped."}
 
     def get_status(self) -> Dict[str, Any]:
         """Return current status and metrics of the CCTV Vision Worker."""
@@ -468,17 +506,21 @@ class CCTVVisionWorker:
             return {
                 "status": self.status,
                 "is_running": self.is_running,
-                "video_file": self.video_filename or "WhatsApp Video 2026-08-30 at 5.29.14 PM.mp4",
+                "is_image": getattr(self, "is_image_mode", False),
+                "media_type": "IMAGE" if getattr(self, "is_image_mode", False) else "VIDEO",
+                "video_file": self.video_filename or "demo_cctv.mp4",
                 "location_name": self.location_name,
                 "camera_id": self.camera_id,
                 "direction_mode": self.direction_mode,
-                "incoming": self.incoming_count,
-                "outgoing": self.outgoing_count,
+                "incoming": None if getattr(self, "is_image_mode", False) else self.incoming_count,
+                "outgoing": None if getattr(self, "is_image_mode", False) else self.outgoing_count,
+                "incoming_display": "N/A (Still Image)" if getattr(self, "is_image_mode", False) else str(self.incoming_count),
+                "outgoing_display": "N/A (Still Image)" if getattr(self, "is_image_mode", False) else str(self.outgoing_count),
                 "observed_count": self.observed_count,
-                "net_flow": self.net_flow,
+                "net_flow": None if getattr(self, "is_image_mode", False) else self.net_flow,
                 "estimated_crowd": self.estimated_crowd,
                 "queue_status": self.queue_status,
-                "trend": self.trend,
+                "trend": "N/A" if getattr(self, "is_image_mode", False) else self.trend,
                 "confidence": round(self.confidence, 2),
                 "source": self.source_label,
                 "source_db": self.source_db_code,
@@ -486,7 +528,7 @@ class CCTVVisionWorker:
                 "current_frame": self.current_frame_idx,
                 "total_frames": self.total_frames,
                 "last_updated": self.last_update_time.isoformat(),
-                "error_message": self.error_message if self.status == "error" else None,
+                "error_message": self.error_message if self.status == "ERROR" else None,
             }
 
     def get_jpeg_frame(self) -> Optional[bytes]:
@@ -494,154 +536,46 @@ class CCTVVisionWorker:
         return self.latest_jpeg_frame
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Worker Internal Processing Loop
+    # Single Still Image Processing Job
     # ─────────────────────────────────────────────────────────────────────────
-    def _process_video_loop(self):
+    def _process_image_job(self):
         try:
             import cv2
-        except ImportError:
-            logger.error("OpenCV is not installed. Cannot process video.")
-            with self.lock:
-                self.status = "error"
-                self.error_message = "Unable to process video (OpenCV missing)."
-                self.is_running = False
-            return
+            if self.detector is None:
+                self.detector = YOLOPersonDetector()
 
-        if self.detector is None:
-            self.detector = YOLOPersonDetector()
-        self.tracker = SimpleObjectTracker(max_disappeared=20, max_distance=90.0)
-
-        # Check if input is a still image file
-        is_image = Path(self.video_path).suffix.lower() in (".jpg", ".jpeg", ".png", ".webp", ".bmp")
-        static_img = None
-        cap = None
-
-        if is_image:
             static_img = cv2.imread(self.video_path)
             if static_img is None:
-                logger.error("Failed to read image file: %s", self.video_path)
                 with self.lock:
-                    self.status = "error"
-                    self.error_message = "Unable to process the image. Please try another file."
+                    self.status = "ERROR"
+                    self.error_message = f"Unable to read image file: {self.video_filename}"
                     self.is_running = False
+                self._broadcast_update()
                 return
+
             frame_height, frame_width = static_img.shape[:2]
             self.total_frames = 1
-            self.fps = 10.0
-        else:
-            # Open video capture
-            cap = cv2.VideoCapture(self.video_path)
-            if not cap.isOpened():
-                # Fallback check if it can be read as static image
-                static_img = cv2.imread(self.video_path)
-                if static_img is not None:
-                    is_image = True
-                    frame_height, frame_width = static_img.shape[:2]
-                    self.total_frames = 1
-                    self.fps = 10.0
-                else:
-                    logger.error("Failed to open video file: %s", self.video_path)
-                    with self.lock:
-                        self.status = "error"
-                        self.error_message = "Unable to process the video. Please try another video."
-                        self.is_running = False
-                    return
-            else:
-                self.total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 1000
-                self.fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
-                frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
-                frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480
+            self.current_frame_idx = 1
+            self.fps = 1.0
 
-        # Calculate actual pixel coordinates for counting line
-        (lx1_norm, ly1_norm), (lx2_norm, ly2_norm) = self.line_coords_norm
-        line_start = (int(lx1_norm * frame_width), int(ly1_norm * frame_height))
-        line_end = (int(lx2_norm * frame_width), int(ly2_norm * frame_height))
+            detections = self.detector.detect_people(static_img)
+            self.observed_count = len(detections)
+            self.incoming_count = 0
+            self.outgoing_count = 0
+            self.net_flow = 0
+            self.estimated_crowd = self.observed_count
 
-        if frame_width < 400 or frame_height < 300:
-            self.video_quality_warning = True
-
-        frame_idx = 0
-        last_broadcast_time = time.time()
-        last_db_save_time = time.time()
-        interval_seconds = self.interval_minutes * 60
-
-        logger.info(
-            "CCTV Processing started: %s (%dx%d, %d frames, line: %s to %s)",
-            self.video_filename, frame_width, frame_height, self.total_frames, line_start, line_end
-        )
-
-        while not self.should_stop:
-            if is_image:
-                frame = static_img.copy()
-            else:
-                ret, frame = cap.read()
-                if not ret:
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                    frame_idx = 0
-                    ret, frame = cap.read()
-                    if not ret:
-                        break
-
-            frame_idx += 1
-            self.current_frame_idx = frame_idx
-
-            # 1. Detect Persons (YOLO Class 0 only)
-            detections = self.detector.detect_people(frame)
-
-            # 2. Track Persons across frames
-            tracks = self.tracker.update(detections, frame_idx)
-
-            active_in_frame = len(detections)
-            self.observed_count = active_in_frame
-
-            # 3. Evaluate Line Crossing for each tracked person
-            for track in tracks:
-                if len(track.history) >= 2:
-                    p_prev = track.history[-2]
-                    p_curr = track.centroid
-
-                    crossed, direction = check_line_crossing(
-                        p_prev, p_curr, line_start, line_end, self.direction_mode
-                    )
-
-                    if crossed:
-                        if direction == "IN" and not track.counted_in:
-                            track.counted_in = True
-                            self.incoming_count += 1
-                            logger.debug("Person #%d entered (Incoming +1 -> Total In: %d)", track.track_id, self.incoming_count)
-                        elif direction == "OUT" and not track.counted_out:
-                            track.counted_out = True
-                            self.outgoing_count += 1
-                            logger.debug("Person #%d exited (Outgoing +1 -> Total Out: %d)", track.track_id, self.outgoing_count)
-
-            # 4. Calculate Net Flow, Queue Status & Trend
-            self.net_flow = self.incoming_count - self.outgoing_count
-            self.estimated_crowd = max(0, 1200 + self.net_flow)
-
-            # Queue Status Classification
-            if self.estimated_crowd < 2000:
+            # Queue Status Classification for Still Crowd Image
+            if self.observed_count < 15:
                 self.queue_status = "LOW"
-            elif self.estimated_crowd < 5000:
+            elif self.observed_count < 40:
                 self.queue_status = "MODERATE"
-            elif self.estimated_crowd < 9000:
+            elif self.observed_count < 70:
                 self.queue_status = "HIGH"
             else:
                 self.queue_status = "VERY HIGH"
 
-            # Trend Calculation using recent observation deltas
-            self.recent_net_history.append(self.net_flow)
-            if len(self.recent_net_history) > 30:
-                self.recent_net_history.pop(0)
-
-            if len(self.recent_net_history) >= 10:
-                delta = self.recent_net_history[-1] - self.recent_net_history[0]
-                if delta > 3:
-                    self.trend = "INCREASING"
-                elif delta < -3:
-                    self.trend = "DECREASING"
-                else:
-                    self.trend = "STABLE"
-
+            self.trend = "STABLE"
             if detections:
                 self.confidence = sum(d[1] for d in detections) / len(detections)
             else:
@@ -649,37 +583,232 @@ class CCTVVisionWorker:
 
             self.last_update_time = datetime.utcnow()
 
-            # 5. Draw Visual Annotations on Frame for Live Preview Stream
-            annotated_frame = self._render_hud_frame(
-                frame.copy(), tracks, line_start, line_end, frame_width, frame_height
-            )
-
-            # Encode to JPEG buffer
-            _, jpeg_buffer = cv2.imencode(".jpg", annotated_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+            # Render image HUD with bounding boxes
+            annotated = self._render_image_hud(static_img.copy(), detections, frame_width, frame_height)
+            _, jpeg_buffer = cv2.imencode(".jpg", annotated, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
             self.latest_jpeg_frame = jpeg_buffer.tobytes()
 
-            # 6. Periodic WebSocket Broadcast (every 1.5s)
-            now_t = time.time()
-            if now_t - last_broadcast_time >= 1.5:
-                last_broadcast_time = now_t
+            # Save to DB
+            self._save_aggregated_record_to_db()
+
+            with self.lock:
+                self.status = "COMPLETED"
+                self.is_running = False
+
+            self._broadcast_update()
+            logger.info("CCTV Image AI Analysis completed: %d people detected.", self.observed_count)
+
+        except Exception as e:
+            logger.error("CCTV Image Worker error: %s", e)
+            with self.lock:
+                self.status = "ERROR"
+                self.error_message = f"Image analysis error: {str(e)}"
+                self.is_running = False
+            self._broadcast_update()
+
+    def _render_image_hud(
+        self,
+        frame: np.ndarray,
+        detections: List[Tuple[Tuple[int, int, int, int], float]],
+        w: int,
+        h: int
+    ) -> np.ndarray:
+        try:
+            import cv2
+        except ImportError:
+            return frame
+
+        # Draw detected persons bounding boxes
+        for i, (bbox, conf) in enumerate(detections, 1):
+            x1, y1, x2, y2 = bbox
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 128), 2)
+            label = f"Person #{i} ({int(conf * 100)}%)"
+            label_y = max(20, y1 - 8)
+            cv2.rectangle(frame, (x1, label_y - 16), (x1 + 140, label_y + 4), (0, 255, 128), -1)
+            cv2.putText(frame, label, (x1 + 4, label_y), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 0, 0), 1, cv2.LINE_AA)
+
+        # Top HUD Banner
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (0, 0), (w, 65), (15, 23, 42), -1)
+        cv2.addWeighted(overlay, 0.8, frame, 0.2, 0, frame)
+
+        cv2.putText(frame, "OURS TTD - CCTV AI (STILL IMAGE ANALYSIS)", (14, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 215, 0), 2, cv2.LINE_AA)
+        cv2.putText(frame, f"Location: {self.location_name} | AI Anonymous People Count Only", (14, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (200, 220, 240), 1, cv2.LINE_AA)
+
+        counter_str = f"OBSERVED: {self.observed_count} | IN: N/A (Image) | OUT: N/A (Image)"
+        cv2.putText(frame, counter_str, (max(10, w - 420), 24), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (50, 255, 120), 2, cv2.LINE_AA)
+
+        status_str = f"QUEUE: {self.queue_status} | DIRECTION: UNAVAILABLE"
+        cv2.putText(frame, status_str, (max(10, w - 420), 48), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 200, 0), 2, cv2.LINE_AA)
+
+        return frame
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Video Processing Loop (Frame-by-Frame Tracking & Line Crossing)
+    # ─────────────────────────────────────────────────────────────────────────
+    def _process_video_loop(self):
+        cap = None
+        frame_idx = 0
+        try:
+            import cv2
+            if self.detector is None:
+                self.detector = YOLOPersonDetector()
+
+            cap = cv2.VideoCapture(self.video_path)
+            if not cap.isOpened():
+                logger.error("Failed to open video file: %s", self.video_path)
+                with self.lock:
+                    self.status = "ERROR"
+                    self.error_message = "Unable to decode video. Please upload a valid .mp4, .avi, or .mov file."
+                    self.is_running = False
                 self._broadcast_update()
+                return
 
-            # 7. Time-Based Aggregation & Database Persistence
-            if now_t - last_db_save_time >= min(interval_seconds, 60):
-                last_db_save_time = now_t
-                self._save_aggregated_record_to_db()
+            self.total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 1000
+            self.fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+            frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
+            frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480
 
-            time.sleep(1.0 / min(self.fps, 25.0))
+            # Resolution-adaptive tracking distance to prevent ID jitter on smaller frames
+            adaptive_dist = max(25.0, min(80.0, 0.20 * max(frame_width, frame_height)))
+            self.tracker = SimpleObjectTracker(max_disappeared=20, max_distance=adaptive_dist)
 
-        if cap is not None:
-            cap.release()
-        with self.lock:
-            self.status = "completed" if not self.should_stop else "stopped"
-            self.is_running = False
+            (lx1_norm, ly1_norm), (lx2_norm, ly2_norm) = self.line_coords_norm
+            line_start = (int(lx1_norm * frame_width), int(ly1_norm * frame_height))
+            line_end = (int(lx2_norm * frame_width), int(ly2_norm * frame_height))
 
-        self._save_aggregated_record_to_db()
-        self._broadcast_update()
-        logger.info("CCTV Video Worker completed processing.")
+            if frame_width < 400 or frame_height < 300:
+                self.video_quality_warning = True
+
+            last_broadcast_time = time.time()
+            last_db_save_time = time.time()
+            interval_seconds = self.interval_minutes * 60
+
+            logger.info(
+                "CCTV Video Processing started: %s (%dx%d, %d frames, line: %s to %s)",
+                self.video_filename, frame_width, frame_height, self.total_frames, line_start, line_end
+            )
+
+            while not self.should_stop:
+                ret, frame = cap.read()
+                if not ret:
+                    if self.mode == "rtsp_stream":
+                        time.sleep(0.05)
+                        continue
+                    # Video completed processing all frames cleanly
+                    logger.info("Finished processing all %d frames of video %s", frame_idx, self.video_filename)
+                    break
+
+                frame_idx += 1
+                self.current_frame_idx = frame_idx
+
+                # 1. Detect Persons (YOLO Class 0 only)
+                detections = self.detector.detect_people(frame)
+
+                # 2. Track Persons across frames
+                tracks = self.tracker.update(detections, frame_idx)
+                self.observed_count = len(detections)
+
+                # 3. Evaluate Line Crossing for each tracked person
+                for track in tracks:
+                    if len(track.history) >= 2:
+                        p_prev = track.history[-2]
+                        p_curr = track.centroid
+
+                        crossed, direction = check_line_crossing(
+                            p_prev, p_curr, line_start, line_end, self.direction_mode
+                        )
+
+                        if crossed:
+                            if direction == "IN" and not track.counted_in:
+                                track.counted_in = True
+                                self.incoming_count += 1
+                                logger.info("Person ID:%d crossed IN (Total IN: %d)", track.track_id, self.incoming_count)
+                            elif direction == "OUT" and not track.counted_out:
+                                track.counted_out = True
+                                self.outgoing_count += 1
+                                logger.info("Person ID:%d crossed OUT (Total OUT: %d)", track.track_id, self.outgoing_count)
+
+                # 4. Calculate Net Flow, Queue Status & Trend
+                self.net_flow = self.incoming_count - self.outgoing_count
+                self.estimated_crowd = max(self.observed_count, max(0, self.net_flow))
+
+                # Project thresholds for queue classification
+                if self.estimated_crowd < 5:
+                    self.queue_status = "LOW"
+                elif self.estimated_crowd < 15:
+                    self.queue_status = "MODERATE"
+                elif self.estimated_crowd < 30:
+                    self.queue_status = "HIGH"
+                elif self.estimated_crowd < 50:
+                    self.queue_status = "VERY HIGH"
+                else:
+                    self.queue_status = "CRITICAL"
+
+                self.recent_net_history.append(self.net_flow)
+                if len(self.recent_net_history) > 30:
+                    self.recent_net_history.pop(0)
+
+                if len(self.recent_net_history) >= 5:
+                    delta = self.recent_net_history[-1] - self.recent_net_history[0]
+                    if delta > 1:
+                        self.trend = "INCREASING"
+                    elif delta < -1:
+                        self.trend = "DECREASING"
+                    else:
+                        self.trend = "STABLE"
+
+                if detections:
+                    self.confidence = sum(d[1] for d in detections) / len(detections)
+                else:
+                    self.confidence = 0.90
+
+                self.last_update_time = datetime.utcnow()
+
+                annotated_frame = self._render_hud_frame(
+                    frame.copy(), tracks, line_start, line_end, frame_width, frame_height
+                )
+
+                _, jpeg_buffer = cv2.imencode(".jpg", annotated_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+                self.latest_jpeg_frame = jpeg_buffer.tobytes()
+
+                now_t = time.time()
+                if now_t - last_broadcast_time >= 1.0:
+                    last_broadcast_time = now_t
+                    self._broadcast_update()
+
+                if now_t - last_db_save_time >= min(interval_seconds, 60):
+                    last_db_save_time = now_t
+                    if self.observed_count > 0 or self.incoming_count > 0 or self.outgoing_count > 0:
+                        self._save_aggregated_record_to_db()
+
+                # Cooperative sleep for non-blocking UI
+                time.sleep(0.005)
+
+        except Exception as e:
+            logger.error("CCTV Video Worker error: %s", e)
+            with self.lock:
+                self.status = "ERROR"
+                self.error_message = f"Processing failure: {str(e)}"
+        finally:
+            if cap is not None:
+                try:
+                    cap.release()
+                except Exception:
+                    pass
+            with self.lock:
+                if self.status != "ERROR":
+                    self.status = "STOPPED" if self.should_stop else "COMPLETED"
+                self.is_running = False
+
+            if self.status == "COMPLETED" and (self.observed_count > 0 or self.incoming_count > 0 or self.outgoing_count > 0):
+                try:
+                    self._save_aggregated_record_to_db()
+                except Exception as err:
+                    logger.warning("Could not persist final CCTV record: %s", err)
+            self._broadcast_update()
+            logger.info("CCTV Video Worker terminated. Final status: %s (Observed: %d, In: %d, Out: %d)",
+                        self.status, self.observed_count, self.incoming_count, self.outgoing_count)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Frame Annotation & Professional HUD Rendering
@@ -718,8 +847,8 @@ class CCTVVisionWorker:
 
             # Person ID label
             label = f"ID:{track.track_id}"
-            cv2.rectangle(frame, (x1, y1 - 20), (x1 + 65, y1), box_color, -1)
-            cv2.putText(frame, label, (x1 + 4, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 1, cv2.LINE_AA)
+            cv2.rectangle(frame, (x1, max(0, y1 - 20)), (x1 + 65, max(20, y1)), box_color, -1)
+            cv2.putText(frame, label, (x1 + 4, max(14, y1 - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 1, cv2.LINE_AA)
 
             # Centroid point
             cv2.circle(frame, (cx, cy), 4, (0, 0, 255), -1)
@@ -740,11 +869,11 @@ class CCTVVisionWorker:
 
         # Top Right Live Counters
         counter_str = f"IN: {self.incoming_count} | OUT: {self.outgoing_count} | OBSERVED: {self.observed_count}"
-        cv2.putText(frame, counter_str, (max(10, w - 340), 24), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (50, 255, 120), 2, cv2.LINE_AA)
+        cv2.putText(frame, counter_str, (max(10, w - 360), 24), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (50, 255, 120), 2, cv2.LINE_AA)
 
         status_str = f"QUEUE: {self.queue_status} | TREND: {self.trend}"
         status_color = (0, 255, 0) if self.queue_status == "LOW" else ((0, 215, 255) if self.queue_status == "MODERATE" else (0, 0, 255))
-        cv2.putText(frame, status_str, (max(10, w - 340), 48), cv2.FONT_HERSHEY_SIMPLEX, 0.48, status_color, 2, cv2.LINE_AA)
+        cv2.putText(frame, status_str, (max(10, w - 360), 48), cv2.FONT_HERSHEY_SIMPLEX, 0.48, status_color, 2, cv2.LINE_AA)
 
         if self.video_quality_warning:
             cv2.putText(frame, "Low video quality may reduce detection accuracy", (14, h - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 165, 255), 1, cv2.LINE_AA)
@@ -756,6 +885,14 @@ class CCTVVisionWorker:
     # ─────────────────────────────────────────────────────────────────────────
     def _save_aggregated_record_to_db(self):
         """Save aggregated counts to Supabase/PostgreSQL/SQLite."""
+        if self.status == "ERROR":
+            logger.info("Skipping DB save: Worker status is ERROR.")
+            return
+
+        if self.observed_count == 0 and self.incoming_count == 0 and self.outgoing_count == 0:
+            logger.info("Skipping DB save: No people observed or counted (all counts zero).")
+            return
+
         try:
             from backend.database import SessionLocal
             from backend.models import CCTVCrowdRecord, PilgrimFlowData
@@ -776,14 +913,14 @@ class CCTVVisionWorker:
                     timestamp=now,
                     interval_start=start_str,
                     interval_end=end_str,
-                    incoming_count=self.incoming_count,
-                    outgoing_count=self.outgoing_count,
+                    incoming_count=0 if getattr(self, "is_image_mode", False) else self.incoming_count,
+                    outgoing_count=0 if getattr(self, "is_image_mode", False) else self.outgoing_count,
                     observed_count=self.observed_count,
-                    net_flow=self.net_flow,
+                    net_flow=0 if getattr(self, "is_image_mode", False) else self.net_flow,
                     queue_status=self.queue_status,
-                    trend=self.trend,
+                    trend="STABLE" if getattr(self, "is_image_mode", False) else self.trend,
                     confidence=self.confidence,
-                    source=self.source_db_code,
+                    source="cctv_image" if getattr(self, "is_image_mode", False) else self.source_db_code,
                     video_filename=self.video_filename
                 )
                 db.add(cctv_rec)
@@ -800,31 +937,33 @@ class CCTVVisionWorker:
                 )
 
                 if existing_flow:
-                    existing_flow.incoming_pilgrims = self.incoming_count
-                    existing_flow.outgoing_pilgrims = self.outgoing_count
-                    existing_flow.net_pilgrims = self.net_flow
+                    if not getattr(self, "is_image_mode", False):
+                        existing_flow.incoming_pilgrims = self.incoming_count
+                        existing_flow.outgoing_pilgrims = self.outgoing_count
+                        existing_flow.net_pilgrims = self.net_flow
                     existing_flow.estimated_crowd = self.estimated_crowd
                     existing_flow.queue_status = self.queue_status
-                    existing_flow.source = self.source_db_code
+                    existing_flow.source = "cctv_image" if getattr(self, "is_image_mode", False) else self.source_db_code
                 else:
                     new_flow = PilgrimFlowData(
                         date=today_str,
                         start_time=start_str,
                         end_time=end_str,
-                        incoming_pilgrims=self.incoming_count,
-                        outgoing_pilgrims=self.outgoing_count,
-                        net_pilgrims=self.net_flow,
+                        incoming_pilgrims=0 if getattr(self, "is_image_mode", False) else self.incoming_count,
+                        outgoing_pilgrims=0 if getattr(self, "is_image_mode", False) else self.outgoing_count,
+                        net_pilgrims=0 if getattr(self, "is_image_mode", False) else self.net_flow,
                         estimated_crowd=self.estimated_crowd,
                         festival=False,
                         queue_status=self.queue_status,
                         queue_pressure=0.5 if self.queue_status == "MODERATE" else (0.8 if self.queue_status == "HIGH" else 0.3),
-                        source=self.source_db_code,
+                        source="cctv_image" if getattr(self, "is_image_mode", False) else self.source_db_code,
                         created_by_admin=None
                     )
                     db.add(new_flow)
 
                 db.commit()
-                logger.debug("Successfully saved CCTV crowd aggregate record to DB.")
+                logger.info("Successfully saved CCTV crowd record to DB (Observed: %d, In: %d, Out: %d)",
+                            self.observed_count, self.incoming_count, self.outgoing_count)
             except Exception as dbe:
                 db.rollback()
                 logger.warning("Failed to save CCTV record to database: %s", dbe)
@@ -845,13 +984,16 @@ class CCTVVisionWorker:
                     "source_code": self.source_db_code,
                     "status": self.status,
                     "location": self.location_name,
+                    "is_image": getattr(self, "is_image_mode", False),
                     "observed_count": self.observed_count,
-                    "incoming": self.incoming_count,
-                    "outgoing": self.outgoing_count,
-                    "net_flow": self.net_flow,
+                    "incoming": None if getattr(self, "is_image_mode", False) else self.incoming_count,
+                    "outgoing": None if getattr(self, "is_image_mode", False) else self.outgoing_count,
+                    "incoming_display": "N/A (Still Image)" if getattr(self, "is_image_mode", False) else str(self.incoming_count),
+                    "outgoing_display": "N/A (Still Image)" if getattr(self, "is_image_mode", False) else str(self.outgoing_count),
+                    "net_flow": None if getattr(self, "is_image_mode", False) else self.net_flow,
                     "estimated_crowd": self.estimated_crowd,
                     "queue_status": self.queue_status,
-                    "trend": self.trend,
+                    "trend": "N/A" if getattr(self, "is_image_mode", False) else self.trend,
                     "confidence": round(self.confidence, 2),
                     "last_updated": datetime.utcnow().isoformat(),
                     "video_file": self.video_filename
@@ -864,3 +1006,4 @@ class CCTVVisionWorker:
 
 # Global Singleton CCTV Vision Worker Instance
 cctv_worker = CCTVVisionWorker()
+

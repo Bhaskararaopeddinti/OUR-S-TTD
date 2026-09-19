@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import User, AdminSession
 from backend.schemas import RegisterIn, LoginIn, Token, UserOut, ForgotPasswordIn, ResetPasswordIn
-from backend.auth import hash_password, verify_password, create_token
+from backend.auth import hash_password, verify_password, create_token, get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -86,6 +86,21 @@ def login(data: LoginIn, db: Session = Depends(get_db)):
         user=UserOut.model_validate(user)
     )
 
+
+
+@router.get("/profile")
+def get_profile(current_user: User = Depends(get_current_user)):
+    """Return profile of the currently authenticated user. Used by admin portal to verify role."""
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "role": current_user.role,
+        "is_active": current_user.is_active,
+        "language": getattr(current_user, "language", "English"),
+        "last_login": current_user.last_login.isoformat() if current_user.last_login else None,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+    }
 
 
 @router.post("/forgot-password")
