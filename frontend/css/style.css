@@ -96,7 +96,7 @@ html:not(.dark) {
 html { scroll-behavior: smooth; font-size: 16px; }
 body {
   font-family: var(--font-body);
-  background: linear-gradient(135deg, rgba(9, 13, 22, 0.78), rgba(15, 23, 42, 0.84)),
+  background: linear-gradient(135deg, rgba(7, 11, 20, 0.88), rgba(15, 23, 42, 0.92)),
               url('../assets/images/ttd-balaji.jpg') no-repeat center center fixed;
   background-size: cover;
   color: var(--text);
@@ -105,7 +105,7 @@ body {
   transition: background var(--transition), color var(--transition);
 }
 html:not(.dark) body {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(240, 244, 248, 0.76)),
+  background: linear-gradient(135deg, rgba(241, 245, 249, 0.92), rgba(226, 232, 240, 0.95)),
               url('../assets/images/ttd-balaji.jpg') no-repeat center center fixed;
   background-size: cover;
 }

@@ -20,15 +20,12 @@
 
 /* ── Tablet (768px - 1024px) ── */
 @media (max-width: 1024px) {
-  body, .dashboard-container {
+  body, .app-layout {
     background-position: center top;
   }
-  .sidebar {
-    width: 240px;
-  }
-  /* main-wrapper handles the margin-left offset now */
   .main-wrapper {
-    margin-left: 240px;
+    margin-left: 0 !important;
+    width: 100% !important;
   }
   .main-content {
     width: 100%;
@@ -38,16 +35,9 @@
 
 /* ── Mobile & Small Tablets (<= 767px) ── */
 @media (max-width: 767px) {
-  body, .dashboard-container {
+  body, .app-layout {
     background-position: center top;
     background-attachment: scroll;
-  }
-  .sidebar {
-    width: 280px;
-    transform: translateX(-100%);
-  }
-  .sidebar.open {
-    transform: translateX(0);
   }
   .main-wrapper {
     margin-left: 0 !important;

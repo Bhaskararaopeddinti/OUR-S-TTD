@@ -5,7 +5,7 @@
  */
 'use strict';
 
-const CACHE_NAME = 'ours-ttd-v5';
+const CACHE_NAME = 'ours-ttd-v6';
 
 const STATIC_ASSETS = [
   '/',
@@ -85,7 +85,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch Event: Bypass SW for API & WebSocket; Cache-first with network fallback for static assets
+// Fetch Event: Bypass SW for API & WebSocket; Network-first for static assets
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
@@ -94,24 +94,21 @@ self.addEventListener('fetch', event => {
     return; // Allow browser default network request
   }
 
-  // Cache-first strategy with network fallback
+  // Network-first with cache fallback strategy for fresh updates
   event.respondWith(
-    caches.match(event.request).then(cachedResponse => {
-      if (cachedResponse) {
-        return cachedResponse;
+    fetch(event.request).then(networkResponse => {
+      if (networkResponse && networkResponse.ok && networkResponse.type === 'basic') {
+        const clone = networkResponse.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
       }
-      return fetch(event.request).then(networkResponse => {
-        if (networkResponse && networkResponse.ok && networkResponse.type === 'basic') {
-          const clone = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return networkResponse;
-      }).catch(err => {
-        // If navigation request fails offline, serve cached /index.html
+      return networkResponse;
+    }).catch(() => {
+      return caches.match(event.request).then(cachedResponse => {
+        if (cachedResponse) return cachedResponse;
         if (event.request.mode === 'navigate') {
           return caches.match('/index.html') || caches.match('/');
         }
-        throw err;
+        return new Response('Network error and asset not cached.', { status: 503, statusText: 'Service Unavailable' });
       });
     })
   );

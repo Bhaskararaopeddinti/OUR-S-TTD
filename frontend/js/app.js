@@ -37,11 +37,13 @@ function navigate(page) {
   currentPage = page;
   // Update active state for topnav-links, mobile-drawer-nav items
   document.querySelectorAll('.nav-item').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.page === page);
+    const isMatch = btn.dataset.page === page || (page === 'home' && btn.dataset.page === 'dashboard') || (page === 'dashboard' && btn.dataset.page === 'home');
+    btn.classList.toggle('active', isMatch);
   });
   // Update active state for mobile bottom nav items
   document.querySelectorAll('.mobile-nav-item').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.page === page);
+    const isMatch = btn.dataset.page === page || (page === 'home' && btn.dataset.page === 'dashboard');
+    btn.classList.toggle('active', isMatch);
   });
   const root = document.getElementById('appRoot');
   root.innerHTML = '';
@@ -56,13 +58,18 @@ function navigate(page) {
 function setTheme(dark) {
   document.documentElement.classList.toggle('dark', dark);
   localStorage.setItem('theme', dark ? 'dark' : 'light');
+  const toggle = document.getElementById('themeToggle');
+  if (toggle) {
+    toggle.textContent = dark ? '🌙' : '☀️';
+    toggle.title = dark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+  }
 }
 document.getElementById('themeToggle')?.addEventListener('click', () => {
   setTheme(!document.documentElement.classList.contains('dark'));
 });
-// Init theme
+// Init theme: default to dark for rich contrast and vibrant devotional theme
 const savedTheme = localStorage.getItem('theme');
-setTheme(savedTheme ? savedTheme === 'dark' : false);
+setTheme(savedTheme !== null ? savedTheme === 'dark' : true);
 
 // ── Nav click handler (top navbar + mobile drawer) ────────────────────────
 function _wireNavClicks(container) {
