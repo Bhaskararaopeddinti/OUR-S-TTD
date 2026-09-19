@@ -536,68 +536,113 @@ class CCTVVisionWorker:
         return self.latest_jpeg_frame
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Single Still Image Processing Job
+    # Single Still Image Processing & Headcount Detection
     # ─────────────────────────────────────────────────────────────────────────
+    def analyze_image(self, image_path: str, location_name: str = "Sarva Darshan VQC I") -> Dict[str, Any]:
+        """
+        Synchronously analyze an uploaded photo to detect headcount / people count,
+        generate bounding-box annotations, save the annotated image, and update status.
+        """
+        import cv2
+        from pathlib import Path
+
+        with self.lock:
+            self.mode = "demo_video"
+            self.is_image_mode = True
+            self.video_path = image_path
+            self.video_filename = Path(image_path).name
+            self.source_label = "Demo CCTV AI Data (Image)"
+            self.source_db_code = "cctv_image"
+            self.location_name = location_name
+            self.direction_mode = "still_photo"
+            self.status = "PROCESSING"
+            self.is_running = False
+
+        if self.detector is None:
+            self.detector = YOLOPersonDetector()
+
+        static_img = cv2.imread(image_path)
+        if static_img is None:
+            with self.lock:
+                self.status = "ERROR"
+                self.error_message = f"Unable to read image file: {Path(image_path).name}"
+            return {
+                "success": False,
+                "headcount": 0,
+                "observed_count": 0,
+                "message": f"Unable to read image file: {Path(image_path).name}"
+            }
+
+        frame_height, frame_width = static_img.shape[:2]
+        self.total_frames = 1
+        self.current_frame_idx = 1
+        self.fps = 1.0
+
+        detections = self.detector.detect_people(static_img)
+        headcount = len(detections)
+        self.observed_count = headcount
+        self.incoming_count = 0
+        self.outgoing_count = 0
+        self.net_flow = 0
+        self.estimated_crowd = headcount
+
+        # Queue Status Classification for Still Crowd Image
+        if headcount < 15:
+            self.queue_status = "LOW"
+        elif headcount < 40:
+            self.queue_status = "MODERATE"
+        elif headcount < 70:
+            self.queue_status = "HIGH"
+        else:
+            self.queue_status = "VERY HIGH"
+
+        self.trend = "STABLE"
+        if detections:
+            self.confidence = sum(d[1] for d in detections) / len(detections)
+        else:
+            self.confidence = 0.90
+
+        self.last_update_time = datetime.utcnow()
+
+        # Render image HUD with bounding boxes and clear headcount
+        annotated = self._render_image_hud(static_img.copy(), detections, frame_width, frame_height)
+
+        # Save annotated image next to original
+        annotated_filename = f"annotated_{Path(image_path).name}"
+        annotated_path = Path(image_path).parent / annotated_filename
+        try:
+            cv2.imwrite(str(annotated_path), annotated)
+        except Exception as save_err:
+            logger.warning("Could not save annotated image: %s", save_err)
+
+        _, jpeg_buffer = cv2.imencode(".jpg", annotated, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+        self.latest_jpeg_frame = jpeg_buffer.tobytes()
+
+        # Save record to database
+        self._save_aggregated_record_to_db()
+
+        with self.lock:
+            self.status = "COMPLETED"
+            self.is_running = False
+
+        self._broadcast_update()
+        logger.info("CCTV Image AI Analysis completed: %d people detected on photo.", headcount)
+
+        return {
+            "success": True,
+            "headcount": headcount,
+            "observed_count": headcount,
+            "queue_status": self.queue_status,
+            "confidence": round(self.confidence, 2),
+            "annotated_filename": annotated_filename,
+            "annotated_url": f"/uploads/cctv/{annotated_filename}",
+            "message": f"Headcount detected: {headcount} people on photo.",
+            "source": self.source_label
+        }
+
     def _process_image_job(self):
         try:
-            import cv2
-            if self.detector is None:
-                self.detector = YOLOPersonDetector()
-
-            static_img = cv2.imread(self.video_path)
-            if static_img is None:
-                with self.lock:
-                    self.status = "ERROR"
-                    self.error_message = f"Unable to read image file: {self.video_filename}"
-                    self.is_running = False
-                self._broadcast_update()
-                return
-
-            frame_height, frame_width = static_img.shape[:2]
-            self.total_frames = 1
-            self.current_frame_idx = 1
-            self.fps = 1.0
-
-            detections = self.detector.detect_people(static_img)
-            self.observed_count = len(detections)
-            self.incoming_count = 0
-            self.outgoing_count = 0
-            self.net_flow = 0
-            self.estimated_crowd = self.observed_count
-
-            # Queue Status Classification for Still Crowd Image
-            if self.observed_count < 15:
-                self.queue_status = "LOW"
-            elif self.observed_count < 40:
-                self.queue_status = "MODERATE"
-            elif self.observed_count < 70:
-                self.queue_status = "HIGH"
-            else:
-                self.queue_status = "VERY HIGH"
-
-            self.trend = "STABLE"
-            if detections:
-                self.confidence = sum(d[1] for d in detections) / len(detections)
-            else:
-                self.confidence = 0.90
-
-            self.last_update_time = datetime.utcnow()
-
-            # Render image HUD with bounding boxes
-            annotated = self._render_image_hud(static_img.copy(), detections, frame_width, frame_height)
-            _, jpeg_buffer = cv2.imencode(".jpg", annotated, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
-            self.latest_jpeg_frame = jpeg_buffer.tobytes()
-
-            # Save to DB
-            self._save_aggregated_record_to_db()
-
-            with self.lock:
-                self.status = "COMPLETED"
-                self.is_running = False
-
-            self._broadcast_update()
-            logger.info("CCTV Image AI Analysis completed: %d people detected.", self.observed_count)
-
+            self.analyze_image(self.video_path, self.location_name)
         except Exception as e:
             logger.error("CCTV Image Worker error: %s", e)
             with self.lock:
@@ -623,23 +668,29 @@ class CCTVVisionWorker:
             x1, y1, x2, y2 = bbox
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 128), 2)
             label = f"Person #{i} ({int(conf * 100)}%)"
-            label_y = max(20, y1 - 8)
-            cv2.rectangle(frame, (x1, label_y - 16), (x1 + 140, label_y + 4), (0, 255, 128), -1)
-            cv2.putText(frame, label, (x1 + 4, label_y), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 0, 0), 1, cv2.LINE_AA)
+            label_y = max(22, y1 - 8)
+            (lw, lh), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.45, 1)
+            cv2.rectangle(frame, (x1, label_y - lh - 6), (x1 + lw + 10, label_y + 4), (0, 255, 128), -1)
+            cv2.putText(frame, label, (x1 + 5, label_y - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 1, cv2.LINE_AA)
+            # Centroid point
+            cx = int((x1 + x2) / 2)
+            cy = int((y1 + y2) / 2)
+            cv2.circle(frame, (cx, cy), 4, (0, 0, 255), -1)
 
         # Top HUD Banner
         overlay = frame.copy()
-        cv2.rectangle(overlay, (0, 0), (w, 65), (15, 23, 42), -1)
-        cv2.addWeighted(overlay, 0.8, frame, 0.2, 0, frame)
+        cv2.rectangle(overlay, (0, 0), (w, 68), (15, 23, 42), -1)
+        cv2.addWeighted(overlay, 0.82, frame, 0.18, 0, frame)
 
-        cv2.putText(frame, "OURS TTD - CCTV AI (STILL IMAGE ANALYSIS)", (14, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 215, 0), 2, cv2.LINE_AA)
-        cv2.putText(frame, f"Location: {self.location_name} | AI Anonymous People Count Only", (14, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (200, 220, 240), 1, cv2.LINE_AA)
+        cv2.putText(frame, "OURS TTD - AI PHOTO HEADCOUNT ANALYSIS", (14, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.54, (255, 215, 0), 2, cv2.LINE_AA)
+        cv2.putText(frame, f"Location: {self.location_name} | AI People Detection Active", (14, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (200, 220, 240), 1, cv2.LINE_AA)
 
-        counter_str = f"OBSERVED: {self.observed_count} | IN: N/A (Image) | OUT: N/A (Image)"
-        cv2.putText(frame, counter_str, (max(10, w - 420), 24), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (50, 255, 120), 2, cv2.LINE_AA)
+        counter_str = f"HEADCOUNT: {self.observed_count} PEOPLE DETECTED"
+        cv2.putText(frame, counter_str, (max(10, w - 430), 26), cv2.FONT_HERSHEY_SIMPLEX, 0.54, (50, 255, 120), 2, cv2.LINE_AA)
 
-        status_str = f"QUEUE: {self.queue_status} | DIRECTION: UNAVAILABLE"
-        cv2.putText(frame, status_str, (max(10, w - 420), 48), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 200, 0), 2, cv2.LINE_AA)
+        status_color = (0, 255, 0) if self.queue_status == "LOW" else ((0, 215, 255) if self.queue_status == "MODERATE" else (0, 0, 255))
+        status_str = f"QUEUE STATUS: {self.queue_status}"
+        cv2.putText(frame, status_str, (max(10, w - 430), 50), cv2.FONT_HERSHEY_SIMPLEX, 0.50, status_color, 2, cv2.LINE_AA)
 
         return frame
 

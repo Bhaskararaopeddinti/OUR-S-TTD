@@ -55,63 +55,64 @@
 </div>
 
 <!-- ═══════════════════════════════════════
-     DASHBOARD LAYOUT
+     APP LAYOUT – TOP NAVBAR + FULLSCREEN
 ════════════════════════════════════════ -->
-<div class="dashboard-container">
-  
-  <!-- LEFT SIDEBAR -->
-  <aside class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
-    <!-- Logo -->
-    <div class="sidebar-header">
-      <div class="brand-name" role="img" aria-label="OURS TTD logo">
-        <span class="om" aria-hidden="true">ॐ</span> OURS&nbsp;<strong>TTD</strong>
-      </div>
-      <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
-        <span>☰</span>
+<div class="app-layout">
+
+  <!-- ── TOP NAVIGATION BAR ── -->
+  <header class="topnav" id="topnav" role="banner">
+    <!-- Brand Logo -->
+    <div class="topnav-brand">
+      <button class="topnav-hamburger" id="mobileMenuToggle" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
       </button>
+      <div class="brand-name" role="img" aria-label="OURS TTD logo">
+        <span class="om" aria-hidden="true">ॐ</span>
+        <span>OURS&nbsp;<strong>TTD</strong></span>
+      </div>
     </div>
 
-    <!-- Navigation Menu -->
-    <nav class="sidebar-nav" role="menubar" aria-label="Dashboard menu">
+    <!-- Navigation Links (desktop) -->
+    <nav class="topnav-links" id="topNavLinks" role="menubar" aria-label="Main navigation">
       <button class="nav-item active" data-page="dashboard" role="menuitem" aria-current="page">
         <span class="nav-icon">📊</span>
-        <span class="nav-text">Dashboard</span>
-      </button>
-      <button class="nav-item" data-page="navigation" role="menuitem">
-        <span class="nav-icon">🗺️</span>
-        <span class="nav-text">Live Navigation</span>
-      </button>
-      <button class="nav-item" data-page="temple" role="menuitem">
-        <span class="nav-icon">🛕</span>
-        <span class="nav-text">Temple Guide</span>
+        <span class="nav-text">Home</span>
       </button>
       <button class="nav-item" data-page="queue" role="menuitem">
         <span class="nav-icon">⏳</span>
-        <span class="nav-text">Darshan Queue</span>
+        <span class="nav-text">Queue</span>
+      </button>
+      <button class="nav-item" data-page="navigation" role="menuitem">
+        <span class="nav-icon">🗺️</span>
+        <span class="nav-text">Navigation</span>
+      </button>
+      <button class="nav-item" data-page="temple" role="menuitem">
+        <span class="nav-icon">🛕</span>
+        <span class="nav-text">Temple</span>
       </button>
       <button class="nav-item" data-page="food" role="menuitem">
         <span class="nav-icon">🍚</span>
-        <span class="nav-text">Food Finder</span>
+        <span class="nav-text">Food</span>
       </button>
       <button class="nav-item" data-page="medical" role="menuitem">
         <span class="nav-icon">🏥</span>
-        <span class="nav-text">Medical Assistance</span>
+        <span class="nav-text">Medical</span>
       </button>
       <button class="nav-item" data-page="emergency" role="menuitem">
         <span class="nav-icon">🚨</span>
-        <span class="nav-text">Emergency SOS</span>
+        <span class="nav-text">SOS</span>
       </button>
       <button class="nav-item" data-page="accommodation" role="menuitem">
         <span class="nav-icon">🏨</span>
-        <span class="nav-text">Accommodation</span>
-      </button>
-      <button class="nav-item" data-page="chatbot" role="menuitem">
-        <span class="nav-icon">🤖</span>
-        <span class="nav-text">AI Assistant</span>
+        <span class="nav-text">Stay</span>
       </button>
       <button class="nav-item" data-page="transport" role="menuitem">
         <span class="nav-icon">🚌</span>
-        <span class="nav-text">Travel & Transport</span>
+        <span class="nav-text">Transport</span>
+      </button>
+      <button class="nav-item" data-page="chatbot" role="menuitem">
+        <span class="nav-icon">🤖</span>
+        <span class="nav-text">AI</span>
       </button>
       <button class="nav-item" data-page="settings" role="menuitem">
         <span class="nav-icon">⚙️</span>
@@ -119,35 +120,100 @@
       </button>
       <button class="nav-item admin-only-item" data-page="admin" role="menuitem" style="display: none;">
         <span class="nav-icon">🛡️</span>
-        <span class="nav-text">Admin Panel</span>
+        <span class="nav-text">Admin</span>
       </button>
     </nav>
 
-    <!-- User Profile -->
-    <div class="sidebar-footer">
-      <div class="user-info">
-        <div class="user-avatar">👤</div>
-        <div class="user-details">
-          <div class="user-name">Pilgrim</div>
-          <div class="user-role">Guest</div>
+    <!-- Right controls: user info + auth + theme -->
+    <div class="topnav-actions">
+      <div class="topnav-user" id="topNavUser">
+        <span class="user-avatar-sm">👤</span>
+        <span class="user-name" id="topNavUserName">Pilgrim</span>
+      </div>
+      <button id="authBtn" class="topnav-auth-btn" aria-label="Login or logout">Login</button>
+      <button id="themeToggle" class="topnav-theme-btn" aria-label="Toggle dark/light mode" title="Toggle Theme">🌙</button>
+    </div>
+  </header>
+
+  <!-- Mobile drawer menu -->
+  <div class="mobile-drawer" id="mobileDrawer" role="dialog" aria-modal="true" aria-label="Navigation menu">
+    <div class="mobile-drawer-inner">
+      <div class="mobile-drawer-header">
+        <div class="brand-name">
+          <span class="om">ॐ</span> OURS&nbsp;<strong>TTD</strong>
+        </div>
+        <button class="mobile-drawer-close" id="mobileDrawerClose" aria-label="Close menu">✕</button>
+      </div>
+      <nav class="mobile-drawer-nav" role="menubar">
+        <button class="nav-item active" data-page="dashboard" role="menuitem">
+          <span class="nav-icon">📊</span>
+          <span class="nav-text">Dashboard</span>
+        </button>
+        <button class="nav-item" data-page="queue" role="menuitem">
+          <span class="nav-icon">⏳</span>
+          <span class="nav-text">Darshan Queue</span>
+        </button>
+        <button class="nav-item" data-page="navigation" role="menuitem">
+          <span class="nav-icon">🗺️</span>
+          <span class="nav-text">Live Navigation</span>
+        </button>
+        <button class="nav-item" data-page="temple" role="menuitem">
+          <span class="nav-icon">🛕</span>
+          <span class="nav-text">Temple Guide</span>
+        </button>
+        <button class="nav-item" data-page="food" role="menuitem">
+          <span class="nav-icon">🍚</span>
+          <span class="nav-text">Food Finder</span>
+        </button>
+        <button class="nav-item" data-page="medical" role="menuitem">
+          <span class="nav-icon">🏥</span>
+          <span class="nav-text">Medical Assistance</span>
+        </button>
+        <button class="nav-item" data-page="emergency" role="menuitem">
+          <span class="nav-icon">🚨</span>
+          <span class="nav-text">Emergency SOS</span>
+        </button>
+        <button class="nav-item" data-page="accommodation" role="menuitem">
+          <span class="nav-icon">🏨</span>
+          <span class="nav-text">Accommodation</span>
+        </button>
+        <button class="nav-item" data-page="transport" role="menuitem">
+          <span class="nav-icon">🚌</span>
+          <span class="nav-text">Travel & Transport</span>
+        </button>
+        <button class="nav-item" data-page="chatbot" role="menuitem">
+          <span class="nav-icon">🤖</span>
+          <span class="nav-text">AI Assistant</span>
+        </button>
+        <button class="nav-item" data-page="settings" role="menuitem">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-text">Settings</span>
+        </button>
+        <button class="nav-item admin-only-item" data-page="admin" role="menuitem" style="display: none;">
+          <span class="nav-icon">🛡️</span>
+          <span class="nav-text">Admin Panel</span>
+        </button>
+      </nav>
+      <div class="mobile-drawer-footer">
+        <div class="user-info">
+          <div class="user-avatar">👤</div>
+          <div class="user-details">
+            <div class="user-name">Pilgrim</div>
+            <div class="user-role">Guest</div>
+          </div>
         </div>
       </div>
-      <div class="sidebar-footer-actions">
-        <button id="authBtn" class="sidebar-auth-btn" aria-label="Login or logout">Login</button>
-        <button id="themeToggle" class="sidebar-theme-btn" aria-label="Toggle dark/light mode" title="Toggle Theme">🌙</button>
-      </div>
     </div>
-  </aside>
+  </div>
+  <div class="mobile-drawer-overlay" id="mobileDrawerOverlay"></div>
 
-  <!-- MAIN CONTENT AREA WRAPPER -->
+  <!-- MAIN CONTENT AREA (full width) -->
   <div class="main-wrapper">
     <main class="main-content app-root" id="appRoot" role="main" aria-live="polite" tabindex="-1">
       <!-- Pages rendered here by app.js SPA router -->
     </main>
 
-    <!-- ═══════════════════════════════════════
-         FOOTER
-    ════════════════════════════════════════ -->
+    <!-- FOOTER -->
     <footer class="site-footer" role="contentinfo">
       <div class="footer-content">
         <div class="footer-brand">
@@ -167,34 +233,7 @@
     </footer>
   </div>
 
-  <!-- MOBILE BOTTOM NAVIGATION -->
-  <nav class="mobile-nav" role="navigation" aria-label="Mobile navigation">
-    <button class="mobile-nav-item active" data-page="dashboard" role="menuitem">
-      <span class="mobile-nav-icon">📊</span>
-      <span class="nav-text">Home</span>
-    </button>
-    <button class="mobile-nav-item" data-page="navigation" role="menuitem">
-      <span class="mobile-nav-icon">🗺️</span>
-      <span class="nav-text">Map</span>
-    </button>
-    <button class="mobile-nav-item" data-page="queue" role="menuitem">
-      <span class="mobile-nav-icon">⏳</span>
-      <span class="nav-text">Queue</span>
-    </button>
-    <button class="mobile-nav-item" data-page="chatbot" role="menuitem">
-      <span class="mobile-nav-icon">🤖</span>
-      <span class="nav-text">AI</span>
-    </button>
-    <button class="mobile-nav-item" data-page="emergency" role="menuitem">
-      <span class="mobile-nav-icon">🚨</span>
-      <span class="nav-text">SOS</span>
-    </button>
-  </nav>
-
 </div>
-
-<!-- SIDEBAR OVERLAY (for mobile) -->
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <!-- ═══════════════════════════════════════
      FLOATING COMPONENTS

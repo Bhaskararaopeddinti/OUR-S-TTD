@@ -11,14 +11,24 @@ let _pilgrimChart = null; // Chart.js instance
 // Dynamic API base URL helper (mirrors api.js BASE logic for multipart calls)
 // ─────────────────────────────────────────────────────────────────────────────
 function _adminApiBase() {
+  if (typeof API !== 'undefined' && API.BASE) return API.BASE;
   if (typeof window !== 'undefined' && window.location) {
     const { hostname, port, protocol } = window.location;
     if (hostname === 'localhost' || hostname === '127.0.0.1' || protocol === 'file:') {
-      if (port === '8000') return '/api/';
+      if (port === '8000' || port === '8001') return '/api/';
       return 'http://127.0.0.1:8000/api/';
     }
   }
   return '/api/';
+}
+
+async function _safeParseJson(res) {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`Server returned HTTP ${res.status}: ${text.slice(0, 100)}`);
+  }
 }
 
 function _adminAuthHeaders(includeContentType = false) {
@@ -706,26 +716,68 @@ async function _handleCctvFileUpload() {
   const fileInput = document.getElementById('cctvVideoFileInput');
   const statusEl  = document.getElementById('cctvUploadStatus');
   if (!fileInput || !fileInput.files.length) {
-    if (statusEl) statusEl.textContent = '⚠️ Please select a video file first.';
+    if (statusEl) statusEl.textContent = '⚠️ Please select a video or image file first.';
     return;
   }
   const file = fileInput.files[0];
+  const isImage = /\.(jpe?g|png|webp|bmp)$/i.test(file.name);
   const form = new FormData();
   form.append('file', file);
 
-  if (statusEl) statusEl.textContent = '⏳ Uploading…';
+  if (statusEl) statusEl.textContent = isImage ? '⏳ Uploading & running AI headcount detection…' : '⏳ Uploading video…';
+  _showCctvMsg(isImage ? '⏳ Analyzing photo with YOLO AI for headcount…' : '⏳ Uploading video…', 'info');
+
   try {
     const res = await fetch(_adminApiBase() + 'cctv/upload', {
       method: 'POST',
       headers: _adminAuthHeaders(),
       body: form,
     });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Upload failed'); }
-    const data = await res.json();
+    const data = await _safeParseJson(res);
+    if (!res.ok) throw new Error(data.detail || 'Upload failed');
+
     _cctvUploadedFilename = data.filename;
-    const mediaLabel = data.media_type === 'image' ? 'Image' : 'Video';
-    if (statusEl) statusEl.textContent = `✅ ${mediaLabel} uploaded: ${data.filename} (${data.size_mb}MB)`;
-    _showCctvMsg(`✅ ${mediaLabel} uploaded successfully: ${data.filename}`, 'success');
+
+    if (data.is_image || data.media_type === 'image') {
+      const count = data.headcount !== undefined && data.headcount !== null ? data.headcount : (data.observed_count || 0);
+      if (statusEl) statusEl.textContent = `✅ Headcount: ${count} people detected on photo!`;
+      _showCctvMsg(`✅ Headcount analysis complete! Detected ${count} people on photo.`, 'success');
+
+      // Update the 4 status metric boxes immediately
+      const obsEl = document.getElementById('cctvLiveObserved') || document.getElementById('cctvObservedCount');
+      if (obsEl) obsEl.textContent = count;
+      const inEl = document.getElementById('cctvLiveIncoming') || document.getElementById('cctvIncomingCount');
+      if (inEl) inEl.textContent = '—';
+      const outEl = document.getElementById('cctvLiveOutgoing') || document.getElementById('cctvOutgoingCount');
+      if (outEl) outEl.textContent = '—';
+      const qsEl = document.getElementById('cctvLiveQueueStatus') || document.getElementById('cctvQueueStatus');
+      if (qsEl) {
+        qsEl.textContent = data.queue_status || 'LOW';
+        qsEl.style.color = STATUS_COLORS[data.queue_status] || '#10B981';
+      }
+
+      // Display the annotated photo directly in the monitor box
+      const img = document.getElementById('cctvStreamDisplay');
+      const ph  = document.getElementById('cctvStreamPlaceholder');
+      if (img) {
+        let frameUrl = `${_adminApiBase()}cctv/frame?t=${Date.now()}`;
+        if (data.annotated_image_url) {
+          const origin = _adminApiBase().replace(/\/api\/$/, '');
+          frameUrl = `${origin}${data.annotated_image_url}?t=${Date.now()}`;
+        }
+        img.src = frameUrl;
+        img.style.display = 'block';
+        img.style.objectFit = 'contain';
+        if (ph) ph.style.display = 'none';
+        _cctvStreamActive = false; // single photo, not an MJPEG loop
+      }
+
+      _updateWorkerStatusBadge(`🟢 Photo Analyzed (${count} People)`);
+      setTimeout(_loadCctvRecentRecords, 1000);
+    } else {
+      if (statusEl) statusEl.textContent = `✅ Video uploaded: ${data.filename} (${data.size_mb}MB)`;
+      _showCctvMsg(`✅ Video uploaded successfully: ${data.filename}. Click "Start AI Analysis" to begin tracking.`, 'success');
+    }
   } catch (err) {
     if (statusEl) statusEl.textContent = `❌ ${err.message}`;
     _showCctvMsg(`❌ Upload error: ${err.message}`, 'error');
@@ -734,6 +786,9 @@ async function _handleCctvFileUpload() {
 
 // ── Start Analysis ─────────────────────────────────────────────────────────────
 async function _startCctvAnalysis() {
+  const filename = _cctvUploadedFilename || 'demo_cctv.mp4';
+  const isImage = /\.(jpe?g|png|webp|bmp)$/i.test(filename);
+
   let payload = {
     mode           : _cctvSelectedMode,
     camera_location: document.getElementById('cctvLocationSelect')?.value  || 'Sarva Darshan VQC I',
@@ -750,24 +805,57 @@ async function _startCctvAnalysis() {
     }
     payload.rtsp_url = rtspUrl;
   } else {
-    const filename = _cctvUploadedFilename || 'demo_cctv.mp4';
     payload.video_filename = filename;
   }
 
-  _showCctvMsg('⏳ Starting YOLO AI people tracking analysis…', 'info');
+  _showCctvMsg(isImage ? '⏳ Running AI headcount detection on photo…' : '⏳ Starting YOLO AI people tracking analysis…', 'info');
   try {
     const res = await fetch(_adminApiBase() + 'cctv/start', {
       method : 'POST',
       headers: _adminAuthHeaders(true),
       body   : JSON.stringify(payload),
     });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Could not start analysis'); }
-    const data = await res.json();
-    _showCctvMsg(`⚡ Analysis started (${data.source}). Inference active!`, 'success');
-    _mountCctvStream();
-    if (_cctvStatusInterval) clearInterval(_cctvStatusInterval);
-    _cctvStatusInterval = setInterval(_pollCctvStatus, 2500);
-    _updateWorkerStatusBadge('🟢 Running');
+    const data = await _safeParseJson(res);
+    if (!res.ok) throw new Error(data.detail || 'Could not start analysis');
+
+    if (isImage || data.is_image || data.media_type === 'IMAGE') {
+      const count = data.headcount !== undefined ? data.headcount : (data.observed_count || 0);
+      _showCctvMsg(`⚡ Photo analyzed! Detected ${count} people on photo.`, 'success');
+      const obsEl = document.getElementById('cctvLiveObserved') || document.getElementById('cctvObservedCount');
+      if (obsEl) obsEl.textContent = count;
+      const inEl = document.getElementById('cctvLiveIncoming') || document.getElementById('cctvIncomingCount');
+      if (inEl) inEl.textContent = '—';
+      const outEl = document.getElementById('cctvLiveOutgoing') || document.getElementById('cctvOutgoingCount');
+      if (outEl) outEl.textContent = '—';
+      const qsEl = document.getElementById('cctvLiveQueueStatus') || document.getElementById('cctvQueueStatus');
+      if (qsEl) {
+        qsEl.textContent = data.queue_status || 'LOW';
+        qsEl.style.color = STATUS_COLORS[data.queue_status] || '#10B981';
+      }
+
+      const img = document.getElementById('cctvStreamDisplay');
+      const ph  = document.getElementById('cctvStreamPlaceholder');
+      if (img) {
+        let frameUrl = `${_adminApiBase()}cctv/frame?t=${Date.now()}`;
+        if (data.annotated_url) {
+          const origin = _adminApiBase().replace(/\/api\/$/, '');
+          frameUrl = `${origin}${data.annotated_url}?t=${Date.now()}`;
+        }
+        img.src = frameUrl;
+        img.style.display = 'block';
+        img.style.objectFit = 'contain';
+        if (ph) ph.style.display = 'none';
+        _cctvStreamActive = false;
+      }
+      _updateWorkerStatusBadge(`🟢 Photo Analyzed (${count} People)`);
+      setTimeout(_loadCctvRecentRecords, 1000);
+    } else {
+      _showCctvMsg(`⚡ Analysis started (${data.source}). Inference active!`, 'success');
+      _mountCctvStream();
+      if (_cctvStatusInterval) clearInterval(_cctvStatusInterval);
+      _cctvStatusInterval = setInterval(_pollCctvStatus, 2500);
+      _updateWorkerStatusBadge('🟢 Running');
+    }
   } catch (err) {
     _showCctvMsg(`❌ Start error: ${err.message}`, 'error');
   }
@@ -781,8 +869,8 @@ async function _stopCctvAnalysis() {
       method : 'POST',
       headers: _adminAuthHeaders(),
     });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Stop failed'); }
-    const data = await res.json();
+    const data = await _safeParseJson(res);
+    if (!res.ok) throw new Error(data.detail || 'Stop failed');
     _showCctvMsg(`⏹️ ${data.message || 'CCTV analysis stopped.'}`, 'info');
 
     // Unmount stream
@@ -808,12 +896,15 @@ function _mountCctvStream() {
   // Add timestamp to bust cache / force reconnect
   img.src = `${_adminApiBase()}cctv/stream?t=${Date.now()}`;
   img.style.display = 'block';
+  img.style.objectFit = 'contain';
   if (ph) ph.style.display = 'none';
   _cctvStreamActive = true;
 
   img.onerror = () => {
-    // Stream ended or errored – show placeholder
-    _unmountCctvStream();
+    // Stream ended or errored – show placeholder only if stream was active
+    if (_cctvStreamActive) {
+      _unmountCctvStream();
+    }
   };
 }
 

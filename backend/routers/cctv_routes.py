@@ -87,14 +87,34 @@ async def upload_cctv_video(
         target_path.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail=f"File too large ({file_size_mb:.1f}MB). Maximum allowed is {max_mb}MB.")
 
+    # When an image is uploaded, immediately run headcount detection
+    image_analysis = None
+    if media_type == "image":
+        try:
+            image_analysis = cctv_worker.analyze_image(str(target_path), location_name="Sarva Darshan VQC I")
+        except Exception as e:
+            image_analysis = {"headcount": 0, "error": str(e)}
+
+    headcount = image_analysis.get("headcount", 0) if image_analysis else None
+    queue_status = image_analysis.get("queue_status", "LOW") if image_analysis else None
+    annotated_url = image_analysis.get("annotated_url") if image_analysis else None
+
+    msg = f"CCTV photo analyzed! Detected {headcount} people on photo." if media_type == "image" else f"CCTV video uploaded successfully. Ready for AI analysis."
+
     return {
         "success": True,
         "filename": safe_filename,
         "original_filename": file.filename,
         "media_type": media_type,
+        "is_image": media_type == "image",
+        "headcount": headcount,
+        "observed_count": headcount if headcount is not None else 0,
+        "queue_status": queue_status,
+        "confidence": image_analysis.get("confidence", 0.90) if image_analysis else None,
+        "annotated_image_url": annotated_url,
         "size_mb": round(file_size_mb, 2),
         "path": str(target_path),
-        "message": f"CCTV {media_type} uploaded successfully. Ready for AI analysis.",
+        "message": msg,
         "source": "Demo CCTV AI Data"
     }
 
@@ -148,19 +168,34 @@ def start_cctv_analysis(
         if not selected_path or not os.path.exists(selected_path):
             raise HTTPException(status_code=404, detail="Reference CCTV media file not found. Please upload a video or image first.")
 
-        res = cctv_worker.start(
-            mode="demo_video",
-            video_path=selected_path,
-            location_name=req.resolved_location(),
-            direction_mode=req.direction_mode,
-            interval_minutes=req.interval_minutes,
-            camera_id=req.camera_id
-        )
+        # If reference media is an image, run analyze_image synchronously
+        ext = Path(selected_path).suffix.lower()
+        if ext in {".jpg", ".jpeg", ".png", ".webp", ".bmp"}:
+            res = cctv_worker.analyze_image(selected_path, location_name=req.resolved_location())
+        else:
+            res = cctv_worker.start(
+                mode="demo_video",
+                video_path=selected_path,
+                location_name=req.resolved_location(),
+                direction_mode=req.direction_mode,
+                interval_minutes=req.interval_minutes,
+                camera_id=req.camera_id
+            )
 
     if not res.get("success"):
         raise HTTPException(status_code=400, detail=res.get("message", "Failed to start CCTV analysis."))
 
     return res
+
+
+@router.get("/frame")
+def get_cctv_frame():
+    """Return the latest annotated CCTV frame as a single JPEG image."""
+    frame = cctv_worker.get_jpeg_frame()
+    if not frame:
+        raise HTTPException(status_code=404, detail="No CCTV frame currently available.")
+    from fastapi.responses import Response
+    return Response(content=frame, media_type="image/jpeg")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

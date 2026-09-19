@@ -35,8 +35,12 @@ const PAGES = {
 function navigate(page) {
   if (!PAGES[page]) page = 'dashboard';
   currentPage = page;
-  // Update nav active state for sidebar
+  // Update active state for topnav-links, mobile-drawer-nav items
   document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.page === page);
+  });
+  // Update active state for mobile bottom nav items
+  document.querySelectorAll('.mobile-nav-item').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.page === page);
   });
   const root = document.getElementById('appRoot');
@@ -46,6 +50,7 @@ function navigate(page) {
   root.classList.add('fade-in');
   PAGES[page]();
 }
+
 
 // ── Theme ─────────────────────────────────────
 function setTheme(dark) {
@@ -59,18 +64,50 @@ document.getElementById('themeToggle')?.addEventListener('click', () => {
 const savedTheme = localStorage.getItem('theme');
 setTheme(savedTheme ? savedTheme === 'dark' : false);
 
-// ── Nav click handler ─────────────────────────
-const navContainer = document.querySelector('.sidebar-nav');
-navContainer?.addEventListener('click', e => {
-  const btn = e.target.closest('.nav-item');
-  if (btn) navigate(btn.dataset.page);
-});
+// ── Nav click handler (top navbar + mobile drawer) ────────────────────────
+function _wireNavClicks(container) {
+  container?.addEventListener('click', e => {
+    const btn = e.target.closest('.nav-item');
+    if (btn && btn.dataset.page) {
+      navigate(btn.dataset.page);
+      // Close mobile drawer if it was open
+      _closeMobileDrawer();
+    }
+  });
+}
+_wireNavClicks(document.querySelector('.topnav-links'));
+_wireNavClicks(document.querySelector('.mobile-drawer-nav'));
 
+// Mobile mobile-nav-item (bottom nav, kept for small screens)
 const mobileNav = document.querySelector('.mobile-nav');
 mobileNav?.addEventListener('click', e => {
   const btn = e.target.closest('.mobile-nav-item');
   if (btn) navigate(btn.dataset.page);
 });
+
+// ── Mobile drawer open/close ──────────────────────────────────────────────
+function _openMobileDrawer() {
+  const drawer  = document.getElementById('mobileDrawer');
+  const overlay = document.getElementById('mobileDrawerOverlay');
+  const toggle  = document.getElementById('mobileMenuToggle');
+  drawer?.classList.add('open');
+  overlay?.classList.add('active');
+  if (toggle) toggle.setAttribute('aria-expanded', 'true');
+  document.body.style.overflow = 'hidden';
+}
+function _closeMobileDrawer() {
+  const drawer  = document.getElementById('mobileDrawer');
+  const overlay = document.getElementById('mobileDrawerOverlay');
+  const toggle  = document.getElementById('mobileMenuToggle');
+  drawer?.classList.remove('open');
+  overlay?.classList.remove('active');
+  if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  document.body.style.overflow = '';
+}
+document.getElementById('mobileMenuToggle')?.addEventListener('click', _openMobileDrawer);
+document.getElementById('mobileDrawerClose')?.addEventListener('click', _closeMobileDrawer);
+document.getElementById('mobileDrawerOverlay')?.addEventListener('click', _closeMobileDrawer);
+
 
 // ── Auth ──────────────────────────────────────
 const authBtn    = document.getElementById('authBtn');
@@ -353,17 +390,21 @@ async function onAuthSuccess(redirect = false) {
 
     const userName = document.querySelector('.user-name');
     const userRole = document.querySelector('.user-role');
+    const topNavUserName = document.getElementById('topNavUserName');
     if (userName) userName.textContent = profile.name || 'Pilgrim';
     if (userRole) userRole.textContent = profile.role || 'Pilgrim';
+    if (topNavUserName) topNavUserName.textContent = profile.name || 'Pilgrim';
 
-    const adminNavItem = document.querySelector('.admin-only-item');
-    if (adminNavItem) {
+    // Show admin nav items (they exist in both topnav-links and mobile-drawer-nav)
+    const adminNavItems = document.querySelectorAll('.admin-only-item');
+    adminNavItems.forEach(item => {
       if (profile.role === 'admin' || profile.role === 'super_admin') {
-        adminNavItem.style.display = 'flex';
+        item.style.display = 'flex';
       } else {
-        adminNavItem.style.display = 'none';
+        item.style.display = 'none';
       }
-    }
+    });
+
 
     if (authBtn) {
       authBtn.textContent = 'Logout';
@@ -406,13 +447,16 @@ function logout() {
     authBtn.classList.remove('logged-in');
   }
 
-  const adminNavItem = document.querySelector('.admin-only-item');
-  if (adminNavItem) adminNavItem.style.display = 'none';
+  const adminNavItems = document.querySelectorAll('.admin-only-item');
+  adminNavItems.forEach(item => { item.style.display = 'none'; });
 
   const userName = document.querySelector('.user-name');
   const userRole = document.querySelector('.user-role');
+  const topNavUserName = document.getElementById('topNavUserName');
   if (userName) userName.textContent = 'Pilgrim';
   if (userRole) userRole.textContent = 'Guest';
+  if (topNavUserName) topNavUserName.textContent = 'Pilgrim';
+
 
   navigate('home');
 
