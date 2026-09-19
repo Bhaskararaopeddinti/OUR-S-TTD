@@ -19,13 +19,16 @@
 }
 
 /* ── Tablet (768px - 1024px) ── */
-@media (max-width: 1024px) {
+@media (max-width: 1024px) and (min-width: 768px) {
   body, .app-layout {
     background-position: center top;
   }
+  .sidebar {
+    width: 240px;
+  }
   .main-wrapper {
-    margin-left: 0 !important;
-    width: 100% !important;
+    margin-left: 240px !important;
+    width: calc(100% - 240px) !important;
   }
   .main-content {
     width: 100%;

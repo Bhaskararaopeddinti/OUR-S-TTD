@@ -30,7 +30,7 @@
   top: 0;
   left: 0;
   bottom: 0;
-  width: 260px;
+  width: 280px;
   height: 100vh;
   height: 100dvh;
   background: linear-gradient(180deg, #070D1E 0%, #0F245C 50%, #1E3A8A 100%) !important;
@@ -349,12 +349,12 @@
    ───────────────────────────────────────────────────────────────────────────── */
 .main-wrapper {
   flex: 1;
-  margin-left: 260px;
+  margin-left: 280px;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  width: calc(100% - 260px);
+  width: calc(100% - 280px);
   position: relative;
 }
 
