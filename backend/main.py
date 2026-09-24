@@ -47,21 +47,30 @@ async def redirect_api_docs():
     return RedirectResponse(url="/docs")
 
 # ── CORS ───────────────────────────────────────────────────────────────────
+# NOTE: Starlette/FastAPI does NOT allow allow_origins=["*"] with allow_credentials=True.
+# When origins include wildcard, we use allow_origin_regex to cover all origins.
 cors_raw = os.getenv("CORS_ORIGINS", "*").strip()
 if not cors_raw or cors_raw == "*":
-    cors_origins = ["*"]
+    # Use regex to cover all http/https origins — safe for development and staging
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r"https?://.*",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 else:
     cors_origins = [o.strip() for o in cors_raw.split(",") if o.strip()]
-    if "*" not in cors_origins:
-        cors_origins.extend(["http://localhost:8000", "http://127.0.0.1:8000", "http://localhost:3000", "http://localhost:5500", "http://127.0.0.1:5500"])
+    cors_origins.extend(["http://localhost:8000", "http://127.0.0.1:8000",
+                         "http://localhost:3000", "http://localhost:5500", "http://127.0.0.1:5500"])
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(set(cors_origins)),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # ── Routers ────────────────────────────────────────────────────────────────
 # API ROUTES FIRST - routers have their prefixes defined
@@ -399,16 +408,27 @@ async def serve_favicon_ico():
 
 @app.get("/api/health", tags=["Health"])
 async def health_check():
-    """Non-sensitive application, database, and AI health status."""
+    """Non-sensitive application, database, AI, and CCTV worker health status."""
     connected = test_connection()
     from backend.services.ai_service import get_gemini_api_key
     gemini_key_present = bool(get_gemini_api_key())
+
+    # CCTV worker status (non-blocking)
+    cctv_status = "idle"
+    try:
+        from backend.services.cctv_vision import cctv_worker
+        ws = cctv_worker.get_status()
+        cctv_status = ws.get("status", "idle").lower()
+    except Exception:
+        cctv_status = "unavailable"
+
     return {
-        "status": "healthy" if connected else "unhealthy",
+        "status": "healthy" if connected else "degraded",
         "database": "connected" if connected else "unavailable",
         "database_type": database_kind(),
         "gemini_configured": gemini_key_present,
-        "gemini_model": os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+        "gemini_model": os.getenv("GEMINI_MODEL", "gemini-flash-latest"),
+        "cctv_worker_status": cctv_status,
     }
 
 @app.get("/health", tags=["Health"], include_in_schema=False)
