@@ -19,6 +19,7 @@ from backend.schemas import (
     ProfileUpdate, FacilityUpdate
 )
 from backend.services.ai_service import pilgrim_reply
+from backend.services.gemini_service import pilgrim_reply_gemini
 from backend.services.queue_prediction import predict, predict_queue_status
 from backend.services.recommendation import recommendations
 from backend.services.translation import supported_languages
@@ -223,13 +224,11 @@ def chat(data: ChatIn, db: Session = Depends(get_db)):
         }
 
     try:
-        res = pilgrim_reply(
+        # Use Gemini API for AI-powered responses
+        reply_text = pilgrim_reply_gemini(
             message=user_query,
-            language=data.language,
-            history=data.history,
-            db=db
+            language=data.language
         )
-        reply_text = res.get("reply", "")
 
         # Save conversation to history (anonymous if no auth)
         try:
@@ -239,14 +238,13 @@ def chat(data: ChatIn, db: Session = Depends(get_db)):
         except Exception:
             db.rollback()
 
-        is_success = res.get("ai_available", True) and res.get("source") != "error"
         return {
-            "success": is_success,
+            "success": True,
             "answer": reply_text,
             "reply": reply_text,
             "language": data.language,
-            "source": res.get("source", "gemini"),
-            "ai_available": res.get("ai_available", True)
+            "source": "gemini",
+            "ai_available": True
         }
     except Exception as e:
         err_msg = "Sorry, I couldn't process that request. Please try again."
