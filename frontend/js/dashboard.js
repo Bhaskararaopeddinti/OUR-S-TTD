@@ -117,6 +117,7 @@ async function loadDashboardQueueIntelligence() {
 // Update date and time display — sourced from the latest authorized admin upload
 async function updateDateTime() {
     const dateElement = document.getElementById('currentDate');
+    const timeElement = document.getElementById('currentTime');
     const dayElement = document.getElementById('currentDay');
     const tithiElement = document.getElementById('tithi');
     
@@ -129,6 +130,9 @@ async function updateDateTime() {
             if (dateElement) {
                 dateElement.textContent = data.upload_date || 'No latest update available';
             }
+            if (timeElement) {
+                timeElement.textContent = data.upload_time ? `Time: ${data.upload_time}` : '';
+            }
             if (dayElement) {
                 dayElement.textContent = data.day_of_week || '';
             }
@@ -139,6 +143,9 @@ async function updateDateTime() {
             // No admin data yet — show clear message instead of client's local date
             if (dateElement) {
                 dateElement.textContent = 'No latest update available';
+            }
+            if (timeElement) {
+                timeElement.textContent = '';
             }
             if (dayElement) {
                 dayElement.textContent = '';
@@ -151,6 +158,7 @@ async function updateDateTime() {
         console.error('Failed to fetch admin date/time:', error);
         // On error, show fallback
         if (dateElement) dateElement.textContent = 'No latest update available';
+        if (timeElement) timeElement.textContent = '';
         if (dayElement) dayElement.textContent = '';
         if (tithiElement) tithiElement.textContent = '';
     }
