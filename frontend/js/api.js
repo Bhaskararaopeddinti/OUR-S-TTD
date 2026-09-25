@@ -8,32 +8,30 @@ const API = (() => {
   const getApiBase = () => {
     if (typeof window !== 'undefined' && window.location) {
       const { hostname, port, protocol } = window.location;
-      // If running locally (localhost or 127.0.0.1)
-      if (hostname === 'localhost' || hostname === '127.0.0.1' || protocol === 'file:') {
-        // If frontend is being served by FastAPI directly on port 8000
-        if (port === '8000') {
-          return '/api/';
-        }
-        // If frontend is opened via Live Server (5500, 5501, 5502, 3000, 5173, etc.) or file://
+      // If served directly from the backend on port 8000
+      if (port === '8000') {
+        return '/api/';
+      }
+      // If opened via local dev servers (5500, 3000, 5173, etc.) or file://
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.') || hostname.startsWith('172.') || protocol === 'file:') {
         return 'http://127.0.0.1:8000/api/';
       }
-      // In production (Render, custom domain, etc.)
+      // In production
       return '/api/';
     }
     return '/api/';
   };
-  const BASE = getApiBase();
-
+  let BASE = getApiBase();
 
   function token() {
     return localStorage.getItem('authToken');
   }
 
-  function headers(json = true) {
+  function headers(json = true, withAuth = true) {
     const h = {};
     if (json) h['Content-Type'] = 'application/json';
     const t = token();
-    if (t) h['Authorization'] = `Bearer ${t}`;
+    if (withAuth && t) h['Authorization'] = `Bearer ${t}`;
     return h;
   }
 
@@ -52,8 +50,40 @@ const API = (() => {
     return path.startsWith('/') ? path.slice(1) : path;
   }
 
+  // Resilient fetch with fallback URL on network failure
+  async function resilientFetch(urlPath, options) {
+    const primaryUrl = BASE + clean(urlPath);
+    try {
+      return await fetch(primaryUrl, options);
+    } catch (netErr) {
+      // If primary failed (e.g. 127.0.0.1 blocked or port mismatch), try fallback
+      const fallbacks = [];
+      if (BASE !== '/api/') fallbacks.push('/api/' + clean(urlPath));
+      if (BASE !== 'http://localhost:8000/api/') fallbacks.push('http://localhost:8000/api/' + clean(urlPath));
+      if (BASE !== 'http://127.0.0.1:8000/api/') fallbacks.push('http://127.0.0.1:8000/api/' + clean(urlPath));
+
+      for (const fallbackUrl of fallbacks) {
+        try {
+          const res = await fetch(fallbackUrl, options);
+          if (res) {
+            // Update BASE for future calls if this fallback succeeded
+            if (fallbackUrl.startsWith('http')) {
+              const u = new URL(fallbackUrl);
+              BASE = `${u.origin}/api/`;
+            } else {
+              BASE = '/api/';
+            }
+            return res;
+          }
+        } catch (_) {}
+      }
+      throw netErr;
+    }
+  }
+
   return {
-    get: (path) => fetch(BASE + clean(path), { headers: headers(false) }).then(handle),
+    // Public GET does not send auth headers by default, avoiding 401 from stale tokens
+    get: (path) => resilientFetch(path, { headers: { 'Accept': 'application/json' } }).then(handle),
 
     post: (path, body) => fetch(BASE + clean(path), {
       method: 'POST',

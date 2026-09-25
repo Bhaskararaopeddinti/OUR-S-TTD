@@ -562,54 +562,36 @@ function renderHome() {
 // ── DASHBOARD PAGE ───────────────────────────
 function renderDashboard() {
   console.log('Rendering dashboard page...');
-  fetch('pages/dashboard.html')
+  const root = document.getElementById('appRoot');
+  if (!root) return;
+
+  // Show loading indicator
+  root.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--muted);"><div class="loading-spinner" style="margin:0 auto 1rem;"></div><p>Loading dashboard…</p></div>';
+
+  fetch('pages/dashboard.html', { cache: 'no-cache' })
     .then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.text();
     })
     .then(html => {
-      const root = document.getElementById('appRoot');
-      if (root) root.innerHTML = html;
-      console.log('Dashboard HTML loaded');
-      
-      // Immediately populate date and day with zero latency
-      try {
-        if (typeof window.updateDateTime === 'function') {
-          window.updateDateTime();
-        } else {
-          const now = new Date();
-          const dEl = document.getElementById('currentDate');
-          const dayEl = document.getElementById('currentDay');
-          const tEl = document.getElementById('tithi');
-          if (dEl) dEl.textContent = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-          if (dayEl) dayEl.textContent = now.toLocaleDateString('en-IN', { weekday: 'long' });
-          if (tEl && tEl.textContent === '--') tEl.textContent = 'Today';
-        }
-      } catch (_) {}
+      if (!root) return;
+      root.innerHTML = html;
+      console.log('[Dashboard] HTML injected into #appRoot');
 
-      // Load dashboard data with active retry to ensure dashboard.js is ready
-      let attempts = 0;
-      function tryLoadDashboard() {
-        if (typeof window.loadDashboard === 'function') {
-          console.log('Calling loadDashboard...');
-          window.loadDashboard();
-        } else if (typeof loadDashboard === 'function') {
-          console.log('Calling loadDashboard (global)...');
-          loadDashboard();
-        } else if (attempts < 20) {
-          attempts++;
-          setTimeout(tryLoadDashboard, 80);
-        } else {
-          console.warn('loadDashboard function not available after retries');
-        }
+      // Call loadDashboard — since dashboard.js loads before app.js now,
+      // window.loadDashboard is guaranteed to be available.
+      if (typeof window.loadDashboard === 'function') {
+        console.log('[Dashboard] Calling loadDashboard()');
+        window.loadDashboard();
+      } else {
+        console.error('[Dashboard] window.loadDashboard not found! Check dashboard.js load order.');
       }
-      tryLoadDashboard();
     })
     .catch(error => {
-      console.error('Failed to load dashboard page:', error);
-      document.getElementById('appRoot').innerHTML = '<p class="error">Failed to load dashboard page: ' + error.message + '</p>';
+      console.error('[Dashboard] Failed to load dashboard HTML:', error);
+      if (root) {
+        root.innerHTML = `<div style="text-align:center;padding:3rem;"><p style="color:var(--danger);">Failed to load dashboard: ${error.message}</p><button class="quick-action-btn" onclick="navigate('dashboard')">Retry</button></div>`;
+      }
     });
 }
 

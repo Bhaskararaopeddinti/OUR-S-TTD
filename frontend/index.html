@@ -29,12 +29,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 
-  <!-- Styles (v10 cache-busting) -->
-  <link rel="stylesheet" href="css/style.css?v=11" />
-  <link rel="stylesheet" href="css/responsive.css?v=11" />
-  <link rel="stylesheet" href="css/components.css?v=11" />
-  <link rel="stylesheet" href="css/dashboard.css?v=11" />
-  <link rel="stylesheet" href="css/admin-portal.css?v=11" />
+  <!-- Styles (v15 cache-busting) -->
+  <link rel="stylesheet" href="css/style.css?v=15" />
+  <link rel="stylesheet" href="css/responsive.css?v=15" />
+  <link rel="stylesheet" href="css/components.css?v=15" />
+  <link rel="stylesheet" href="css/dashboard.css?v=15" />
+  <link rel="stylesheet" href="css/admin-portal.css?v=15" />
 
 </head>
 <body>
@@ -323,27 +323,32 @@
 
 <!-- ═══════════════════════════════════════
      SCRIPTS (load order matters)
+     IMPORTANT: page JS files load FIRST so window.load* functions
+     are available when app.js calls navigate() → renderDashboard().
 ════════════════════════════════════════ -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-<script src="js/api.js?v=11"></script>
-<script src="js/app.js?v=11"></script>
+<script src="js/api.js?v=15"></script>
 
-<script src="js/chatbot.js?v=11"></script>
-<script src="js/chatbot-page.js?v=11"></script>
-<script src="js/queue.js?v=11"></script>
-<script src="js/sos.js?v=11"></script>
-<script src="js/emergency.js?v=11"></script>
-<script src="js/voice.js?v=11"></script>
-<script src="js/language.js?v=11"></script>
-<script src="js/navigation.js?v=11"></script>
-<script src="js/health.js?v=11"></script>
-<script src="js/notifications.js?v=11"></script>
-<script src="js/admin.js?v=11"></script>
-<script src="js/booking.js?v=11"></script>
-<script src="js/maps.js?v=11"></script>
-<script src="js/dashboard.js?v=11"></script>
-<script src="js/transport.js?v=11"></script>
+<!-- Page-level JS loaded BEFORE app.js to avoid race conditions -->
+<script src="js/dashboard.js?v=15"></script>
+<script src="js/queue.js?v=15"></script>
+<script src="js/admin.js?v=15"></script>
+<script src="js/chatbot.js?v=15"></script>
+<script src="js/chatbot-page.js?v=15"></script>
+<script src="js/sos.js?v=15"></script>
+<script src="js/emergency.js?v=15"></script>
+<script src="js/voice.js?v=15"></script>
+<script src="js/language.js?v=15"></script>
+<script src="js/navigation.js?v=15"></script>
+<script src="js/health.js?v=15"></script>
+<script src="js/notifications.js?v=15"></script>
+<script src="js/booking.js?v=15"></script>
+<script src="js/maps.js?v=15"></script>
+<script src="js/transport.js?v=15"></script>
+
+<!-- app.js last: SPA router that calls navigate() on init -->
+<script src="js/app.js?v=15"></script>
 
 <script>
   function hideLoader() {
@@ -361,11 +366,14 @@
   setTimeout(hideLoader, 800); // Safety fallback so user is never stuck
 
   // ═══════════════════════════════════════
-  // Register Service Worker (PWA)
+  // Register Service Worker (PWA) with Auto-Update
   // ═══════════════════════════════════════
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/js/sw.js')
-      .then(r => console.log('SW registered:', r.scope))
+    navigator.serviceWorker.register('/js/sw.js?v=15')
+      .then(r => {
+        console.log('SW registered:', r.scope);
+        r.update();
+      })
       .catch(e => console.warn('SW registration failed:', e));
   }
 
