@@ -2,6 +2,7 @@
 OURS TTD — Core API Router
 All pilgrim-facing and admin endpoints.
 """
+import os
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -19,7 +20,6 @@ from backend.schemas import (
     ProfileUpdate, FacilityUpdate
 )
 from backend.services.ai_service import pilgrim_reply
-from backend.services.gemini_service import pilgrim_reply_gemini
 from backend.services.queue_prediction import predict, predict_queue_status
 from backend.services.recommendation import recommendations
 from backend.services.translation import supported_languages
@@ -206,12 +206,41 @@ def facility_directions(
     return directions
 
 
+# ──────────────────────── AI Health Check ────────────────────────
+@router.get("/ai/health")
+@router.get("/chat/health")
+def ai_health():
+    """Check Gemini API connection status without exposing API key."""
+    from backend.services.ai_service import get_gemini_api_key, _init_gemini
+    
+    api_key_present = bool(get_gemini_api_key())
+    gemini_initialized = _init_gemini() if api_key_present else False
+    
+    # Test with a simple request if initialized
+    test_result = None
+    if gemini_initialized:
+        try:
+            from backend.services.ai_service import _generate_with_gemini
+            test_response = _generate_with_gemini("Reply with exactly: OK")
+            test_result = "connected" if test_response and "OK" in test_response else "failed"
+        except Exception as e:
+            test_result = f"error: {type(e).__name__}"
+    
+    return {
+        "status": "ok" if api_key_present and gemini_initialized else "error",
+        "gemini": "connected" if gemini_initialized else "not_connected",
+        "api_key_configured": api_key_present,
+        "test_result": test_result,
+        "model": os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+    }
+
+
 # ──────────────────────── AI Chat ────────────────────────
 @router.post("/chat")
 @router.post("/ai/chat")
 @router.post("/assistant/chat")
 def chat(data: ChatIn, db: Session = Depends(get_db)):
-    """AI-powered pilgrim assistant powered by Gemini API."""
+    """AI-powered pilgrim assistant powered by Gemini API with live database context."""
     user_query = data.get_query()
     if not user_query:
         return {
@@ -219,16 +248,19 @@ def chat(data: ChatIn, db: Session = Depends(get_db)):
             "answer": "Please ask a question.",
             "reply": "Please ask a question.",
             "language": data.language,
-            "source": "fallback",
+            "source": "error",
             "ai_available": False
         }
 
     try:
-        # Use Gemini API for AI-powered responses
-        reply_text = pilgrim_reply_gemini(
+        # Use the proper ai_service with database context
+        res = pilgrim_reply(
             message=user_query,
-            language=data.language
+            language=data.language,
+            history=data.history,
+            db=db
         )
+        reply_text = res.get("reply", "")
 
         # Save conversation to history (anonymous if no auth)
         try:
@@ -238,13 +270,14 @@ def chat(data: ChatIn, db: Session = Depends(get_db)):
         except Exception:
             db.rollback()
 
+        is_success = res.get("ai_available", True) and res.get("source") != "error"
         return {
-            "success": True,
+            "success": is_success,
             "answer": reply_text,
             "reply": reply_text,
             "language": data.language,
-            "source": "gemini",
-            "ai_available": True
+            "source": res.get("source", "gemini"),
+            "ai_available": res.get("ai_available", True)
         }
     except Exception as e:
         err_msg = "Sorry, I couldn't process that request. Please try again."
