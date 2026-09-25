@@ -7,17 +7,23 @@ def get_gemini_model():
     """Get configured Gemini model instance."""
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
+        print("GEMINI_API_KEY not found in environment variables")
         return None
     
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    return model
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        return model
+    except Exception as e:
+        print(f"Error configuring Gemini: {e}")
+        return None
 
 def pilgrim_reply_gemini(message: str, language: str = "English") -> str:
     """Get AI-powered response using Gemini API for pilgrim assistance."""
     model = get_gemini_model()
     
     if not model:
+        print("Using fallback responses (Gemini API not configured)")
         # Fallback to rule-based responses if API key not configured
         return pilgrim_reply_fallback(message, language)
     
@@ -40,7 +46,11 @@ Provide a concise, helpful response. If you don't have specific information, sug
 """
         
         response = model.generate_content(context)
-        return response.text.strip()
+        if response and response.text:
+            return response.text.strip()
+        else:
+            print("Gemini returned empty response")
+            return pilgrim_reply_fallback(message, language)
         
     except Exception as e:
         print(f"Gemini API error: {e}")
