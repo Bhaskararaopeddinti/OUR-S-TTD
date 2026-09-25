@@ -92,12 +92,13 @@
     <div class="dashboard-card date-card">
       <div class="card-header">
         <span class="card-icon">📅</span>
-        <h3>Today's Date</h3>
+        <h3>Date of Last Update</h3>
       </div>
       <div class="date-info">
-        <div class="date-value" id="currentDate">--</div>
-        <div class="day-value" id="currentDay">--</div>
-        <div class="tithi-value" id="tithi">--</div>
+        <div class="date-value" id="currentDate">Loading…</div>
+        <div class="day-value" id="currentDay"></div>
+        <div class="tithi-value" id="tithi"></div>
+        <div style="font-size:0.72rem; color:var(--muted); margin-top:0.4rem;">📡 Source: Latest Admin Upload</div>
       </div>
     </div>
   </div>
@@ -202,17 +203,8 @@
         <h3>TTD Announcements</h3>
       </div>
       <div class="announcements-list" id="announcementsList">
-        <div class="announcement-item">
-          <span class="announcement-time">10:30 AM</span>
-          <p>Special darshan arrangements for Srivari Brahmotsavams</p>
-        </div>
-        <div class="announcement-item">
-          <span class="announcement-time">9:00 AM</span>
-          <p>Free laddu distribution at VQC exit</p>
-        </div>
-        <div class="announcement-item">
-          <span class="announcement-time">8:00 AM</span>
-          <p>Additional compartments opened for Sarva Darshan</p>
+        <div class="announcement-item" style="text-align:center; color:var(--muted); font-style:italic;">
+          <p>Loading announcements…</p>
         </div>
       </div>
     </div>

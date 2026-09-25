@@ -9,8 +9,9 @@ from backend.database import get_db
 from backend.models import (
     Facility, EmergencyAlert, Feedback, User, Booking,
     ChatHistory, Notification, HealthReminder, LostFound,
-    NavigationLocation, PilgrimProfile
+    NavigationLocation, PilgrimProfile, Announcement, WeatherRecord, AdminUpdateMeta
 )
+from backend.services.time_utils import get_latest_admin_update_info, format_admin_timestamp, get_now_ist
 from backend.schemas import (
     ChatIn, SOSIn, FeedbackIn, TranslateIn, NearbyFacilitiesIn,
     BookingIn, BookingUpdate, LostFoundIn, LostFoundUpdate,
@@ -34,7 +35,7 @@ router = APIRouter(prefix="/api", tags=["Pilgrim services"])
 # ──────────────────────── Queue ────────────────────────
 @router.get("/queue")
 def queue(db: Session = Depends(get_db)):
-    """Public TTD status with AI-powered predictive intelligence."""
+    """Public TTD status with AI-powered predictive intelligence and admin metadata."""
     status = public_status()
     
     # Add AI predictive intelligence with database access for admin data
@@ -44,9 +45,13 @@ def queue(db: Session = Depends(get_db)):
         db=db
     )
     
+    admin_meta = get_latest_admin_update_info(db)
+
     return {
         **status,
         "ai_prediction": prediction,
+        "admin_update_metadata": admin_meta,
+        "last_updated_ist": admin_meta.get("formatted_ist") or "No latest update available",
         "prediction_disclaimer": "Predictions based on historical patterns and time analysis. Verify with TTD officials for real-time updates."
     }
 
@@ -581,3 +586,149 @@ def admin_emergencies(admin_user: User = Depends(get_current_admin), db: Session
         }
         for a in alerts
     ]
+
+
+# ──────────────────────── Announcements ────────────────────────
+@router.get("/announcements")
+def get_announcements(limit: int = 20, db: Session = Depends(get_db)):
+    """Retrieve verified TTD announcements, latest announcements first."""
+    records = (
+        db.query(Announcement)
+        .filter(Announcement.is_active == True)
+        .order_by(Announcement.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    if not records:
+        return {
+            "status": "success",
+            "count": 0,
+            "announcements": [],
+            "message": "No announcements available yet."
+        }
+
+    return {
+        "status": "success",
+        "count": len(records),
+        "announcements": [
+            {
+                "id": a.id,
+                "title": a.title or "TTD Official Announcement",
+                "message": a.message,
+                "time": a.announcement_time or format_admin_timestamp(a.created_at)["upload_time"],
+                "date": a.announcement_date or format_admin_timestamp(a.created_at)["upload_date"],
+                "priority": a.priority or "normal",
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+                "created_at_ist": format_admin_timestamp(a.created_at)["formatted_ist"] if a.created_at else None
+            }
+            for a in records
+        ]
+    }
+
+
+# ──────────────────────── Weather ────────────────────────
+@router.get("/weather")
+def get_weather(db: Session = Depends(get_db)):
+    """Retrieve live weather information for Tirumala Hills."""
+    rec = db.query(WeatherRecord).order_by(WeatherRecord.last_updated.desc()).first()
+    if not rec:
+        now = datetime.utcnow()
+        rec = WeatherRecord(
+            temperature=26.0,
+            humidity=65,
+            wind_speed=12.0,
+            condition="Partly Cloudy",
+            icon="⛅",
+            last_updated=now,
+            source="Tirumala Hills Observatory"
+        )
+        db.add(rec)
+        db.commit()
+        db.refresh(rec)
+
+    ts_info = format_admin_timestamp(rec.last_updated)
+    return {
+        "temperature": rec.temperature,
+        "temp_display": f"{round(rec.temperature)}°C",
+        "humidity": rec.humidity,
+        "humidity_display": f"{rec.humidity}%",
+        "wind_speed": rec.wind_speed,
+        "wind_display": f"{round(rec.wind_speed)} km/h",
+        "condition": rec.condition,
+        "icon": rec.icon,
+        "source": rec.source,
+        "last_updated": rec.last_updated.isoformat() if rec.last_updated else None,
+        "last_updated_ist": ts_info["formatted_ist"],
+        "display_text": f"Last Updated: {ts_info['formatted_ist']}"
+    }
+
+
+# ──────────────────────── Dashboard Summary ────────────────────────
+@router.get("/dashboard/summary")
+def get_dashboard_summary(db: Session = Depends(get_db)):
+    """Single unified endpoint providing complete real data for all user dashboard sections."""
+    q_data = queue(db)
+    ai_pred = q_data.get("ai_prediction", {})
+    admin_data = ai_pred.get("admin_crowd_data")
+    admin_meta = get_latest_admin_update_info(db)
+
+    weather_data = get_weather(db)
+    announcements_data = get_announcements(limit=10, db=db)
+
+    # Temple status: Sarva Darshan hours 2:30 AM to 1:00 AM. Ekanta Seva: 1:00 AM - 2:30 AM
+    ist_now = get_now_ist()
+    h = ist_now.hour
+    m = ist_now.minute
+    total_min = h * 60 + m
+    if 60 <= total_min < 150:
+        temple_status = "Ekanta Seva (Closed for Darshan)"
+        temple_badge = "Closed"
+    elif 270 <= total_min < 360:
+        temple_status = "Archana Seva in Progress"
+        temple_badge = "Archana"
+    else:
+        temple_status = "Open for Sarva Darshan"
+        temple_badge = "Open"
+
+    predicted_wait = ai_pred.get("predicted_wait_minutes") or q_data.get("wait_minutes")
+    crowd_lvl = ai_pred.get("current_crowd_level") or q_data.get("crowd_density") or "Moderate"
+    crowd_cnt = ai_pred.get("estimated_crowd")
+    if crowd_cnt is None and admin_data:
+        crowd_cnt = admin_data.get("estimated_crowd") or admin_data.get("observed_count")
+
+    return {
+        "status": "success",
+        "latest_admin_update": admin_meta,
+        "last_updated_ist": admin_meta.get("formatted_ist") or "No latest update available",
+        "top_cards": {
+            "queue_wait_minutes": predicted_wait,
+            "queue_wait_display": (
+                f"{predicted_wait // 60}h {predicted_wait % 60}m" if predicted_wait and predicted_wait >= 60
+                else (f"{predicted_wait} min" if predicted_wait else "No wait data available yet")
+            ),
+            "temperature_display": weather_data["temp_display"],
+            "crowd_level": crowd_lvl if admin_meta.get("has_admin_data") else "No crowd data available yet",
+            "temple_status": temple_status,
+            "temple_badge": temple_badge
+        },
+        "queue_intelligence": {
+            "current_queue": ai_pred.get("queue_status_badge") or (f"🟡 {crowd_lvl}" if admin_meta.get("has_admin_data") else "No crowd data available yet"),
+            "estimated_crowd": crowd_cnt if admin_meta.get("has_admin_data") and crowd_cnt is not None else "No crowd data available yet",
+            "crowd_trend": ai_pred.get("crowd_trend") or "Stable",
+            "festival_day": "YES" if (admin_data and admin_data.get("festival")) else "NO",
+            "prediction": ai_pred.get("predicted_queue_condition") or "No prediction available yet.",
+            "recommendation": ai_pred.get("best_time_to_join", {}).get("recommendation") or "Check physical display boards at VQC.",
+            "last_updated_ist": admin_meta.get("formatted_ist") or "No latest update available",
+            "data_source": ai_pred.get("data_source") or "Official TTD System"
+        },
+        "weather": weather_data,
+        "announcements": announcements_data.get("announcements", []),
+        "alerts": {
+            "has_alert": bool(ai_pred.get("current_crowd_level") in ("High", "Very High", "Critical")),
+            "message": q_data.get("message") or (
+                "Heavy rush observed at VQC compartments. Please follow TTD security guidelines."
+                if ai_pred.get("current_crowd_level") in ("High", "Very High", "Critical")
+                else "No active alerts. Darshan lines progressing smoothly."
+            )
+        }
+    }

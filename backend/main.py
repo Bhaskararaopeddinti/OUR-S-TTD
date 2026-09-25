@@ -141,6 +141,42 @@ def run_database_migrations(db):
             if "source" not in cols_p:
                 db.execute(text("ALTER TABLE pilgrim_flow_data ADD COLUMN source VARCHAR(40) DEFAULT 'manual'"))
 
+            # 3. TransportRoute table
+            res_t = db.execute(text("PRAGMA table_info(transport_routes)")).fetchall()
+            cols_t = {row[1] for row in res_t}
+            if "from_location" not in cols_t:
+                db.execute(text("ALTER TABLE transport_routes ADD COLUMN from_location VARCHAR(120) DEFAULT ''"))
+            if "to_location" not in cols_t:
+                db.execute(text("ALTER TABLE transport_routes ADD COLUMN to_location VARCHAR(120) DEFAULT ''"))
+            if "bus_number" not in cols_t:
+                db.execute(text("ALTER TABLE transport_routes ADD COLUMN bus_number VARCHAR(60) DEFAULT ''"))
+            if "departure_time" not in cols_t:
+                db.execute(text("ALTER TABLE transport_routes ADD COLUMN departure_time VARCHAR(60) DEFAULT ''"))
+            if "arrival_time" not in cols_t:
+                db.execute(text("ALTER TABLE transport_routes ADD COLUMN arrival_time VARCHAR(60) DEFAULT ''"))
+            if "available_seats" not in cols_t:
+                db.execute(text("ALTER TABLE transport_routes ADD COLUMN available_seats INTEGER"))
+            if "operating_days" not in cols_t:
+                db.execute(text("ALTER TABLE transport_routes ADD COLUMN operating_days VARCHAR(100) DEFAULT 'Daily'"))
+
+            # 4. CrowdAnalysis table
+            res_c = db.execute(text("PRAGMA table_info(crowd_analyses)")).fetchall()
+            cols_c = {row[1] for row in res_c}
+            if "upload_date" not in cols_c:
+                db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN upload_date VARCHAR(40) DEFAULT ''"))
+            if "upload_time" not in cols_c:
+                db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN upload_time VARCHAR(40) DEFAULT ''"))
+            if "direction_status" not in cols_c:
+                db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN direction_status VARCHAR(80) DEFAULT 'Direction data unavailable for image'"))
+            if "incoming_count" not in cols_c:
+                db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN incoming_count INTEGER"))
+            if "outgoing_count" not in cols_c:
+                db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN outgoing_count INTEGER"))
+            if "net_flow" not in cols_c:
+                db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN net_flow INTEGER"))
+            if "admin_update_timestamp" not in cols_c:
+                db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN admin_update_timestamp DATETIME"))
+
             db.commit()
             logger.info("✓ SQLite column migrations checked and up to date.")
         elif db.bind.dialect.name == "postgresql":
@@ -150,6 +186,25 @@ def run_database_migrations(db):
             db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(100);"))
             db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP;"))
             db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;"))
+
+            # Transport routes columns
+            db.execute(text("ALTER TABLE transport_routes ADD COLUMN IF NOT EXISTS from_location VARCHAR(120) DEFAULT '';"))
+            db.execute(text("ALTER TABLE transport_routes ADD COLUMN IF NOT EXISTS to_location VARCHAR(120) DEFAULT '';"))
+            db.execute(text("ALTER TABLE transport_routes ADD COLUMN IF NOT EXISTS bus_number VARCHAR(60) DEFAULT '';"))
+            db.execute(text("ALTER TABLE transport_routes ADD COLUMN IF NOT EXISTS departure_time VARCHAR(60) DEFAULT '';"))
+            db.execute(text("ALTER TABLE transport_routes ADD COLUMN IF NOT EXISTS arrival_time VARCHAR(60) DEFAULT '';"))
+            db.execute(text("ALTER TABLE transport_routes ADD COLUMN IF NOT EXISTS available_seats INTEGER;"))
+            db.execute(text("ALTER TABLE transport_routes ADD COLUMN IF NOT EXISTS operating_days VARCHAR(100) DEFAULT 'Daily';"))
+
+            # Crowd analysis columns
+            db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN IF NOT EXISTS upload_date VARCHAR(40) DEFAULT '';"))
+            db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN IF NOT EXISTS upload_time VARCHAR(40) DEFAULT '';"))
+            db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN IF NOT EXISTS direction_status VARCHAR(80) DEFAULT 'Direction data unavailable for image';"))
+            db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN IF NOT EXISTS incoming_count INTEGER;"))
+            db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN IF NOT EXISTS outgoing_count INTEGER;"))
+            db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN IF NOT EXISTS net_flow INTEGER;"))
+            db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN IF NOT EXISTS admin_update_timestamp TIMESTAMP;"))
+
             db.commit()
             logger.info("✓ PostgreSQL column migrations checked and up to date.")
     except Exception as e:

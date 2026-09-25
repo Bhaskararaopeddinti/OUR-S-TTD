@@ -509,7 +509,15 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
         "admin_crowd_data": admin_crowd_data,
         "data_source": data_source_label,
         "data_source_code": data_source_code,
-        "prediction_timestamp": now.isoformat()
+        "prediction_timestamp": now.isoformat(),
+        "admin_update_metadata": (
+            __import__("backend.services.time_utils", fromlist=["get_latest_admin_update_info"]).get_latest_admin_update_info(db)
+            if db else {"has_admin_data": False, "display_text": "No latest update available"}
+        ),
+        "last_updated_ist": (
+            __import__("backend.services.time_utils", fromlist=["get_latest_admin_update_info"]).get_latest_admin_update_info(db).get("formatted_ist")
+            if db else None
+        ) or "No latest update available",
     }
 
 

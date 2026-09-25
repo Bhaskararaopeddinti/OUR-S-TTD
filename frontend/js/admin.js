@@ -97,6 +97,9 @@ function initAdminModule() {
       initAdminCrowdUpload();
       loadAdminEmergencies();
       startAdminClock();
+      initAdminAnnouncementForm();
+      loadAdminAnnouncements();
+      initAdminWeatherForm();
 
     })
     .catch(() => {
@@ -1038,4 +1041,171 @@ function _updateWorkerStatusBadge(text) {
     badge.style.background = 'rgba(245,158,11,0.15)';
     badge.style.color = 'var(--gold)';
   }
+}
+
+// =============================================================================
+// ANNOUNCEMENTS MANAGEMENT
+// =============================================================================
+
+/**
+ * Load and display the active announcements list in the admin panel.
+ */
+async function loadAdminAnnouncements() {
+  const listEl = document.getElementById('adminAnnouncementsList');
+  if (!listEl) return;
+
+  try {
+    const data = await API.get('announcements');
+    const announcements = (data && data.announcements) ? data.announcements : [];
+
+    if (announcements.length === 0) {
+      listEl.innerHTML = '<div style="text-align:center; color:var(--muted); padding:1rem; font-style:italic;">No active announcements yet.</div>';
+      return;
+    }
+
+    const priorityColors = { alert: '#EF4444', important: '#FBBF24', normal: '#60A5FA' };
+    listEl.innerHTML = announcements.map(ann => {
+      const color = priorityColors[ann.priority] || '#60A5FA';
+      return `
+        <div style="display:flex; align-items:center; gap:0.75rem; padding:0.65rem 0.85rem; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-left:3px solid ${color}; border-radius:8px;">
+          <div style="flex:1; min-width:0;">
+            ${ann.title ? `<strong style="font-size:0.85rem; color:var(--text); display:block;">${ann.title}</strong>` : ''}
+            <span style="font-size:0.82rem; color:var(--muted);">${ann.message}</span>
+            <div style="font-size:0.75rem; color:var(--muted); margin-top:0.2rem;">${ann.date || ''} ${ann.time || ''}</div>
+          </div>
+          <span style="font-size:0.72rem; padding:0.15rem 0.4rem; background:rgba(255,255,255,0.07); border-radius:4px; color:${color}; white-space:nowrap;">${ann.priority}</span>
+          <button onclick="deleteAdminAnnouncement(${ann.id})" title="Delete announcement" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#EF4444; border-radius:6px; padding:0.25rem 0.55rem; cursor:pointer; font-size:0.8rem;">🗑</button>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    listEl.innerHTML = `<div style="color:#EF4444; text-align:center; padding:0.75rem;">Failed to load announcements: ${err.message || 'Network error'}</div>`;
+  }
+}
+
+/**
+ * Delete a single announcement by ID from the admin panel.
+ */
+window.deleteAdminAnnouncement = async function(id) {
+  if (!confirm('Remove this announcement from the user dashboard?')) return;
+  try {
+    await API.authDelete(`admin/announcements/${id}`);
+    await loadAdminAnnouncements();
+    // Optionally show a brief confirmation
+    const status = document.getElementById('annFormStatus');
+    if (status) {
+      status.style.color = '#10B981';
+      status.textContent = '✓ Announcement removed.';
+      setTimeout(() => { status.textContent = ''; }, 3000);
+    }
+  } catch (err) {
+    alert('Failed to delete announcement: ' + (err.detail || err.message || 'Unknown error'));
+  }
+};
+
+/**
+ * Wire up the announcement creation form submission.
+ */
+function initAdminAnnouncementForm() {
+  const form = document.getElementById('adminAnnouncementForm');
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const status = document.getElementById('annFormStatus');
+    const title   = (document.getElementById('annTitle')?.value || '').trim();
+    const message = (document.getElementById('annMessage')?.value || '').trim();
+    const priority = document.getElementById('annPriority')?.value || 'normal';
+    const time   = (document.getElementById('annTime')?.value || '').trim();
+
+    if (!message) {
+      if (status) { status.style.color = '#EF4444'; status.textContent = '❌ Message is required.'; }
+      return;
+    }
+
+    if (status) { status.style.color = 'var(--muted)'; status.textContent = '📤 Publishing…'; }
+
+    try {
+      await API.authPost('admin/announcements', {
+        title: title || 'Official TTD Announcement',
+        message,
+        priority,
+        announcement_time: time || undefined
+      });
+
+      if (status) { status.style.color = '#10B981'; status.textContent = '✓ Announcement published to dashboard!'; }
+      // Reset form
+      document.getElementById('annTitle').value = '';
+      document.getElementById('annMessage').value = '';
+      document.getElementById('annPriority').value = 'normal';
+      document.getElementById('annTime').value = '';
+
+      await loadAdminAnnouncements();
+      setTimeout(() => { if (status) status.textContent = ''; }, 5000);
+    } catch (err) {
+      if (status) { status.style.color = '#EF4444'; status.textContent = `❌ Error: ${err.detail || err.message || 'Failed to publish.'}`; }
+    }
+  });
+}
+
+
+// =============================================================================
+// WEATHER UPDATE
+// =============================================================================
+
+/**
+ * Wire up the weather update form submission.
+ */
+function initAdminWeatherForm() {
+  const form = document.getElementById('adminWeatherForm');
+  if (!form) return;
+
+  // Pre-fill current weather from API
+  API.get('weather').then(data => {
+    if (!data) return;
+    const temp = document.getElementById('wxTemp');
+    const hum  = document.getElementById('wxHumidity');
+    const wind = document.getElementById('wxWind');
+    const cond = document.getElementById('wxCondition');
+    const icon = document.getElementById('wxIcon');
+    if (temp && data.temperature !== undefined) temp.value = data.temperature;
+    if (hum  && data.humidity    !== undefined) hum.value  = data.humidity;
+    if (wind && data.wind_speed  !== undefined) wind.value = data.wind_speed;
+    if (cond && data.condition) {
+      // Try to select matching option
+      for (const opt of cond.options) {
+        if (opt.value === data.condition) { cond.value = data.condition; break; }
+      }
+    }
+    if (icon && data.icon) icon.value = data.icon;
+  }).catch(() => {});
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const status = document.getElementById('wxFormStatus');
+
+    const temperature = parseFloat(document.getElementById('wxTemp')?.value);
+    const humidity    = parseInt(document.getElementById('wxHumidity')?.value);
+    const wind_speed  = parseFloat(document.getElementById('wxWind')?.value);
+    const condition   = document.getElementById('wxCondition')?.value || 'Partly Cloudy';
+    const icon        = (document.getElementById('wxIcon')?.value || '').trim() || '⛅';
+
+    if (isNaN(temperature) || isNaN(humidity) || isNaN(wind_speed)) {
+      if (status) { status.style.color = '#EF4444'; status.textContent = '❌ All numeric fields are required.'; }
+      return;
+    }
+
+    if (status) { status.style.color = 'var(--muted)'; status.textContent = '📤 Updating…'; }
+
+    try {
+      const res = await API.authPost('admin/weather', { temperature, humidity, wind_speed, condition, icon });
+      if (status) {
+        status.style.color = '#10B981';
+        status.textContent = `✓ Weather updated: ${res.weather?.temp_display || temperature + '°C'}, ${condition}`;
+      }
+      setTimeout(() => { if (status) status.textContent = ''; }, 6000);
+    } catch (err) {
+      if (status) { status.style.color = '#EF4444'; status.textContent = `❌ Error: ${err.detail || err.message || 'Failed to update.'}`; }
+    }
+  });
 }

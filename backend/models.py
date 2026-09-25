@@ -214,6 +214,13 @@ class TransportRoute(Base):
     destination_location_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source_location: Mapped[str] = mapped_column(String(120), index=True)
     destination_location: Mapped[str] = mapped_column(String(120), index=True)
+    from_location: Mapped[str] = mapped_column(String(120), default="", index=True)
+    to_location: Mapped[str] = mapped_column(String(120), default="", index=True)
+    bus_number: Mapped[str] = mapped_column(String(60), default="", index=True)
+    departure_time: Mapped[str] = mapped_column(String(60), default="")
+    arrival_time: Mapped[str] = mapped_column(String(60), default="")
+    available_seats: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    operating_days: Mapped[str] = mapped_column(String(100), default="Daily")
     vehicle_type: Mapped[str] = mapped_column(String(40), index=True) # GOVERNMENT_BUS, TTD_BUS, TAXI, AUTO, WALKING, PACKAGE_TOUR
     operator: Mapped[str] = mapped_column(String(100), default="APSRTC")
     route_name: Mapped[str] = mapped_column(String(160))
@@ -262,6 +269,13 @@ class CrowdAnalysis(Base):
     crowd_level: Mapped[str] = mapped_column(String(20)) # LOW, MODERATE, HIGH, VERY HIGH
     detected_count: Mapped[int] = mapped_column(Integer, default=0)
     confidence: Mapped[float] = mapped_column(Float, default=0.92)
+    upload_date: Mapped[str] = mapped_column(String(40), default="")
+    upload_time: Mapped[str] = mapped_column(String(40), default="")
+    direction_status: Mapped[str] = mapped_column(String(80), default="Direction data unavailable for image")
+    incoming_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    outgoing_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    net_flow: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    admin_update_timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     admin_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -332,4 +346,49 @@ class CCTVCrowdRecord(Base):
     source: Mapped[str] = mapped_column(String(40), default="demo_cctv_ai")  # demo_cctv_ai, cctv_ai, manual
     video_filename: Mapped[str] = mapped_column(String(255), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class AdminUpdateMeta(Base):
+    """Tracks authorized admin uploads and updates with exact IST timestamps."""
+    __tablename__ = "admin_updates"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    update_type: Mapped[str] = mapped_column(String(60))  # crowd_upload, cctv_analysis, pilgrim_flow, announcement, queue_update, transport, weather
+    upload_date: Mapped[str] = mapped_column(String(40))  # e.g. "25 Sep 2026"
+    upload_time: Mapped[str] = mapped_column(String(40))  # e.g. "8:40 PM IST"
+    data_timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    admin_update_timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    formatted_ist: Mapped[str] = mapped_column(String(100))  # e.g. "25 Sep 2026, 8:40 PM IST"
+    summary: Mapped[str] = mapped_column(String(255), default="")
+    admin_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Announcement(Base):
+    """Official TTD announcements displayed on the pilgrim dashboard."""
+    __tablename__ = "announcements"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(160), default="")
+    message: Mapped[str] = mapped_column(Text)
+    announcement_time: Mapped[str] = mapped_column(String(40))  # e.g. "10:30 AM"
+    announcement_date: Mapped[str] = mapped_column(String(40))  # e.g. "25 Sep 2026"
+    priority: Mapped[str] = mapped_column(String(20), default="normal")  # normal, important, alert
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    admin_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class WeatherRecord(Base):
+    """Current weather observations for Tirumala hills."""
+    __tablename__ = "weather_records"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    temperature: Mapped[float] = mapped_column(Float, default=27.0)
+    humidity: Mapped[int] = mapped_column(Integer, default=65)
+    wind_speed: Mapped[float] = mapped_column(Float, default=12.0)
+    condition: Mapped[str] = mapped_column(String(60), default="Partly Cloudy")
+    icon: Mapped[str] = mapped_column(String(20), default="⛅")
+    last_updated: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    source: Mapped[str] = mapped_column(String(100), default="Tirumala Hills Observatory")
+    admin_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
 

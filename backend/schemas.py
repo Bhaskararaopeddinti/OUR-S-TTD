@@ -170,6 +170,13 @@ class ForgotPasswordIn(BaseModel):
 class TransportRouteIn(BaseModel):
     source_location: str = Field(min_length=2, max_length=120)
     destination_location: str = Field(min_length=2, max_length=120)
+    from_location: Optional[str] = None
+    to_location: Optional[str] = None
+    bus_number: Optional[str] = ""
+    departure_time: Optional[str] = ""
+    arrival_time: Optional[str] = ""
+    available_seats: Optional[int] = None
+    operating_days: Optional[str] = "Daily"
     vehicle_type: str = Field(min_length=2, max_length=40)
     operator: str = Field(default="APSRTC")
     route_name: str = Field(min_length=2, max_length=160)
@@ -186,6 +193,13 @@ class TransportRouteIn(BaseModel):
 class TransportRouteUpdate(BaseModel):
     source_location: Optional[str] = None
     destination_location: Optional[str] = None
+    from_location: Optional[str] = None
+    to_location: Optional[str] = None
+    bus_number: Optional[str] = None
+    departure_time: Optional[str] = None
+    arrival_time: Optional[str] = None
+    available_seats: Optional[int] = None
+    operating_days: Optional[str] = None
     vehicle_type: Optional[str] = None
     operator: Optional[str] = None
     route_name: Optional[str] = None
@@ -198,6 +212,61 @@ class TransportRouteUpdate(BaseModel):
     data_status: Optional[str] = None
     source: Optional[str] = None
     source_url: Optional[str] = None
+
+
+# ──── Announcements ────
+class AnnouncementIn(BaseModel):
+    title: str = Field(default="", max_length=160)
+    message: str = Field(min_length=2)
+    priority: str = Field(default="normal")  # normal, important, alert
+    announcement_time: Optional[str] = None
+    announcement_date: Optional[str] = None
+
+class AnnouncementOut(BaseModel):
+    id: int
+    title: str
+    message: str
+    announcement_time: str
+    announcement_date: str
+    priority: str
+    is_active: bool
+    created_at: Optional[str] = None
+    created_at_ist: Optional[str] = None
+
+
+# ──── Weather ────
+class WeatherUpdateIn(BaseModel):
+    temperature: float = Field(ge=-10, le=55)
+    humidity: int = Field(ge=0, le=100)
+    wind_speed: float = Field(ge=0, le=200)
+    condition: str = Field(max_length=60)
+    icon: Optional[str] = "⛅"
+
+class WeatherOut(BaseModel):
+    temperature: float
+    temp_display: str
+    humidity: int
+    wind_speed: float
+    condition: str
+    icon: str
+    last_updated: Optional[str] = None
+    last_updated_ist: str
+    source: str
+
+
+# ──── Admin Update Metadata ────
+class AdminUpdateOut(BaseModel):
+    has_admin_data: bool
+    upload_date: Optional[str] = None
+    upload_time: Optional[str] = None
+    formatted_ist: Optional[str] = None
+    data_timestamp: Optional[str] = None
+    admin_update_timestamp: Optional[str] = None
+    display_text: str
+    day_of_week: Optional[str] = None
+    tithi: Optional[str] = None
+    summary: Optional[str] = None
+
 
 
 

@@ -49,12 +49,16 @@ class CCTVStartRequest(BaseModel):
 @router.post("/upload")
 async def upload_cctv_video(
     file: UploadFile = File(...),
-    admin: User = Depends(get_current_admin)
+    admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
 ):
     """
     Admin uploads a CCTV video or image for AI analysis.
     Validates file extension (.mp4, .avi, .mov, .mkv, .jpg, .jpeg, .png, .webp) and size.
+    For images, calculates people count directly and indicates direction data is unavailable.
     """
+    from backend.services.time_utils import format_admin_timestamp, record_admin_update
+
     image_exts = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
     video_exts = {".mp4", ".avi", ".mov", ".mkv"}
     allowed_exts = image_exts | video_exts
@@ -87,6 +91,9 @@ async def upload_cctv_video(
         target_path.unlink(missing_ok=True)
         raise HTTPException(status_code=400, detail=f"File too large ({file_size_mb:.1f}MB). Maximum allowed is {max_mb}MB.")
 
+    now_utc = datetime.utcnow()
+    ts_info = format_admin_timestamp(now_utc)
+
     # When an image is uploaded, immediately run headcount detection
     image_analysis = None
     if media_type == "image":
@@ -99,7 +106,25 @@ async def upload_cctv_video(
     queue_status = image_analysis.get("queue_status", "LOW") if image_analysis else None
     annotated_url = image_analysis.get("annotated_url") if image_analysis else None
 
-    msg = f"CCTV photo analyzed! Detected {headcount} people on photo." if media_type == "image" else f"CCTV video uploaded successfully. Ready for AI analysis."
+    # Record AdminUpdateMeta
+    summary_txt = (
+        f"CCTV photo analyzed: Detected {headcount} people"
+        if media_type == "image"
+        else f"CCTV video uploaded: {safe_filename} ({file_size_mb:.1f}MB)"
+    )
+    record_admin_update(
+        db,
+        update_type="cctv_image" if media_type == "image" else "cctv_video",
+        summary=summary_txt,
+        admin_id=admin.id,
+        data_timestamp=now_utc
+    )
+
+    msg = (
+        f"CCTV photo analyzed! Detected {headcount} people on photo. Direction data unavailable for image."
+        if media_type == "image"
+        else f"CCTV video uploaded successfully. Ready for AI analysis."
+    )
 
     return {
         "success": True,
@@ -109,13 +134,20 @@ async def upload_cctv_video(
         "is_image": media_type == "image",
         "headcount": headcount,
         "observed_count": headcount if headcount is not None else 0,
+        "incoming": None if media_type == "image" else 0,
+        "outgoing": None if media_type == "image" else 0,
+        "net_flow": None if media_type == "image" else 0,
+        "direction_status": "Direction data unavailable for image" if media_type == "image" else "Ready for video tracking",
         "queue_status": queue_status,
         "confidence": image_analysis.get("confidence", 0.90) if image_analysis else None,
         "annotated_image_url": annotated_url,
         "size_mb": round(file_size_mb, 2),
         "path": str(target_path),
+        "upload_date": ts_info["upload_date"],
+        "upload_time": ts_info["upload_time"],
+        "admin_update_timestamp_ist": ts_info["formatted_ist"],
         "message": msg,
-        "source": "Demo CCTV AI Data"
+        "source": "CCTV AI Data"
     }
 
 

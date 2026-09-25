@@ -114,28 +114,45 @@ async function loadDashboardQueueIntelligence() {
     }
 }
 
-// Update date and time display
-function updateDateTime() {
-    const now = new Date();
-    const dateOptions = { day: 'numeric', month: 'short', year: 'numeric' };
-    const dayOptions = { weekday: 'long' };
-    
+// Update date and time display — sourced from the latest authorized admin upload
+async function updateDateTime() {
     const dateElement = document.getElementById('currentDate');
     const dayElement = document.getElementById('currentDay');
-    
-    if (dateElement) {
-        dateElement.textContent = now.toLocaleDateString('en-IN', dateOptions);
-    }
-    
-    if (dayElement) {
-        dayElement.textContent = now.toLocaleDateString('en-IN', dayOptions);
-    }
-    
-    // Tithi calculation (simplified)
     const tithiElement = document.getElementById('tithi');
-    if (tithiElement) {
-        const tithi = calculateTithi(now);
-        tithiElement.textContent = `Tithi: ${tithi}`;
+    
+    try {
+        // Fetch the latest admin update timestamp from the backend
+        const data = await API.get('admin/latest-update');
+        
+        if (data && data.has_admin_data) {
+            // Use the IST-formatted date/time from the latest admin upload
+            if (dateElement) {
+                dateElement.textContent = data.upload_date || 'No latest update available';
+            }
+            if (dayElement) {
+                dayElement.textContent = data.day_of_week || '';
+            }
+            if (tithiElement) {
+                tithiElement.textContent = data.tithi ? `Tithi: ${data.tithi}` : '';
+            }
+        } else {
+            // No admin data yet — show clear message instead of client's local date
+            if (dateElement) {
+                dateElement.textContent = 'No latest update available';
+            }
+            if (dayElement) {
+                dayElement.textContent = '';
+            }
+            if (tithiElement) {
+                tithiElement.textContent = '';
+            }
+        }
+    } catch (error) {
+        console.error('Failed to fetch admin date/time:', error);
+        // On error, show fallback
+        if (dateElement) dateElement.textContent = 'No latest update available';
+        if (dayElement) dayElement.textContent = '';
+        if (tithiElement) tithiElement.textContent = '';
     }
 }
 
@@ -193,17 +210,8 @@ async function loadQueueStatus() {
     }
 }
 
-// Load weather information
-function loadWeather() {
-    // Simulated weather data (in production, use real weather API)
-    const weatherData = {
-        temp: 28,
-        humidity: 65,
-        windSpeed: 12,
-        condition: 'Partly Cloudy',
-        icon: '⛅'
-    };
-    
+// Load weather information from the live admin-managed weather API
+async function loadWeather() {
     const tempElement = document.getElementById('temperature');
     const weatherTempElement = document.getElementById('weatherTemp');
     const humidityElement = document.getElementById('humidity');
@@ -211,57 +219,68 @@ function loadWeather() {
     const weatherConditionElement = document.getElementById('weatherCondition');
     const weatherIconElement = document.getElementById('weatherIcon');
     
-    if (tempElement) {
-        tempElement.textContent = `${weatherData.temp}°C`;
-    }
-    
-    if (weatherTempElement) {
-        weatherTempElement.textContent = `${weatherData.temp}°C`;
-    }
-    
-    if (humidityElement) {
-        humidityElement.textContent = `${weatherData.humidity}%`;
-    }
-    
-    if (windSpeedElement) {
-        windSpeedElement.textContent = `${weatherData.windSpeed} km/h`;
-    }
-    
-    if (weatherConditionElement) {
-        weatherConditionElement.textContent = weatherData.condition;
-    }
-    
-    if (weatherIconElement) {
-        weatherIconElement.textContent = weatherData.icon;
+    try {
+        const data = await API.get('weather');
+        
+        const temp = data.temp_display || (data.temperature !== undefined ? `${Math.round(data.temperature)}°C` : '--°C');
+        const humidity = data.humidity_display || (data.humidity !== undefined ? `${data.humidity}%` : '--%');
+        const wind = data.wind_display || (data.wind_speed !== undefined ? `${Math.round(data.wind_speed)} km/h` : '-- km/h');
+        const condition = data.condition || 'Partly Cloudy';
+        const icon = data.icon || '⛅';
+        
+        if (tempElement) tempElement.textContent = temp;
+        if (weatherTempElement) weatherTempElement.textContent = temp;
+        if (humidityElement) humidityElement.textContent = humidity;
+        if (windSpeedElement) windSpeedElement.textContent = wind;
+        if (weatherConditionElement) weatherConditionElement.textContent = condition;
+        if (weatherIconElement) weatherIconElement.textContent = icon;
+    } catch (error) {
+        console.error('Failed to load weather:', error);
+        // Fallback values on error
+        if (tempElement) tempElement.textContent = '--°C';
+        if (weatherTempElement) weatherTempElement.textContent = '--°C';
+        if (humidityElement) humidityElement.textContent = '--%';
+        if (windSpeedElement) windSpeedElement.textContent = '-- km/h';
+        if (weatherConditionElement) weatherConditionElement.textContent = 'Unavailable';
+        if (weatherIconElement) weatherIconElement.textContent = '🌡️';
     }
 }
 
-// Load TTD announcements
-function loadAnnouncements() {
-    // In production, load from API
-    const announcements = [
-        {
-            time: '10:30 AM',
-            message: 'Special darshan arrangements for Srivari Brahmotsavams'
-        },
-        {
-            time: '9:00 AM',
-            message: 'Free laddu distribution at VQC exit'
-        },
-        {
-            time: '8:00 AM',
-            message: 'Additional compartments opened for Sarva Darshan'
-        }
-    ];
-    
+// Load TTD announcements from live admin API
+async function loadAnnouncements() {
     const announcementsList = document.getElementById('announcementsList');
-    if (announcementsList) {
-        announcementsList.innerHTML = announcements.map(ann => `
-            <div class="announcement-item">
-                <span class="announcement-time">${ann.time}</span>
-                <p>${ann.message}</p>
+    if (!announcementsList) return;
+    
+    try {
+        const data = await API.get('announcements');
+        const announcements = data.announcements || [];
+        
+        if (announcements.length === 0) {
+            announcementsList.innerHTML = `
+                <div class="announcement-item" style="text-align:center; color:var(--muted); font-style:italic;">
+                    <p>No announcements available yet. Admin updates will appear here.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        announcementsList.innerHTML = announcements.map(ann => {
+            const priorityColor = ann.priority === 'alert' ? '#EF4444' : (ann.priority === 'important' ? '#FBBF24' : 'var(--gold)');
+            return `
+                <div class="announcement-item">
+                    <span class="announcement-time" style="color:${priorityColor};">${ann.time || ann.announcement_time || ''}</span>
+                    ${ann.title ? `<strong style="display:block; font-size:0.85rem; margin-bottom:0.2rem;">${ann.title}</strong>` : ''}
+                    <p>${ann.message}</p>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Failed to load announcements:', error);
+        announcementsList.innerHTML = `
+            <div class="announcement-item" style="text-align:center; color:var(--muted); font-style:italic;">
+                <p>Could not load announcements. Please try again.</p>
             </div>
-        `).join('');
+        `;
     }
 }
 
