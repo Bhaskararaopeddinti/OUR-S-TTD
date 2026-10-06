@@ -100,6 +100,7 @@ function initAdminModule() {
       initAdminAnnouncementForm();
       loadAdminAnnouncements();
       initAdminWeatherForm();
+      initMLCrowdPrediction();
 
     })
     .catch(() => {
@@ -1208,4 +1209,190 @@ function initAdminWeatherForm() {
       if (status) { status.style.color = '#EF4444'; status.textContent = `❌ Error: ${err.detail || err.message || 'Failed to update.'}`; }
     }
   });
+}
+
+
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * ML CROWD PREDICTION — admin.js extension
+ * Connects the admin form to POST /api/admin/crowd/predict
+ * and GET /api/admin/crowd/model-info
+ * All prediction values come from the real trained model.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+function initMLCrowdPrediction() {
+  // Set today's date as default
+  const dateInput = document.getElementById('mlPredDate');
+  if (dateInput && !dateInput.value) {
+    dateInput.value = new Date().toISOString().split('T')[0];
+  }
+
+  // Update date info label when date changes
+  if (dateInput) {
+    dateInput.addEventListener('change', () => {
+      const info = document.getElementById('mlDateInfo');
+      if (!info) return;
+      const d = new Date(dateInput.value + 'T00:00:00');
+      if (isNaN(d)) { info.textContent = 'Invalid date'; return; }
+      const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const isWkd = d.getDay() === 0 || d.getDay() === 6;
+      const isSummer = [3,4,5].includes(d.getMonth());
+      info.textContent = `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} | Weekend: ${isWkd ? 'Yes' : 'No'} | Summer: ${isSummer ? 'Yes' : 'No'}`;
+    });
+    // Trigger once on load
+    dateInput.dispatchEvent(new Event('change'));
+  }
+
+  // Load model metadata on page open
+  loadMLModelInfo();
+
+  // Predict button
+  const btn = document.getElementById('mlPredictBtn');
+  if (btn) {
+    btn.addEventListener('click', runMLPrediction);
+  }
+}
+
+async function loadMLModelInfo() {
+  const badge = document.getElementById('mlModelBadge');
+  try {
+    const meta = await API.authGet('admin/crowd/model-info');
+    if (!meta.model_available) {
+      if (badge) { badge.textContent = 'Model not trained'; badge.style.color = '#EF4444'; }
+      return;
+    }
+
+    // Update badge
+    if (badge) {
+      badge.textContent = meta.best_model + ' | R²=' + meta.best_model_r2?.toFixed(4);
+      badge.style.background = 'rgba(74,222,128,0.1)';
+      badge.style.borderColor = 'rgba(74,222,128,0.4)';
+      badge.style.color = '#4ade80';
+    }
+
+    // Update historical count
+    const hCount = document.getElementById('mlHistoricalCount');
+    if (hCount) hCount.textContent = (meta.total_historical_rows || '—').toLocaleString();
+
+    // Populate model comparison table
+    const lrBadge = document.getElementById('mlLrBadge');
+    const rfBadge = document.getElementById('mlRfBadge');
+
+    setElText('mlLrMae',  formatNum(meta.lr_mae));
+    setElText('mlLrRmse', formatNum(meta.lr_rmse));
+    setElText('mlLrR2',   (meta.lr_r2 || 0).toFixed(4));
+    setElText('mlRfMae',  formatNum(meta.rf_mae));
+    setElText('mlRfRmse', formatNum(meta.rf_rmse));
+    setElText('mlRfR2',   (meta.rf_r2 || 0).toFixed(4));
+
+    if (meta.best_model && meta.best_model.toLowerCase().includes('random')) {
+      if (rfBadge) { rfBadge.textContent = 'BEST'; rfBadge.style.background='rgba(74,222,128,0.15)'; rfBadge.style.color='#4ade80'; }
+      if (lrBadge) { lrBadge.textContent = 'Baseline'; }
+    } else {
+      if (lrBadge) { lrBadge.textContent = 'BEST'; lrBadge.style.background='rgba(74,222,128,0.15)'; lrBadge.style.color='#4ade80'; }
+      if (rfBadge) { rfBadge.textContent = 'Alternative'; }
+    }
+
+    setElText('mlDatasetFile', meta.dataset_file || '—');
+    setElText('mlTargetCol',   meta.target_column || 'darshans');
+    setElText('mlTrainRows',   (meta.train_rows || '—').toLocaleString?.() || meta.train_rows);
+    setElText('mlTestRows',    (meta.test_rows  || '—').toLocaleString?.() || meta.test_rows);
+
+  } catch (err) {
+    if (badge) { badge.textContent = 'Model info unavailable'; badge.style.color = '#EF4444'; }
+    console.warn('[ML] Could not load model info:', err);
+  }
+}
+
+async function runMLPrediction() {
+  const btn    = document.getElementById('mlPredictBtn');
+  const status = document.getElementById('mlPredStatus');
+  const panel  = document.getElementById('mlResultPanel');
+
+  const date      = (document.getElementById('mlPredDate')?.value || '').trim();
+  const tempMax   = parseFloat(document.getElementById('mlTempMax')?.value) || 30;
+  const tempMin   = parseFloat(document.getElementById('mlTempMin')?.value) || 22;
+  const humidity  = parseInt(document.getElementById('mlHumidity')?.value)  || 70;
+  const rainfall  = parseFloat(document.getElementById('mlRainfall')?.value) || 0;
+  const trend     = parseInt(document.getElementById('mlGoogleTrend')?.value) || 50;
+  const festival  = parseInt(document.getElementById('mlIsFestival')?.value) || 0;
+  const holiday   = parseInt(document.getElementById('mlIsHoliday')?.value)  || 0;
+  const brahmo    = parseInt(document.getElementById('mlIsBrahmo')?.value)   || 0;
+
+  if (!date) {
+    if (status) { status.style.color='#EF4444'; status.textContent='Please select a date.'; }
+    return;
+  }
+  if (tempMin > tempMax) {
+    if (status) { status.style.color='#EF4444'; status.textContent='Min temp cannot exceed Max temp.'; }
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  if (status) { status.style.color='var(--muted)'; status.textContent='Generating prediction from trained model…'; }
+
+  try {
+    const body = {
+      date,
+      temp_max:           tempMax,
+      temp_min:           tempMin,
+      humidity,
+      rainfall,
+      google_trend_score: trend,
+      is_festival:        festival,
+      is_public_holiday:  holiday,
+      is_brahmostavam:    brahmo,
+    };
+
+    const result = await API.authPost('admin/crowd/predict', body);
+
+    // Display results
+    if (panel) panel.style.display = 'block';
+
+    setElText('mlResultCrowd', (result.predicted_crowd || 0).toLocaleString());
+    setElText('mlResultModel', result.model || '—');
+    setElText('mlResultAnalysis',   result.analysis || '—');
+    setElText('mlResultDisclaimer', result.disclaimer || '—');
+    setElText('mlResultR2', (result.model_meta?.best_model_r2 || 0).toFixed(4));
+
+    // Status badge styling
+    const statusEl = document.getElementById('mlResultStatus');
+    if (statusEl) {
+      const s = (result.crowd_status || '').toUpperCase();
+      statusEl.textContent = s;
+      const colors = {
+        'LOW':       ['rgba(74,222,128,0.15)',  '#4ade80'],
+        'MODERATE':  ['rgba(250,204,21,0.15)',  '#facc15'],
+        'HIGH':      ['rgba(251,146,60,0.15)',  '#fb923c'],
+        'VERY HIGH': ['rgba(239,68,68,0.15)',   '#ef4444'],
+      };
+      const [bg, fg] = colors[s] || ['rgba(255,255,255,0.1)', 'var(--text)'];
+      statusEl.style.background = bg;
+      statusEl.style.color = fg;
+    }
+
+    if (status) { status.style.color='#4ade80'; status.textContent='Prediction generated successfully.'; }
+    setTimeout(() => { if (status) status.textContent = ''; }, 5000);
+
+  } catch (err) {
+    if (panel) panel.style.display = 'none';
+    const msg = err?.detail || err?.message || 'Prediction failed. Check server logs.';
+    if (status) { status.style.color='#EF4444'; status.textContent='Error: ' + msg; }
+    console.error('[ML Prediction]', err);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// Utility helpers
+function setElText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = (value === null || value === undefined) ? '—' : value;
+}
+function formatNum(n) {
+  if (n === null || n === undefined) return '—';
+  return Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
 }

@@ -949,3 +949,73 @@ def update_weather(
     }
 
 
+
+
+# ---------------------------------------------------------
+# ML CROWD PREDICTION
+# POST /api/admin/crowd/predict
+# GET  /api/admin/crowd/model-info
+# ---------------------------------------------------------
+from datetime import date as _dt_date_ml
+from pydantic import BaseModel as _PydBaseModel, Field as _PydField
+
+
+class CrowdPredictRequest(_PydBaseModel):
+    date:               str   = _PydField(...,  description="Target date YYYY-MM-DD")
+    temp_max:           float = _PydField(30.0, description="Max temperature C")
+    temp_min:           float = _PydField(22.0, description="Min temperature C")
+    humidity:           int   = _PydField(70,   description="Relative humidity percent")
+    rainfall:           float = _PydField(0.0,  description="Rainfall mm")
+    google_trend_score: int   = _PydField(50,   description="Google Trend Score 0-100")
+    is_public_holiday:  int   = _PydField(0,    description="1 if public holiday else 0")
+    is_festival:        int   = _PydField(0,    description="1 if festival else 0")
+    is_brahmostavam:    int   = _PydField(0,    description="1 if Brahmotsavam else 0")
+
+
+@router.post("/crowd/predict")
+def predict_crowd(req: CrowdPredictRequest, admin: User = Depends(get_current_admin)):
+    """Real ML crowd prediction using Random Forest trained on actual historical darshan data."""
+    from backend.ml import crowd_predictor
+    try:
+        target_date = _dt_date_ml.fromisoformat(req.date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date. Use YYYY-MM-DD.")
+    if not (0 <= req.humidity <= 100):
+        raise HTTPException(status_code=400, detail="Humidity must be 0-100.")
+    if req.temp_min > req.temp_max:
+        raise HTTPException(status_code=400, detail="temp_min cannot exceed temp_max.")
+    if not (0 <= req.google_trend_score <= 100):
+        raise HTTPException(status_code=400, detail="google_trend_score must be 0-100.")
+    try:
+        return crowd_predictor.predict(
+            target_date=target_date,
+            temp_max=req.temp_max,
+            temp_min=req.temp_min,
+            humidity=req.humidity,
+            rainfall=req.rainfall,
+            google_trend_score=req.google_trend_score,
+            is_public_holiday=req.is_public_holiday,
+            is_festival=req.is_festival,
+            is_brahmostavam=req.is_brahmostavam,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Prediction error: " + str(e))
+
+
+@router.get("/crowd/model-info")
+def crowd_model_info(admin: User = Depends(get_current_admin)):
+    """Return metadata about the trained crowd prediction model."""
+    from backend.ml import crowd_predictor
+    try:
+        meta = crowd_predictor.get_model_meta()
+        return {"success": True, "model_available": True, **meta}
+    except FileNotFoundError:
+        return {
+            "success": False,
+            "model_available": False,
+            "message": "Model not trained. Run: python -m backend.ml.train_crowd_model",
+        }
+    except Exception as e:
+        return {"success": False, "model_available": False, "message": str(e)}

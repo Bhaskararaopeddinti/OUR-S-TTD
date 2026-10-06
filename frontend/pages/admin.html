@@ -434,6 +434,137 @@
       </div>
     </div>
 
+    <!-- ── ML CROWD PREDICTION (Historical Data + Real Model) ── -->
+    <div class="dashboard-card" id="mlPredictionSection" style="margin-top:1.5rem; border:2px solid rgba(212,175,55,0.3); background:linear-gradient(135deg,rgba(10,14,26,0.98),rgba(20,28,48,0.98));">
+      <h3 style="display:flex;align-items:center;gap:0.6rem;">
+        <span style="font-size:1.5rem;">🤖</span>
+        <span>AI Crowd Prediction — Historical Data Model</span>
+        <span id="mlModelBadge" style="margin-left:auto;font-size:0.75rem;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.4);border-radius:20px;padding:0.25rem 0.75rem;color:var(--gold);">Loading model info…</span>
+      </h3>
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">
+        Predicts expected darshan crowd count using <strong>Linear Regression &amp; Random Forest</strong> trained on <strong id="mlHistoricalCount">—</strong> real TTD historical records.
+        All values come from the actual trained model — no fake data.
+      </p>
+
+      <!-- Model Comparison Table (collapsed initially) -->
+      <div id="mlModelMetaPanel" style="display:none;margin-bottom:1.25rem;border-radius:10px;overflow:hidden;border:1px solid rgba(212,175,55,0.2);">
+        <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+          <thead style="background:rgba(212,175,55,0.1);">
+            <tr>
+              <th style="padding:0.6rem 1rem;text-align:left;color:var(--gold);">Model</th>
+              <th style="padding:0.6rem 1rem;text-align:right;color:var(--gold);">MAE</th>
+              <th style="padding:0.6rem 1rem;text-align:right;color:var(--gold);">RMSE</th>
+              <th style="padding:0.6rem 1rem;text-align:right;color:var(--gold);">R²</th>
+              <th style="padding:0.6rem 1rem;text-align:center;color:var(--gold);">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="mlLrRow" style="border-top:1px solid rgba(255,255,255,0.06);">
+              <td style="padding:0.6rem 1rem;">Linear Regression</td>
+              <td id="mlLrMae" style="padding:0.6rem 1rem;text-align:right;">—</td>
+              <td id="mlLrRmse" style="padding:0.6rem 1rem;text-align:right;">—</td>
+              <td id="mlLrR2" style="padding:0.6rem 1rem;text-align:right;">—</td>
+              <td style="padding:0.6rem 1rem;text-align:center;"><span id="mlLrBadge" style="font-size:0.72rem;padding:0.2rem 0.6rem;border-radius:10px;background:rgba(255,255,255,0.05);">—</span></td>
+            </tr>
+            <tr id="mlRfRow" style="border-top:1px solid rgba(255,255,255,0.06);">
+              <td style="padding:0.6rem 1rem;">Random Forest</td>
+              <td id="mlRfMae" style="padding:0.6rem 1rem;text-align:right;">—</td>
+              <td id="mlRfRmse" style="padding:0.6rem 1rem;text-align:right;">—</td>
+              <td id="mlRfR2" style="padding:0.6rem 1rem;text-align:right;">—</td>
+              <td style="padding:0.6rem 1rem;text-align:center;"><span id="mlRfBadge" style="font-size:0.72rem;padding:0.2rem 0.6rem;border-radius:10px;background:rgba(255,255,255,0.05);">—</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="font-size:0.76rem;color:var(--muted);padding:0.5rem 1rem;">
+          Dataset: <span id="mlDatasetFile">—</span> | Target: <strong id="mlTargetCol">darshans</strong> | Training rows: <span id="mlTrainRows">—</span> | Test rows: <span id="mlTestRows">—</span>
+        </p>
+      </div>
+      <button id="mlToggleMetaBtn" onclick="document.getElementById('mlModelMetaPanel').style.display = document.getElementById('mlModelMetaPanel').style.display==='none' ? 'block' : 'none'; this.textContent = this.textContent.includes('Show') ? '▲ Hide Model Comparison' : '▼ Show Model Comparison'" style="font-size:0.78rem;background:transparent;border:1px solid rgba(212,175,55,0.3);color:var(--gold);border-radius:6px;padding:0.3rem 0.8rem;cursor:pointer;margin-bottom:1.2rem;">▼ Show Model Comparison</button>
+
+      <!-- Prediction Input Form -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.2rem;">
+        <div>
+          <label style="display:block;margin-bottom:0.35rem;font-size:0.82rem;color:var(--muted);">📅 Target Date</label>
+          <input type="date" id="mlPredDate" style="width:100%;padding:0.55rem 0.75rem;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:var(--text);font-size:0.88rem;" />
+          <p style="font-size:0.72rem;color:var(--muted);margin-top:0.25rem;" id="mlDateInfo">Day, month, weekday auto-derived</p>
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:0.35rem;font-size:0.82rem;color:var(--muted);">🌡️ Max Temp (°C)</label>
+          <input type="number" id="mlTempMax" value="30" min="10" max="50" step="0.5" style="width:100%;padding:0.55rem 0.75rem;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:var(--text);font-size:0.88rem;" />
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:0.35rem;font-size:0.82rem;color:var(--muted);">🌡️ Min Temp (°C)</label>
+          <input type="number" id="mlTempMin" value="22" min="5" max="45" step="0.5" style="width:100%;padding:0.55rem 0.75rem;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:var(--text);font-size:0.88rem;" />
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:0.35rem;font-size:0.82rem;color:var(--muted);">💧 Humidity (%)</label>
+          <input type="number" id="mlHumidity" value="70" min="0" max="100" style="width:100%;padding:0.55rem 0.75rem;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:var(--text);font-size:0.88rem;" />
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:0.35rem;font-size:0.82rem;color:var(--muted);">🌧️ Rainfall (mm)</label>
+          <input type="number" id="mlRainfall" value="0" min="0" max="500" step="0.1" style="width:100%;padding:0.55rem 0.75rem;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:var(--text);font-size:0.88rem;" />
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:0.35rem;font-size:0.82rem;color:var(--muted);">📊 Google Trend Score (0-100)</label>
+          <input type="number" id="mlGoogleTrend" value="50" min="0" max="100" style="width:100%;padding:0.55rem 0.75rem;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:var(--text);font-size:0.88rem;" />
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:0.35rem;font-size:0.82rem;color:var(--muted);">🎉 Festival Day</label>
+          <select id="mlIsFestival" style="width:100%;padding:0.55rem 0.75rem;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(20,28,48,0.95);color:var(--text);font-size:0.88rem;">
+            <option value="0">No</option>
+            <option value="1">Yes</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:0.35rem;font-size:0.82rem;color:var(--muted);">🏛️ Public Holiday</label>
+          <select id="mlIsHoliday" style="width:100%;padding:0.55rem 0.75rem;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(20,28,48,0.95);color:var(--text);font-size:0.88rem;">
+            <option value="0">No</option>
+            <option value="1">Yes</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:0.35rem;font-size:0.82rem;color:var(--muted);">🔔 Brahmotsavam Period</label>
+          <select id="mlIsBrahmo" style="width:100%;padding:0.55rem 0.75rem;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(20,28,48,0.95);color:var(--text);font-size:0.88rem;">
+            <option value="0">No</option>
+            <option value="1">Yes</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="mlPredictBtn" class="quick-action-btn" style="background:linear-gradient(135deg,#D4AF37,#B8942A);color:#000;font-weight:700;font-size:0.95rem;padding:0.75rem 2rem;border-radius:10px;border:none;cursor:pointer;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+        ⚡ Generate Real Crowd Prediction
+      </button>
+      <span id="mlPredStatus" style="margin-left:1rem;font-size:0.85rem;"></span>
+
+      <!-- Result Panel -->
+      <div id="mlResultPanel" style="display:none;margin-top:1.5rem;border-radius:12px;overflow:hidden;border:1px solid rgba(212,175,55,0.3);">
+        <div style="padding:1.25rem 1.5rem;background:rgba(212,175,55,0.08);">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1.25rem;margin-bottom:1.2rem;">
+            <div style="text-align:center;">
+              <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.35rem;">Predicted Darshans</div>
+              <div id="mlResultCrowd" style="font-size:2rem;font-weight:800;color:var(--gold);">—</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.35rem;">Crowd Status</div>
+              <div id="mlResultStatus" style="font-size:1.4rem;font-weight:700;padding:0.4rem 1.2rem;border-radius:20px;display:inline-block;background:rgba(255,255,255,0.08);">—</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.35rem;">Model Used</div>
+              <div id="mlResultModel" style="font-size:0.88rem;font-weight:600;color:var(--text);">—</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.35rem;">Model R²</div>
+              <div id="mlResultR2" style="font-size:1.1rem;font-weight:700;color:#4ade80;">—</div>
+            </div>
+          </div>
+          <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:1rem;">
+            <p style="font-size:0.85rem;line-height:1.6;color:var(--text);margin-bottom:0.5rem;" id="mlResultAnalysis">—</p>
+            <p style="font-size:0.75rem;color:var(--muted);font-style:italic;" id="mlResultDisclaimer">—</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── EXISTING SECTIONS ── -->
     <!-- Crowd Image Upload -->
     <div class="dashboard-card" style="margin-top: 1.5rem;">

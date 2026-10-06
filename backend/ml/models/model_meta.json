@@ -1,0 +1,37 @@
+{
+  "target_column": "darshans",
+  "feature_columns": [
+    "weekend",
+    "weekday",
+    "summer",
+    "temp_max",
+    "temp_min",
+    "humidity",
+    "rainfall",
+    "google_trend_score",
+    "is_public_holiday",
+    "is_festival",
+    "is_brahmostavam",
+    "day",
+    "month"
+  ],
+  "best_model": "Random Forest Regression",
+  "best_model_mae": 5393.01,
+  "best_model_rmse": 6920.78,
+  "best_model_r2": 0.3904,
+  "lr_mae": 6168.39,
+  "lr_rmse": 7777.86,
+  "lr_r2": 0.23,
+  "rf_mae": 5393.01,
+  "rf_rmse": 6920.78,
+  "rf_r2": 0.3904,
+  "crowd_thresholds": {
+    "LOW_MAX": 60921.25,
+    "MODERATE_MAX": 68443.0,
+    "HIGH_MAX": 76911.0
+  },
+  "train_rows": 2857,
+  "test_rows": 715,
+  "total_historical_rows": 3572,
+  "dataset_file": "backend\\data\\final_data.csv"
+}
