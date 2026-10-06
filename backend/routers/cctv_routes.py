@@ -99,10 +99,14 @@ async def upload_cctv_video(
     if media_type == "image":
         try:
             image_analysis = cctv_worker.analyze_image(str(target_path), location_name="Sarva Darshan VQC I")
+            if not image_analysis.get("success"):
+                raise HTTPException(status_code=400, detail=image_analysis.get("message", "Unable to decode uploaded image."))
+        except HTTPException:
+            raise
         except Exception as e:
-            image_analysis = {"headcount": 0, "error": str(e)}
+            raise HTTPException(status_code=500, detail=f"YOLO image analysis failed: {str(e)}")
 
-    headcount = image_analysis.get("headcount", 0) if image_analysis else None
+    headcount = image_analysis.get("headcount") if image_analysis else None
     queue_status = image_analysis.get("queue_status", "LOW") if image_analysis else None
     annotated_url = image_analysis.get("annotated_url") if image_analysis else None
 

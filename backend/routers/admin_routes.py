@@ -583,6 +583,7 @@ async def analyze_crowd_media(
     outgoing_count = None
     net_flow = None
     direction_status = "Direction data unavailable for image"
+    image_url = f"/uploads/crowd_images/{safe_filename}"
 
     if is_image:
         try:
@@ -591,42 +592,48 @@ async def analyze_crowd_media(
             nparr = np.frombuffer(contents, np.uint8)
             frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-            if frame is not None:
-                detector = _get_img_detector()
-                if detector:
-                    detections = detector.detect_people(frame)
-                    detected_count = len(detections)
-                    if detections:
-                        confidence = round(float(sum(d[1] for d in detections) / len(detections)), 2)
+            if frame is None or frame.shape[0] == 0 or frame.shape[1] == 0:
+                raise ValueError("Unable to decode uploaded image. File may be corrupted or in an unsupported format.")
+
+            detector = _get_img_detector()
+            if not detector:
+                raise RuntimeError("YOLO person detector is not available.")
+
+            detections = detector.detect_people(frame)
+            detected_count = len(detections)
+            if detections:
+                confidence = round(float(sum(d[1] for d in detections) / len(detections)), 2)
+            else:
+                confidence = 0.90
+
+            # Save visual annotated image with bounding boxes
+            try:
+                annotated_frame = detector.annotate_image(frame.copy(), detections, location)
+                annotated_name = f"annotated_{safe_filename}"
+                annotated_path = CROWD_IMAGE_UPLOAD_DIR / annotated_name
+                cv2.imwrite(str(annotated_path), annotated_frame)
+                image_url = f"/uploads/crowd_images/{annotated_name}"
+            except Exception as ann_err:
+                logger.warning("Could not save annotated crowd image: %s", ann_err)
         except Exception as cv_err:
-            pass
+            logger.error("YOLO Image processing error: %s", cv_err)
+            raise HTTPException(400, f"Unable to decode or process uploaded image: {str(cv_err)}")
     else:
-        # Video file processing
+        # Video file processing: execute real ByteTrack video analysis
         direction_status = "Video analysis active"
         try:
-            from backend.services.cctv_vision import cctv_worker
-            # Start worker on this uploaded video
-            cctv_worker.start(
-                mode="demo_video",
-                video_path=str(target_path),
-                location_name=location,
-                direction_mode="left_to_right",
-                interval_minutes=15,
-                camera_id="ADMIN_UPLOAD"
-            )
-            # Sample current status or read video metadata
-            status = cctv_worker.get_status()
-            detected_count = status.get("observed_count") or 25
-            incoming_count = status.get("incoming") or 15
-            outgoing_count = status.get("outgoing") or 10
-            net_flow = incoming_count - outgoing_count
-            direction_status = f"Tracked (Net: {net_flow:+d})"
-        except Exception:
-            detected_count = 25
-            incoming_count = 15
-            outgoing_count = 10
-            net_flow = 5
-            direction_status = "Video flow tracked"
+            from backend.services.cctv_vision import analyze_video_summary
+            summary = analyze_video_summary(str(target_path), max_frames=250)
+            detected_count = summary["peak_observed"]
+            incoming_count = summary["incoming"]
+            outgoing_count = summary["outgoing"]
+            net_flow = summary["net_flow"]
+            total_unique = summary.get("total_unique", detected_count)
+            direction_status = f"Tracked (In: {incoming_count}, Out: {outgoing_count}, Net: {net_flow:+d}, Total: {total_unique})"
+            confidence = summary.get("confidence", 0.90)
+        except Exception as vid_err:
+            logger.error("YOLO Video processing error: %s", vid_err)
+            raise HTTPException(400, f"Unable to process uploaded video: {str(vid_err)}")
 
     # Determine crowd level
     clean_override = (override_level or "").strip().upper()
@@ -639,10 +646,8 @@ async def analyze_crowd_media(
             crowd_level = "HIGH"
         elif detected_count >= 10:
             crowd_level = "MODERATE"
-        elif detected_count >= 1:
-            crowd_level = "LOW"
         else:
-            crowd_level = "MODERATE"
+            crowd_level = "LOW"
 
     # Map crowd level to estimated wait time
     wait_time_map = {
@@ -658,7 +663,7 @@ async def analyze_crowd_media(
     analysis_record = CrowdAnalysis(
         location_id=1,
         location_name=location,
-        image_url=f"/uploads/crowd_images/{safe_filename}",
+        image_url=image_url,
         crowd_level=crowd_level,
         detected_count=detected_count,
         confidence=confidence,
@@ -782,7 +787,7 @@ async def analyze_crowd_media(
         "direction_status": direction_status,
         "confidence": confidence,
         "estimated_wait_minutes": estimated_wait_minutes,
-        "image_url": f"/uploads/crowd_images/{safe_filename}",
+        "image_url": image_url,
         "upload_date": upload_date,
         "upload_time": upload_time,
         "admin_update_timestamp_ist": formatted_ist,
