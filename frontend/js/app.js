@@ -1443,18 +1443,6 @@ function initWebSocket() {
           if (window.showToast) {
             window.showToast('📥 Live queue update received from Admin', 'info');
           }
-        } else if (msg.type === 'cctv_queue_update') {
-          // CCTV AI crowd data — update queue/dashboard views
-          if (typeof updateDateTime === 'function') updateDateTime();
-          if (typeof loadQueueIntelligence === 'function') loadQueueIntelligence();
-          if (typeof loadDashboardQueueIntelligence === 'function') loadDashboardQueueIntelligence();
-          if (typeof loadQueueStatus === 'function') loadQueueStatus();
-          if (typeof loadHeroStats === 'function') loadHeroStats();
-          // Notify admin panel CCTV module if it is listening
-          if (typeof window.handleCctvQueueUpdate === 'function') window.handleCctvQueueUpdate(msg);
-          if (window.showToast) {
-            window.showToast('🎥 CCTV AI crowd update: ' + (msg.queue_status || 'updating…'), 'success');
-          }
         } else if (msg.type === 'announcement_update') {
           if (typeof loadAnnouncements === 'function') loadAnnouncements();
           if (typeof window.loadAdminAnnouncements === 'function') window.loadAdminAnnouncements();

@@ -532,7 +532,7 @@ def map_locations(category: str | None = None, db: Session = Depends(get_db)):
             "description": loc.description,
             "latitude": loc.latitude,
             "longitude": loc.longitude,
-            "icon": loc.icon
+            "icon": getattr(loc, "icon", None)
         }
         for loc in locations
     ]
@@ -763,3 +763,110 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
             )
         }
     }
+
+
+# ──────────────────────── ML Crowd Prediction (Public) ────────────────────────
+from datetime import date as _dt_date_ml
+from pydantic import BaseModel as _PydBaseModel, Field as _PydField
+
+class PublicCrowdPredictRequest(_PydBaseModel):
+    date:               str   = _PydField(...,  description="Target date YYYY-MM-DD")
+    temp_max:           float = _PydField(30.0, description="Max temperature in Celsius")
+    temp_min:           float = _PydField(22.0, description="Min temperature in Celsius")
+    humidity:           int   = _PydField(70,   description="Relative humidity percent (0-100)")
+    rainfall:           float = _PydField(0.0,  description="Rainfall in mm")
+    google_trend_score: int   = _PydField(50,   description="Search trend score (0-100)")
+    is_public_holiday:  int   = _PydField(0,    description="1 if public holiday else 0")
+    is_festival:        int   = _PydField(0,    description="1 if festival day else 0")
+    is_brahmostavam:    int   = _PydField(0,    description="1 if Brahmotsavam period else 0")
+
+
+@router.post("/crowd/predict", tags=["Crowd Prediction"])
+def public_predict_crowd(req: PublicCrowdPredictRequest):
+    """
+    Generate a data-driven crowd prediction from the trained ML model
+    (Random Forest / Linear Regression) based on historical darshan records.
+    """
+    from backend.ml import crowd_predictor
+    try:
+        target_date = _dt_date_ml.fromisoformat(req.date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Please use YYYY-MM-DD.")
+    if not (0 <= req.humidity <= 100):
+        raise HTTPException(status_code=400, detail="Humidity must be between 0 and 100.")
+    if req.temp_min > req.temp_max:
+        raise HTTPException(status_code=400, detail="temp_min cannot be greater than temp_max.")
+    if not (0 <= req.google_trend_score <= 100):
+        raise HTTPException(status_code=400, detail="google_trend_score must be between 0 and 100.")
+    try:
+        return crowd_predictor.predict(
+            target_date=target_date,
+            temp_max=req.temp_max,
+            temp_min=req.temp_min,
+            humidity=req.humidity,
+            rainfall=req.rainfall,
+            google_trend_score=req.google_trend_score,
+            is_public_holiday=req.is_public_holiday,
+            is_festival=req.is_festival,
+            is_brahmostavam=req.is_brahmostavam,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
+
+
+@router.get("/crowd/predict", tags=["Crowd Prediction"])
+def public_get_predict_crowd(
+    date: str | None = None,
+    temp_max: float = 30.0,
+    temp_min: float = 22.0,
+    humidity: int = 70,
+    rainfall: float = 0.0,
+    google_trend_score: int = 50,
+    is_public_holiday: int = 0,
+    is_festival: int = 0,
+    is_brahmostavam: int = 0,
+):
+    """
+    GET endpoint for ML crowd prediction. If date is omitted, predicts for today.
+    """
+    from backend.ml import crowd_predictor
+    try:
+        target_date = _dt_date_ml.fromisoformat(date) if date else _dt_date_ml.today()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Please use YYYY-MM-DD.")
+    try:
+        return crowd_predictor.predict(
+            target_date=target_date,
+            temp_max=temp_max,
+            temp_min=temp_min,
+            humidity=humidity,
+            rainfall=rainfall,
+            google_trend_score=google_trend_score,
+            is_public_holiday=is_public_holiday,
+            is_festival=is_festival,
+            is_brahmostavam=is_brahmostavam,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
+
+
+@router.get("/crowd/model-info", tags=["Crowd Prediction"])
+def public_crowd_model_info():
+    """Return metrics and details of the trained ML crowd prediction model."""
+    from backend.ml import crowd_predictor
+    try:
+        meta = crowd_predictor.get_model_meta()
+        return {"success": True, "model_available": True, **meta}
+    except FileNotFoundError:
+        return {
+            "success": False,
+            "model_available": False,
+            "message": "Model not trained yet. Run: python -m backend.ml.train_crowd_model",
+        }
+    except Exception as e:
+        return {"success": False, "model_available": False, "message": str(e)}
+

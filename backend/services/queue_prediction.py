@@ -140,50 +140,14 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
     data_source_label = "AI Estimated Data"
     data_source_code = "ai_prediction"
 
-    # 0. Check Live CCTV Vision Worker first
-    try:
-        from backend.services.cctv_vision import cctv_worker
-        cctv_live = cctv_worker.get_status()
-        incoming_v = cctv_live.get("incoming") or 0
-        outgoing_v = cctv_live.get("outgoing") or 0
-        observed_v = cctv_live.get("observed_count") or 0
-        is_active = cctv_live.get("is_running") or cctv_live.get("status") in ("COMPLETED", "PROCESSING")
-        if is_active and (observed_v > 0 or incoming_v > 0 or outgoing_v > 0):
-            has_reliable_data = True
-            data_source_label = cctv_live.get("source", "Demo CCTV AI Data")
-            data_source_code = cctv_live.get("source_db", "demo_cctv_ai")
-            admin_crowd_data = {
-                "estimated_crowd": cctv_live.get("estimated_crowd", observed_v),
-                "observed_count": observed_v,
-                "queue_status": cctv_live.get("queue_status", "LOW"),
-                "incoming_pilgrims": incoming_v,
-                "outgoing_pilgrims": outgoing_v,
-                "net_pilgrims": cctv_live.get("net_flow") or (incoming_v - outgoing_v),
-                "trend": cctv_live.get("trend") or "STABLE",
-                "festival": False,
-                "slot": f"{(hour//2)*2:02d}:00 – {(hour//2)*2+2:02d}:00",
-                "source": data_source_code,
-                "source_label": data_source_label,
-            }
-    except Exception as cctv_e:
-        import logging
-        logging.getLogger(__name__).debug("Could not read live CCTV worker: %s", cctv_e)
-
-    # 1. If not running, check Database (CCTV records or PilgrimFlowData)
-    if not admin_crowd_data and db:
+    # 0. Check Database for PilgrimFlowData
+    if db:
         try:
             from datetime import date as dt_date
-            from backend.models import PilgrimFlowData, CCTVCrowdRecord
+            from backend.models import PilgrimFlowData
             from sqlalchemy import desc
 
             today_str = dt_date.today().strftime("%Y-%m-%d")
-
-            # Check for latest CCTV records
-            latest_cctv = (
-                db.query(CCTVCrowdRecord)
-                .order_by(desc(CCTVCrowdRecord.timestamp))
-                .first()
-            )
 
             # Query all slots for today
             all_today_slots = (
@@ -203,53 +167,12 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
                         .all()
                     )
 
-            def _to_naive(dt):
-                if dt is None:
-                    return None
-                return dt.replace(tzinfo=None) if hasattr(dt, 'tzinfo') and dt.tzinfo else dt
-
-            cctv_ts = _to_naive(latest_cctv.timestamp) if latest_cctv else None
-            slot_ts = _to_naive(all_today_slots[-1].created_at) if all_today_slots else None
-
-            if latest_cctv and (not all_today_slots or (cctv_ts and slot_ts and cctv_ts >= slot_ts)):
-                has_reliable_data = True
-                if latest_cctv.source == "authorized_cctv":
-                    data_source_label = "Authorized CCTV Stream"
-                elif latest_cctv.source in ("demo_cctv_video", "demo_cctv_ai"):
-                    data_source_label = "Demo CCTV AI Data"
-                elif latest_cctv.source in ("cctv_image", "admin_image"):
-                    data_source_label = "Admin Crowd Photo Analysis"
-                else:
-                    data_source_label = "CCTV AI Data"
-
-                data_source_code = latest_cctv.source
-                crowd_val = latest_cctv.observed_count if latest_cctv.observed_count > 0 else max(0, latest_cctv.net_flow)
-                admin_crowd_data = {
-                    "estimated_crowd": crowd_val,
-                    "observed_count": latest_cctv.observed_count,
-                    "queue_status": latest_cctv.queue_status,
-                    "incoming_pilgrims": latest_cctv.incoming_count,
-                    "outgoing_pilgrims": latest_cctv.outgoing_count,
-                    "net_pilgrims": latest_cctv.net_flow,
-                    "trend": latest_cctv.trend,
-                    "festival": False,
-                    "slot": f"{latest_cctv.interval_start} – {latest_cctv.interval_end}" if latest_cctv.interval_start else "Live",
-                    "source": data_source_code,
-                    "source_label": data_source_label,
-                }
-            elif all_today_slots:
+            if all_today_slots:
                 has_reliable_data = True
                 latest_flow = all_today_slots[-1]
                 src = getattr(latest_flow, "source", "manual") or "manual"
                 data_source_code = src
-                if src == "authorized_cctv":
-                    data_source_label = "Authorized CCTV Stream"
-                elif src in ("demo_cctv_video", "demo_cctv_ai"):
-                    data_source_label = "Demo CCTV AI Data"
-                elif src in ("cctv_image", "admin_image"):
-                    data_source_label = "Admin Crowd Photo Analysis"
-                else:
-                    data_source_label = "Live Admin Data"
+                data_source_label = "Authorized TTD Data" if src == "authorized_ttd_data" else "Live Admin Pilgrim Data"
 
                 admin_crowd_data = {
                     "estimated_crowd": latest_flow.estimated_crowd,
@@ -269,7 +192,7 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
                 }
         except Exception as e:
             import logging
-            logging.getLogger(__name__).debug("Could not fetch queue database data: %s", e)
+            logging.getLogger(__name__).debug("Could not fetch pilgrim flow data: %s", e)
 
     # 1. CURRENT QUEUE STATUS CALCULATION
     current_crowd = 0
@@ -462,7 +385,7 @@ def predict_queue_status(current_wait_minutes: int = None, current_density: str 
             "status_badge": "Data unavailable",
             "points": [
                 "Prediction unavailable – more data required.",
-                "Live CCTV AI or admin flow records have not yet been recorded for this period.",
+                "Live queue status or admin flow records have not yet been recorded for this period.",
                 "Please verify physical display boards at Vaikuntam Queue Complex."
             ]
         }

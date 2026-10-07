@@ -259,27 +259,6 @@ class TransportStop(Base):
 
 
 
-class CrowdAnalysis(Base):
-    """Computer vision crowd analysis from admin uploaded images."""
-    __tablename__ = "crowd_analyses"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    location_id: Mapped[int] = mapped_column(Integer, default=1)
-    location_name: Mapped[str] = mapped_column(String(120), default="Sarva Darshan VQC")
-    image_url: Mapped[str] = mapped_column(Text, default="")
-    crowd_level: Mapped[str] = mapped_column(String(20)) # LOW, MODERATE, HIGH, VERY HIGH
-    detected_count: Mapped[int] = mapped_column(Integer, default=0)
-    confidence: Mapped[float] = mapped_column(Float, default=0.92)
-    upload_date: Mapped[str] = mapped_column(String(40), default="")
-    upload_time: Mapped[str] = mapped_column(String(40), default="")
-    direction_status: Mapped[str] = mapped_column(String(80), default="Direction data unavailable for image")
-    incoming_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    outgoing_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    net_flow: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    admin_update_timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    admin_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-
 class QueueRecord(Base):
     """Structured darshan queue record with source tracking."""
     __tablename__ = "queue_records"
@@ -288,7 +267,7 @@ class QueueRecord(Base):
     location_name: Mapped[str] = mapped_column(String(120), default="Vaikuntam Queue Complex (VQC)")
     crowd_level: Mapped[str] = mapped_column(String(20), default="MODERATE")
     estimated_wait_minutes: Mapped[int] = mapped_column(Integer, default=180)
-    source: Mapped[str] = mapped_column(String(40), default="AI_PREDICTION") # ADMIN_IMAGE, MANUAL_ADMIN, OFFICIAL_TTD_API, AI_PREDICTION, DEMO
+    source: Mapped[str] = mapped_column(String(40), default="AI_PREDICTION") # MANUAL_ADMIN, OFFICIAL_TTD_API, AI_PREDICTION, HISTORICAL_ML
     confidence: Mapped[float] = mapped_column(Float, default=0.90)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -308,7 +287,7 @@ class AdminSession(Base):
 
 
 class PilgrimFlowData(Base):
-    """Admin-entered or CCTV AI 2-hour pilgrim arrival/departure counts per time slot."""
+    """Pilgrim arrival/departure counts per time slot (manual admin entry or authorized TTD data import)."""
     __tablename__ = "pilgrim_flow_data"
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[str] = mapped_column(String(20), index=True)           # YYYY-MM-DD
@@ -321,30 +300,8 @@ class PilgrimFlowData(Base):
     festival: Mapped[bool] = mapped_column(Boolean, default=False)
     queue_status: Mapped[str] = mapped_column(String(20), default="MODERATE")  # backend-calculated
     queue_pressure: Mapped[float] = mapped_column(Float, default=0.0)    # 0.0-1.0
-    source: Mapped[str] = mapped_column(String(40), default="manual")    # demo_cctv_ai, cctv_ai, manual
+    source: Mapped[str] = mapped_column(String(40), default="manual")    # manual, authorized_ttd_data
     created_by_admin: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-
-class CCTVCrowdRecord(Base):
-    """CCTV AI people counting record with time aggregation and camera location."""
-    __tablename__ = "cctv_crowd_records"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    camera_id: Mapped[str] = mapped_column(String(80), default="CAM_01_DEMO")
-    location_id: Mapped[int] = mapped_column(Integer, default=1)
-    location_name: Mapped[str] = mapped_column(String(120), default="Sarva Darshan VQC I")
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
-    interval_start: Mapped[str] = mapped_column(String(20), default="")  # HH:MM
-    interval_end: Mapped[str] = mapped_column(String(20), default="")    # HH:MM
-    incoming_count: Mapped[int] = mapped_column(Integer, default=0)
-    outgoing_count: Mapped[int] = mapped_column(Integer, default=0)
-    observed_count: Mapped[int] = mapped_column(Integer, default=0)
-    net_flow: Mapped[int] = mapped_column(Integer, default=0)
-    queue_status: Mapped[str] = mapped_column(String(20), default="MODERATE")
-    trend: Mapped[str] = mapped_column(String(20), default="STABLE")
-    confidence: Mapped[float] = mapped_column(Float, default=0.92)
-    source: Mapped[str] = mapped_column(String(40), default="demo_cctv_ai")  # demo_cctv_ai, cctv_ai, manual
-    video_filename: Mapped[str] = mapped_column(String(255), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
@@ -352,7 +309,7 @@ class AdminUpdateMeta(Base):
     """Tracks authorized admin uploads and updates with exact IST timestamps."""
     __tablename__ = "admin_updates"
     id: Mapped[int] = mapped_column(primary_key=True)
-    update_type: Mapped[str] = mapped_column(String(60))  # crowd_upload, cctv_analysis, pilgrim_flow, announcement, queue_update, transport, weather
+    update_type: Mapped[str] = mapped_column(String(60))  # pilgrim_flow, announcement, queue_update, transport, weather
     upload_date: Mapped[str] = mapped_column(String(40))  # e.g. "25 Sep 2026"
     upload_time: Mapped[str] = mapped_column(String(40))  # e.g. "8:40 PM IST"
     data_timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

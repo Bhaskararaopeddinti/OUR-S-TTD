@@ -20,7 +20,7 @@ from backend.models import (
     Notification
 )
 from backend.auth import hash_password
-from backend.routers import auth_routes, core, transport_routes, cctv_routes
+from backend.routers import auth_routes, core, transport_routes
 from backend.routers.navigation import router as locations_router, navigation_router
 from backend.routers import admin_routes
 from backend.models import TransportRoute
@@ -80,7 +80,6 @@ app.include_router(transport_routes.router)
 app.include_router(locations_router)
 app.include_router(navigation_router)
 app.include_router(admin_routes.router)
-app.include_router(cctv_routes.router)
 
 
 # ── WebSocket Hub ──────────────────────────────────────────────────────────
@@ -159,24 +158,6 @@ def run_database_migrations(db):
             if "operating_days" not in cols_t:
                 db.execute(text("ALTER TABLE transport_routes ADD COLUMN operating_days VARCHAR(100) DEFAULT 'Daily'"))
 
-            # 4. CrowdAnalysis table
-            res_c = db.execute(text("PRAGMA table_info(crowd_analyses)")).fetchall()
-            cols_c = {row[1] for row in res_c}
-            if "upload_date" not in cols_c:
-                db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN upload_date VARCHAR(40) DEFAULT ''"))
-            if "upload_time" not in cols_c:
-                db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN upload_time VARCHAR(40) DEFAULT ''"))
-            if "direction_status" not in cols_c:
-                db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN direction_status VARCHAR(80) DEFAULT 'Direction data unavailable for image'"))
-            if "incoming_count" not in cols_c:
-                db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN incoming_count INTEGER"))
-            if "outgoing_count" not in cols_c:
-                db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN outgoing_count INTEGER"))
-            if "net_flow" not in cols_c:
-                db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN net_flow INTEGER"))
-            if "admin_update_timestamp" not in cols_c:
-                db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN admin_update_timestamp DATETIME"))
-
             db.commit()
             logger.info("✓ SQLite column migrations checked and up to date.")
         elif db.bind.dialect.name == "postgresql":
@@ -195,15 +176,6 @@ def run_database_migrations(db):
             db.execute(text("ALTER TABLE transport_routes ADD COLUMN IF NOT EXISTS arrival_time VARCHAR(60) DEFAULT '';"))
             db.execute(text("ALTER TABLE transport_routes ADD COLUMN IF NOT EXISTS available_seats INTEGER;"))
             db.execute(text("ALTER TABLE transport_routes ADD COLUMN IF NOT EXISTS operating_days VARCHAR(100) DEFAULT 'Daily';"))
-
-            # Crowd analysis columns
-            db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN IF NOT EXISTS upload_date VARCHAR(40) DEFAULT '';"))
-            db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN IF NOT EXISTS upload_time VARCHAR(40) DEFAULT '';"))
-            db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN IF NOT EXISTS direction_status VARCHAR(80) DEFAULT 'Direction data unavailable for image';"))
-            db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN IF NOT EXISTS incoming_count INTEGER;"))
-            db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN IF NOT EXISTS outgoing_count INTEGER;"))
-            db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN IF NOT EXISTS net_flow INTEGER;"))
-            db.execute(text("ALTER TABLE crowd_analyses ADD COLUMN IF NOT EXISTS admin_update_timestamp TIMESTAMP;"))
 
             db.commit()
             logger.info("✓ PostgreSQL column migrations checked and up to date.")
@@ -463,19 +435,21 @@ async def serve_favicon_ico():
 
 @app.get("/api/health", tags=["Health"])
 async def health_check():
-    """Non-sensitive application, database, AI, and CCTV worker health status."""
+    """Non-sensitive application, database, AI, and ML crowd prediction status."""
     connected = test_connection()
     from backend.services.ai_service import get_gemini_api_key
     gemini_key_present = bool(get_gemini_api_key())
 
-    # CCTV worker status (non-blocking)
-    cctv_status = "idle"
+    # ML crowd prediction status
+    ml_status = "ready"
+    ml_model_name = "Random Forest Regression"
     try:
-        from backend.services.cctv_vision import cctv_worker
-        ws = cctv_worker.get_status()
-        cctv_status = ws.get("status", "idle").lower()
+        from backend.ml.crowd_predictor import get_model_meta
+        meta = get_model_meta()
+        ml_model_name = meta.get("best_model", "Random Forest Regression")
     except Exception:
-        cctv_status = "unavailable"
+        ml_status = "needs_training"
+        ml_model_name = None
 
     return {
         "status": "healthy" if connected else "degraded",
@@ -483,7 +457,8 @@ async def health_check():
         "database_type": database_kind(),
         "gemini_configured": gemini_key_present,
         "gemini_model": os.getenv("GEMINI_MODEL", "gemini-flash-latest"),
-        "cctv_worker_status": cctv_status,
+        "ml_crowd_prediction_status": ml_status,
+        "ml_model": ml_model_name,
     }
 
 @app.get("/health", tags=["Health"], include_in_schema=False)

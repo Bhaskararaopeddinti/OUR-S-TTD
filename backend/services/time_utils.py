@@ -75,8 +75,8 @@ def format_admin_timestamp(dt: Optional[datetime] = None) -> Dict[str, Any]:
 
 def get_latest_admin_update_info(db) -> Dict[str, Any]:
     """
-    Retrieve the latest authorized admin update across AdminUpdateMeta,
-    CrowdAnalysis, PilgrimFlowData, and CCTVCrowdRecord.
+    Retrieve the latest authorized admin update across AdminUpdateMeta
+    and PilgrimFlowData.
     Returns structured timestamp info formatted for India Standard Time (IST).
     """
     if db is None:
@@ -93,7 +93,7 @@ def get_latest_admin_update_info(db) -> Dict[str, Any]:
             "summary": "No admin updates recorded yet."
         }
 
-    from backend.models import AdminUpdateMeta, CrowdAnalysis, PilgrimFlowData, CCTVCrowdRecord
+    from backend.models import AdminUpdateMeta, PilgrimFlowData
     from sqlalchemy import desc
 
     # 1. Check AdminUpdateMeta first
@@ -114,47 +114,9 @@ def get_latest_admin_update_info(db) -> Dict[str, Any]:
             "summary": latest_meta.summary or latest_meta.update_type
         }
 
-    # 2. Check CrowdAnalysis
-    latest_ca = db.query(CrowdAnalysis).order_by(desc(CrowdAnalysis.created_at)).first()
-    if latest_ca:
-        ts = latest_ca.created_at
-        formatted = format_admin_timestamp(ts)
-        return {
-            "has_admin_data": True,
-            "upload_date": latest_ca.upload_date or formatted["upload_date"],
-            "upload_time": latest_ca.upload_time or formatted["upload_time"],
-            "data_timestamp": ts.isoformat(),
-            "admin_update_timestamp": ts.isoformat(),
-            "formatted_ist": formatted["formatted_ist"],
-            "display_text": formatted["formatted_ist"],
-            "day_of_week": formatted["day_of_week"],
-            "tithi": formatted["tithi"],
-            "summary": f"Admin crowd photo analysis ({latest_ca.crowd_level})"
-        }
-
-    # 3. Check CCTVCrowdRecord (real camera / uploaded media)
-    latest_cctv = db.query(CCTVCrowdRecord).filter(
-        CCTVCrowdRecord.source.in_(["cctv_image", "admin_image", "cctv_ai", "authorized_cctv"])
-    ).order_by(desc(CCTVCrowdRecord.timestamp)).first()
-    if latest_cctv:
-        ts = latest_cctv.timestamp or latest_cctv.created_at
-        formatted = format_admin_timestamp(ts)
-        return {
-            "has_admin_data": True,
-            "upload_date": formatted["upload_date"],
-            "upload_time": formatted["upload_time"],
-            "data_timestamp": ts.isoformat(),
-            "admin_update_timestamp": ts.isoformat(),
-            "formatted_ist": formatted["formatted_ist"],
-            "display_text": formatted["formatted_ist"],
-            "day_of_week": formatted["day_of_week"],
-            "tithi": formatted["tithi"],
-            "summary": f"CCTV crowd analysis: {latest_cctv.queue_status}"
-        }
-
-    # 4. Check PilgrimFlowData with valid admin entry
+    # 2. Check PilgrimFlowData with valid admin entry
     latest_flow = db.query(PilgrimFlowData).filter(
-        PilgrimFlowData.source.in_(["admin_image", "cctv_ai", "manual", "authorized_cctv"])
+        PilgrimFlowData.source.in_(["manual", "authorized_ttd_data"])
     ).order_by(desc(PilgrimFlowData.created_at)).first()
     if latest_flow and latest_flow.created_at:
         ts = latest_flow.created_at

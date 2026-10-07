@@ -32,7 +32,8 @@ The platform provides:
 |---|---|---|
 | Home Dashboard | ✅ Live | Queue, stats, quick services |
 | AI Chat Assistant | ✅ Live | Gemini (fallback: keyword) |
-| Queue Intelligence | ✅ Live | Official TTD public status |
+| Queue Intelligence | ✅ Live | Official TTD status + ML crowd forecast |
+| ML Crowd Prediction | ✅ Live | Random Forest trained on 3,572 historical days |
 | Smart Navigation | ✅ Live | OpenStreetMap / Google Maps |
 | Emergency SOS | ✅ Live | Geolocation + DB alert |
 | Darshan Booking | ✅ Architecture | Pending official TTD API |
@@ -76,25 +77,31 @@ OURS-TTD/
 │   │   ├── notifications.js  # Notification bell
 │   │   └── sw.js             # Service worker (PWA)
 │   └── manifest.json         # PWA manifest
-│
 ├── backend/
 │   ├── main.py               # FastAPI app, seeding, WebSocket
 │   ├── database.py           # SQLAlchemy engine + session
 │   ├── models.py             # All ORM models
 │   ├── schemas.py            # Pydantic schemas
 │   ├── auth.py               # JWT + bcrypt
-│   ├── requirements.txt
+│   ├── data/
+│   │   └── final_data.csv    # Historical daily pilgrim dataset (3,572 records)
+│   ├── ml/
+│   │   ├── train_crowd_model.py # ML training pipeline (Linear Regression & Random Forest)
+│   │   ├── predictor.py         # Real-time inference service with caching
+│   │   └── models/              # crowd_model.joblib & model_meta.json
 │   ├── routers/
 │   │   ├── auth_routes.py    # /api/auth/*
-│   │   └── core.py           # All pilgrim + admin APIs
+│   │   ├── core.py           # Public pilgrim APIs & crowd ML endpoints
+│   │   └── admin_routes.py   # Admin management APIs
 │   └── services/
 │       ├── ai_service.py     # Gemini integration
-│       ├── ttd_official.py   # Public TTD status scraper
+│       ├── ttd_official.py   # Public TTD status aggregator
 │       ├── google_translation.py # Translation (MyMemory)
 │       ├── facilities_data.py
-│       ├── queue_prediction.py
+│       ├── queue_prediction.py   # Wait-time forecasting powered by ML
 │       └── recommendation.py
 │
+├── requirements.txt          # Production dependencies
 ├── .env                      # Secret keys (never commit)
 ├── .env.example              # Template
 ├── README.md
@@ -235,9 +242,42 @@ Once the server is running, visit:
 | GET | `/api/notifications` | User notifications |
 | GET | `/api/profile` | Get user profile |
 | PUT | `/api/profile` | Update profile |
+| GET | `/api/crowd/predict` | ML crowd forecast (predicted count, level, wait hours) |
+| GET | `/api/crowd/model-info` | ML model architecture, training metrics, & features |
 | GET | `/api/admin/analytics` | Admin stats (admin only) |
 | GET | `/api/admin/emergencies` | All SOS alerts (admin only) |
 | WS | `/ws/live` | WebSocket live updates |
+
+---
+
+## 🧠 Machine Learning Crowd Prediction Architecture
+
+The crowd intelligence system uses genuine machine learning models trained on **3,572 days** of historical pilgrim records (`backend/data/final_data.csv`).
+
+> [!NOTE]
+> **Camera / Video / YOLO Crowd Sensing Removal**:
+> Computer-vision/CCTV-based crowd sensing and YOLO detection have been completely removed. Crowd estimates and queue forecasts are driven exclusively by statistical and supervised machine learning inference trained on verified historical data patterns.
+>
+> **TTD API Integration Notice**:
+> Automatic live daily pilgrim-count retrieval is not yet configured because an authorized TTD data source/API has not been provided. The system is prepared to integrate one later.
+
+### Model Evaluation & Training Results
+
+| Metric | Linear Regression Baseline | Random Forest Regression (Production) |
+|---|---|---|
+| **Mean Absolute Error (MAE)** | 6,168 pilgrims | **5,393 pilgrims** |
+| **Root Mean Squared Error (RMSE)** | 7,778 pilgrims | **6,921 pilgrims** |
+| **R² Score** | 0.2300 | **0.3904** |
+| **Split Strategy** | 80/20 Chronological | 80/20 Chronological (2,857 train / 715 test) |
+| **Key Features** | month, day, dayofweek, is_weekend, lag_1, lag_7, rolling_mean_7, rolling_mean_14, rolling_std_7 | Same with 200 estimators |
+
+### Running Training Locally
+
+To retrain the crowd prediction model on the dataset:
+```bash
+python -m backend.ml.train_crowd_model
+```
+Trained artifacts are stored in `backend/ml/models/crowd_model.joblib` and `backend/ml/models/model_meta.json`.
 
 ---
 

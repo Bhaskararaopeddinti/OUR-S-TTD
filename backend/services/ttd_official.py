@@ -25,7 +25,7 @@ def public_status(db=None) -> dict:
     # Default clean baseline
     result = {
         "source": OFFICIAL_URL,
-        "source_name": "TTD public & CCTV queue monitoring",
+        "source_name": "TTD Official & Pilgrim Flow Monitoring",
         "verified": True,
         "wait_minutes": None,
         "crowd_density": "Moderate",
@@ -35,7 +35,7 @@ def public_status(db=None) -> dict:
         "balance_tickets": None,
     }
 
-    # 1. Check database for latest CCTV AI or queue status if db session available
+    # 1. Check database for latest queue status or pilgrim flow data if db session available
     session_created = False
     if db is None:
         try:
@@ -47,26 +47,16 @@ def public_status(db=None) -> dict:
 
     if db is not None:
         try:
-            from backend.models import CCTVCrowdRecord, PilgrimFlowData, QueueStatus
+            from backend.models import PilgrimFlowData, QueueStatus
             from sqlalchemy import desc
 
-            # Check latest CCTV record
-            latest_cctv = db.query(CCTVCrowdRecord).order_by(desc(CCTVCrowdRecord.timestamp)).first()
-            if latest_cctv:
-                result["people_count"] = latest_cctv.observed_count
-                result["crowd_density"] = latest_cctv.queue_status.title()
-                # Estimate wait based on crowd
-                count = latest_cctv.observed_count
-                if count < 15:
-                    result["wait_minutes"] = 45
-                elif count < 40:
-                    result["wait_minutes"] = 120
-                elif count < 70:
-                    result["wait_minutes"] = 240
-                else:
-                    result["wait_minutes"] = 360
-                result["source_name"] = "CCTV AI Live Monitoring"
-                result["message"] = f"Live crowd status: {latest_cctv.queue_status} ({latest_cctv.observed_count} devotees observed at {latest_cctv.location_name})."
+            q_status = db.query(QueueStatus).first()
+            if q_status and q_status.people_count:
+                result["people_count"] = q_status.people_count
+                result["crowd_density"] = q_status.crowd_density.title() if q_status.crowd_density else "Moderate"
+                result["wait_minutes"] = q_status.wait_minutes
+                result["source_name"] = "Live Darshan Status"
+                result["message"] = f"Live crowd status: {q_status.crowd_density} at {q_status.location}."
             else:
                 latest_flow = db.query(PilgrimFlowData).order_by(desc(PilgrimFlowData.date), desc(PilgrimFlowData.start_time)).first()
                 if latest_flow:
